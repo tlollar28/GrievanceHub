@@ -1,0 +1,35 @@
+{
+  "question": "Management canceled my previously approved annual leave without an emergency. Can I grieve this?",
+  "analysis": {
+    "primary_issue": "Whether management may cancel previously approved annual leave",
+    "issue_categories": ["leave"],
+    "legal_issues": [
+      {
+        "issue": "Management cancellation of previously approved annual leave",
+        "why_it_matters": "Must verify whether contract or manual limits cancellation to emergency situations",
+        "search_queries": [
+          "management cancel previously approved annual leave",
+          "annual leave cancellation emergency"
+        ]
+      }
+    ],
+    "facts_needed": [
+      "Whether leave was previously approved in writing",
+      "Whether management claimed an emergency"
+    ],
+    "possible_sources": ["CONTRACT", "CIM", "ELM", "LMOU"],
+    "remedial_issues": [],
+    "timeline_issues": [],
+    "local_agreement_issues": []
+  },
+  "governing_passage": {
+    "text": "Question: Under what circumstances can management cancel previously approved annual leave? Answer: Employees who have annual leave approved are entitled to such annual leave except in emergency situations.",
+    "chunk_index": 242,
+    "page": 137
+  },
+  "distractor_passage": {
+    "text": "Answer: An employee who is on extended absence may use annual and/or sick leave in conjunction with LWOP prior to exhausting his/her leave balances, subject to approval of the leave in accordance with normal procedures.",
+    "chunk_index": 308,
+    "page": 171
+  }
+}

@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+credentials.json
+*.pem
+*.key
+secrets/
+
+# Test / cache
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# Reports / uploads / runtime data (generated or sensitive)
+reports/
+data/reports/
+data/sources/
+app/sources/**/*.zip
+data/incoming/
+data/processed/
+data/backups/
+data/indexes/
+data/logs/
+uploads/
+
+# Raw documents and exports
+*.xlsx
+*.pdf
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Local agent / session scratch (not product source)
+_gen_state.ps1
+_iter2_patch.py
+_patch.txt
+
+# Node / frontend
+node_modules/
+.next/
+dist/
+build/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.tfvars
+
+# OS
+.DS_Store
+Thumbs.db

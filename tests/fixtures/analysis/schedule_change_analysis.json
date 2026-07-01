@@ -1,0 +1,28 @@
+{
+  "question": "Can management unilaterally change my schedule without following the contract?",
+  "analysis": {
+    "primary_issue": "Whether management may change an employee schedule without contract procedures",
+    "issue_categories": ["schedule", "hours_of_work"],
+    "legal_issues": [
+      {
+        "issue": "Unilateral schedule change",
+        "why_it_matters": "Must verify whether Article 8 or related provisions require notice or agreement",
+        "search_queries": [
+          "unilateral schedule change",
+          "hours of work schedule assignment"
+        ]
+      }
+    ],
+    "facts_needed": ["Original schedule", "New schedule", "Notice given"],
+    "possible_sources": ["CONTRACT", "CIM", "ELM", "LMOU"],
+    "remedial_issues": [],
+    "timeline_issues": [],
+    "local_agreement_issues": []
+  },
+  "governing_passage": {
+    "text": "Section 8.2 The schedule for each employee shall be posted one week in advance. No employee shall be required to change from one schedule to another without at least one week's notice."
+  },
+  "distractor_passage": {
+    "text": "Article 8 Hours of Work governs the basic workweek. Overtime shall be distributed in accordance with the Overtime Desired List."
+  }
+}

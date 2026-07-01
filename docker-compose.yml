@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: grievancehub-postgres
+    environment:
+      POSTGRES_DB: grievancehub
+      POSTGRES_USER: grievancehub_user
+      POSTGRES_PASSWORD: grievancehub_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - grievancehub_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  grievancehub_postgres_data:
