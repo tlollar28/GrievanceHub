@@ -1,0 +1,31 @@
+{
+  "sources": [
+    {
+      "id": "usps_elm",
+      "name": "USPS Employee and Labor Relations Manual",
+      "source_type": "ELM",
+      "official_page": "https://about.usps.com/manuals/elm/elm.htm",
+      "allowed_file_types": [".zip", ".pdf"],
+      "preferred_keywords": ["elm", "55"],
+      "save_folder": "elm"
+    },
+    {
+      "id": "npmhu_contract",
+      "name": "NPMHU National Agreement",
+      "source_type": "CONTRACT",
+      "official_page": "https://m.npmhu.org/resources/2022-national-agreement",
+      "allowed_file_types": [".pdf"],
+      "preferred_keywords": ["national", "agreement", "2022", "2025"],
+      "save_folder": "contract"
+    },
+    {
+      "id": "npmhu_cim",
+      "name": "NPMHU Contract Interpretation Manual",
+      "source_type": "CIM",
+      "official_page": "https://www.npmhu.org/resources/contract-interpretation-manual-v-6",
+      "allowed_file_types": [".pdf"],
+      "preferred_keywords": ["cim", "contract", "interpretation", "manual"],
+      "save_folder": "cim"
+    }
+  ]
+}
