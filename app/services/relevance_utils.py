@@ -16,6 +16,7 @@ from app.retrieval_config import (
     PROCEDURAL_ONLY_PENALTY,
     SOURCE_TYPE_WEIGHTS,
     SUBSTANTIVE_RULE_BONUS,
+    TOPIC_MISMATCH_PENALTY_THRESHOLD,
 )
 
 STOPWORDS = {
@@ -89,6 +90,112 @@ ISSUE_TYPE_BACKFILL_TEMPLATES: dict[str, list[str]] = {
     ],
     "local_agreement": [
         "local memorandum understanding provision",
+    ],
+}
+
+ISSUE_TYPE_QUESTION_SIGNALS: dict[str, list[str]] = {
+    "timeline": [
+        "untimely",
+        "deadline",
+        "filing",
+        "time limit",
+        "timeliness",
+        "learned of",
+        "first learned",
+        "date learned",
+        "notice period",
+        "waiver",
+        "prescribed time",
+        "days to file",
+        "within days",
+        "filed on",
+        "when the union",
+        "when did the union",
+    ],
+    "local_agreement": [
+        "lmou",
+        "local memorandum",
+        "local mou",
+        "local practice",
+        "established local",
+        "local agreement",
+        "past practice",
+        "binding past practice",
+        "established practice",
+    ],
+}
+
+LOCAL_AUTHORITY_DISCLOSURE_SIGNALS = (
+    ISSUE_TYPE_QUESTION_SIGNALS["local_agreement"]
+)
+
+INVESTIGATORY_REPRESENTATION_QUESTION_SIGNALS = [
+    "weingarten",
+    "investigatory interview",
+    "investigation interview",
+    "interrogation",
+    "union representative",
+    "union rep",
+    "steward present",
+    "continued questioning",
+    "questioned alone",
+    "recognized authority",
+]
+
+INVESTIGATORY_REPRESENTATION_AUTHORITY_SIGNALS = [
+    "weingarten",
+    "investigatory interview",
+    "union representative",
+    "steward",
+    "interrogation",
+    "representation during",
+    "requested a union",
+    "requested a steward",
+]
+
+TOPIC_CLUSTER_TOKENS: dict[str, list[str]] = {
+    "driving": [
+        "driving privilege",
+        "non-driving duties",
+        "vehicle operator",
+        "reassign such employee to non-driving",
+    ],
+    "excessing": [
+        "excess",
+        "excessed",
+        "inverse seniority",
+        "losing installation",
+    ],
+    "higher_level": [
+        "higher level",
+        "higher-level",
+        "detailed to higher",
+        "higher level pay",
+        "higher level work",
+    ],
+    "supervisor_bu_work": [
+        "supervisor performing",
+        "bargaining unit work",
+        "section 1.2",
+        "work in question is properly assigned",
+    ],
+    "inspection_service_representation": [
+        "inspection service",
+    ],
+    "casual_combination_assignment": [
+        "combination full-time",
+        "casual employee",
+        "casual employees",
+    ],
+    "transfer_denial": [
+        "transfer request",
+        "denial of a transfer",
+        "denied a transfer",
+    ],
+    "past_practice": [
+        "past practice",
+        "binding past practice",
+        "unwritten part of that provision",
     ],
 }
 
@@ -280,6 +387,185 @@ def _normalize_string_list(value) -> list[str]:
             seen.add(lowered)
 
     return normalized
+
+
+def _text_has_any(text: str, signals: list[str]) -> bool:
+    lowered = (text or "").lower()
+    return any(signal in lowered for signal in signals)
+
+
+def _detect_topic_clusters(text: str) -> set[str]:
+    found: set[str] = set()
+    lowered = (text or "").lower()
+    for cluster, tokens in TOPIC_CLUSTER_TOKENS.items():
+        if any(token in lowered for token in tokens):
+            found.add(cluster)
+    return found
+
+
+def is_decomposed_issue_in_scope(
+    question: str,
+    issue: dict,
+    primary_issue: str = "",
+) -> bool:
+    """Timeline/local issues count only when the question raises them."""
+    issue_type = str(issue.get("issue_type") or "").lower()
+    if issue_type not in {"timeline", "local_agreement"}:
+        return True
+
+    signals = ISSUE_TYPE_QUESTION_SIGNALS.get(issue_type, [])
+    if not signals:
+        return True
+
+    combined = " ".join(
+        [
+            (question or "").lower(),
+            (primary_issue or "").lower(),
+        ]
+    )
+    return any(signal in combined for signal in signals)
+
+
+def compute_topic_mismatch_penalty(
+    chunk_text: str,
+    question: str = "",
+    primary_issue: str = "",
+    dispute_frame: dict | None = None,
+) -> float:
+    """Conservative penalty when chunk topic cluster clearly mismatches the dispute."""
+    context_parts = [question or "", primary_issue or ""]
+    if dispute_frame and isinstance(dispute_frame, dict):
+        context_parts.append(str(dispute_frame.get("action") or ""))
+        context_parts.extend(dispute_frame.get("union_concerns") or [])
+
+    context = " ".join(context_parts).lower()
+    chunk_clusters = _detect_topic_clusters(chunk_text or "")
+    if not chunk_clusters:
+        return 0.0
+
+    penalty = 0.0
+
+    if "driving" in chunk_clusters:
+        discipline_context = any(
+            term in context
+            for term in (
+                "discipline",
+                "just cause",
+                "suspension",
+                "discharge",
+                "investigation",
+            )
+        )
+        if discipline_context and not _text_has_any(
+            context, TOPIC_CLUSTER_TOKENS["driving"]
+        ):
+            penalty = max(penalty, 1.0)
+
+    if "excessing" in chunk_clusters:
+        if _text_has_any(context, TOPIC_CLUSTER_TOKENS["higher_level"]):
+            penalty = max(penalty, 1.0)
+        temp_context = any(
+            term in context
+            for term in ("temporary", "section", "reassignment", "overtime opportun")
+        )
+        if temp_context and "excess" not in context:
+            penalty = max(penalty, 1.0)
+
+    if "supervisor_bu_work" in chunk_clusters:
+        if _text_has_any(context, INVESTIGATORY_REPRESENTATION_QUESTION_SIGNALS):
+            penalty = max(penalty, 1.0)
+
+    if "inspection_service_representation" in chunk_clusters:
+        supervisor_question = "supervisor" in context and any(
+            term in context
+            for term in ("questioned", "misconduct", "discipline", "interview")
+        )
+        if supervisor_question and "inspection service" not in context:
+            penalty = max(penalty, 0.85)
+
+    past_practice_context = _text_has_any(
+        context, TOPIC_CLUSTER_TOKENS["past_practice"]
+    ) or any(
+        term in context
+        for term in ("recurring work", "work assignment", "seniority selection")
+    )
+
+    if "casual_combination_assignment" in chunk_clusters and past_practice_context:
+        if not _text_has_any(
+            context, TOPIC_CLUSTER_TOKENS["casual_combination_assignment"]
+        ):
+            penalty = max(penalty, 1.0)
+
+    if "transfer_denial" in chunk_clusters and past_practice_context:
+        if "transfer" not in context:
+            penalty = max(penalty, 1.0)
+
+    return penalty
+
+
+def exceeds_topic_mismatch_threshold(penalty: float) -> bool:
+    return penalty >= TOPIC_MISMATCH_PENALTY_THRESHOLD
+
+
+def compute_unindexed_sources_requested(
+    question: str,
+    issue_analysis: dict,
+    indexed_source_types: set[str] | list[str] | None,
+) -> list[str]:
+    indexed = {
+        str(source_type).upper()
+        for source_type in (indexed_source_types or [])
+        if str(source_type).strip()
+    }
+    requested: list[str] = []
+
+    blob = (question or "").lower()
+    primary = str((issue_analysis or {}).get("primary_issue") or "").lower()
+    combined = f"{blob} {primary}".strip()
+
+    mentions_local = any(
+        signal in combined for signal in LOCAL_AUTHORITY_DISCLOSURE_SIGNALS
+    )
+
+    if mentions_local and "LMOU" not in indexed:
+        requested.append("LMOU")
+
+    return requested
+
+
+def question_requests_investigatory_representation(question: str) -> bool:
+    return _text_has_any(question, INVESTIGATORY_REPRESENTATION_QUESTION_SIGNALS)
+
+
+def ranked_authorities_cover_investigatory_representation(
+    ranked_authorities: list[dict],
+) -> bool:
+    for authority in ranked_authorities:
+        quote = str(authority.get("direct_quote") or "").lower()
+        if not quote.strip():
+            continue
+
+        if "inspection service" in quote and "supervisor" not in quote:
+            continue
+        if "supervisor performing" in quote or "bargaining unit work" in quote:
+            continue
+
+        if _text_has_any(quote, INVESTIGATORY_REPRESENTATION_AUTHORITY_SIGNALS):
+            return True
+    return False
+
+
+def compute_authority_topics_unavailable(
+    question: str,
+    ranked_authorities: list[dict],
+) -> list[str]:
+    unavailable: list[str] = []
+    if question_requests_investigatory_representation(question):
+        if not ranked_authorities_cover_investigatory_representation(
+            ranked_authorities
+        ):
+            unavailable.append("investigatory_union_representation")
+    return unavailable
 
 
 def collect_decomposed_issues(analysis: dict | None) -> list[dict]:

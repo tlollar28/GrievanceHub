@@ -119,6 +119,16 @@ class NarrativeGenerator:
                 + ", ".join(retrieval_gaps["missing_source_types"])
                 + "."
             )
+        for topic in retrieval_gaps.get("authority_topics_unavailable_in_index") or []:
+            if topic == "investigatory_union_representation":
+                why_bits.append(
+                    "Investigatory union-representation authority was requested but "
+                    "not found in indexed CONTRACT/CIM/ELM sources."
+                )
+        for source in retrieval_gaps.get("unindexed_sources_requested") or []:
+            why_bits.append(
+                f"{source} was referenced but is not currently indexed."
+            )
         if evidence_items:
             why_bits.append(
                 f"{len(evidence_items)} grounded evidence item(s) support the analysis."
@@ -400,6 +410,30 @@ class NarrativeGenerator:
                 }
             )
 
+        for source in retrieval_gaps.get("unindexed_sources_requested") or []:
+            not_found.append(
+                {
+                    "source_type": source,
+                    "issue": issue_analysis.get("primary_issue") or "",
+                    "reason": (
+                        "This source type was referenced but is not currently "
+                        "indexed — local provisions cannot be retrieved until ingested."
+                    ),
+                }
+            )
+
+        for topic in retrieval_gaps.get("authority_topics_unavailable_in_index") or []:
+            not_found.append(
+                {
+                    "source_type": None,
+                    "issue": topic.replace("_", " "),
+                    "reason": (
+                        "Requested authority topic was not found in currently "
+                        "indexed CONTRACT/CIM/ELM sources."
+                    ),
+                }
+            )
+
         return {
             "found": found,
             "not_found": not_found,
@@ -426,7 +460,29 @@ class NarrativeGenerator:
             if cleaned and cleaned not in missing_facts:
                 missing_facts.append(cleaned)
 
-        caveats = [
+        priority_caveats: list[str] = []
+        for source in retrieval_gaps.get("unindexed_sources_requested") or []:
+            priority_caveats.append(
+                f"{source} / local memorandum language was referenced in the "
+                "question but is not currently indexed in GrievanceHub — "
+                "local provisions cannot be retrieved until ingested, and "
+                "national CONTRACT/CIM sources may not fully resolve local issues."
+            )
+        for topic in retrieval_gaps.get("authority_topics_unavailable_in_index") or []:
+            if topic == "investigatory_union_representation":
+                priority_caveats.append(
+                    "Steward representation at investigatory interviews "
+                    "(Weingarten-type rights) was requested, but no governing "
+                    "excerpt was found in currently indexed CONTRACT/CIM/ELM "
+                    "sources. Do not treat unrelated provisions as substitutes."
+                )
+            else:
+                priority_caveats.append(
+                    f"The requested authority topic '{topic.replace('_', ' ')}' "
+                    "was not found in currently indexed sources."
+                )
+
+        caveats = priority_caveats + [
             "This report is a research draft, not legal advice or a final grievance decision.",
             "Arguments must tie to grounded quotes and verified case facts.",
         ]
