@@ -12,7 +12,12 @@ from app.services.evidence_extractor import EvidenceExtractor
 from app.services.report_builder import ReportBuilder
 from app.services.citation_validator import CitationValidator
 from app.services.narrative_generator import NarrativeGenerator
-from app.services.relevance_utils import extract_issue_keywords
+from app.services.relevance_utils import (
+    compute_authority_topics_unavailable,
+    compute_unindexed_sources_requested,
+    extract_issue_keywords,
+    is_decomposed_issue_in_scope,
+)
 from app.retrieval_config import MAX_AUTHORITIES_TO_RANKER, REPORT_TITLE
 
 load_dotenv()
@@ -172,9 +177,11 @@ class AnalysisService:
         all_chunks: list | None = None,
         retrieval_gaps_from_krs: list | None = None,
         indexed_source_types: set[str] | list[str] | None = None,
+        question: str = "",
     ) -> dict:
         issue_keywords = issue_keywords or []
         pool_chunks = all_chunks or []
+        primary_issue = str(issue_analysis.get("primary_issue") or "").strip()
 
         found_types = {
             str(chunk.source_document.source_type).upper()
@@ -225,6 +232,16 @@ class AnalysisService:
             label = str(gap.get("issue") or "").strip()
             if not label:
                 continue
+            scope_issue = {
+                "issue_type": gap.get("issue_type"),
+                "issue": label,
+            }
+            if not is_decomposed_issue_in_scope(
+                question,
+                scope_issue,
+                primary_issue=primary_issue,
+            ):
+                continue
             if (
                 str(gap.get("issue_type") or "").lower() == "remedy"
                 and has_substantive_ranked
@@ -242,11 +259,24 @@ class AnalysisService:
             issues_without_support.append(label)
             seen_labels.add(key)
 
+        unindexed_sources_requested = compute_unindexed_sources_requested(
+            question=question,
+            issue_analysis=issue_analysis,
+            indexed_source_types=indexed,
+        )
+
+        authority_topics_unavailable = compute_authority_topics_unavailable(
+            question=question,
+            ranked_authorities=ranked_authorities,
+        )
+
         return {
             "missing_source_types": missing_source_types,
             "issues_without_supporting_authority": issues_without_support,
             "facts_still_needed": list(issue_analysis.get("facts_needed") or []),
             "found_source_types": sorted(found_types),
+            "unindexed_sources_requested": unindexed_sources_requested,
+            "authority_topics_unavailable_in_index": authority_topics_unavailable,
         }
 
     @staticmethod
@@ -353,6 +383,7 @@ class AnalysisService:
             all_chunks=pool_chunks,
             retrieval_gaps_from_krs=retrieval_gaps_list,
             indexed_source_types=indexed_source_types,
+            question=question,
         )
 
         legal_issues = LegalIssueIdentifier.identify_issues(

@@ -433,6 +433,9 @@ Rules:
 - Include employee rights, union rights, management obligations,
   procedures, information rights, remedies, timelines, and LMOU issues
   only when reasonably connected to the question.
+- Do NOT emit timeline_issues unless the question raises filing deadlines,
+  grievance timeliness, notice periods, or when the Union or employee
+  first learned of the issue.
 - Separate facts stated by the user from facts still needing confirmation.
 - Do not say a rule applies until retrieved authority supports it.
 - Do not say management violated anything.

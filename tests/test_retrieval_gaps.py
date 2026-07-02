@@ -29,6 +29,7 @@ def test_missing_elm_not_flagged_when_governing_cim_in_pool():
     )
     assert "ELM" not in gaps["missing_source_types"]
     assert "CONTRACT" not in gaps["missing_source_types"]
+    assert gaps.get("unindexed_sources_requested") == []
 
 
 def test_lmou_not_missing_when_not_indexed():
@@ -44,5 +45,7 @@ def test_lmou_not_missing_when_not_indexed():
         issue_keywords=["leave"],
         all_chunks=[_chunk("CIM")],
         indexed_source_types={"CONTRACT", "CIM"},
+        question="Local leave procedure under LMOU.",
     )
     assert "LMOU" not in gaps["missing_source_types"]
+    assert gaps["unindexed_sources_requested"] == ["LMOU"]
