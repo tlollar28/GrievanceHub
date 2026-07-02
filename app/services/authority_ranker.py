@@ -20,10 +20,13 @@ from app.services.relevance_utils import (
     collect_decomposed_issues,
     compute_direction_penalty,
     compute_distinctive_overlap_score,
+    compute_topic_mismatch_penalty,
+    exceeds_topic_mismatch_threshold,
     extract_grounded_quote_snippet,
     extract_issue_keywords,
     extract_issue_keywords_for_issue,
     is_boilerplate_chunk,
+    is_decomposed_issue_in_scope,
     verify_quote_in_chunk,
 )
 
@@ -36,6 +39,15 @@ ISSUE_TYPE_DEFAULT_ROLES = {
     "information_rights": "information_right",
     "local_agreement": "background_only",
     "primary": "union_supporting",
+}
+
+SUBSTANTIVE_EXPORT_ROLES = {
+    "union_supporting",
+    "procedural_requirement",
+    "information_right",
+    "remedy_support",
+    "timeline_requirement",
+    "management_limiting",
 }
 
 
@@ -56,6 +68,8 @@ class AuthorityRanker:
         ranked: list[dict],
         issue_keywords: list[str],
         dispute_frame: dict | None = None,
+        question: str = "",
+        primary_issue: str = "",
     ) -> list[dict]:
         filtered = []
 
@@ -76,10 +90,21 @@ class AuthorityRanker:
             )
             item["direction_penalty"] = round(direction_penalty, 4)
 
+            topic_mismatch = compute_topic_mismatch_penalty(
+                chunk.text or "",
+                question=question,
+                primary_issue=primary_issue,
+                dispute_frame=dispute_frame,
+            )
+            item["topic_mismatch_penalty"] = round(topic_mismatch, 4)
+
             if not verify_quote_in_chunk(quote, chunk.text or ""):
                 continue
 
             if direction_penalty >= DIRECTION_CONTRADICTION_PENALTY:
+                continue
+
+            if exceeds_topic_mismatch_threshold(topic_mismatch):
                 continue
 
             if role == "management_limiting":
@@ -105,10 +130,27 @@ class AuthorityRanker:
         return filtered
 
     @staticmethod
+    def _exclude_background_when_substantive(ranked: list[dict]) -> list[dict]:
+        substantive_count = sum(
+            1
+            for item in ranked
+            if item.get("role") in SUBSTANTIVE_EXPORT_ROLES
+        )
+        if substantive_count >= 2:
+            return [
+                item
+                for item in ranked
+                if item.get("role") != "background_only"
+            ]
+        return ranked
+
+    @staticmethod
     def _ensure_multi_issue_coverage(
         ranked: list[dict],
         decomposed_issues: list[dict],
         chunks: list[SourceChunk],
+        question: str = "",
+        primary_issue: str = "",
     ) -> list[dict]:
         gaps = []
         covered_issue_ids = set()
@@ -127,6 +169,12 @@ class AuthorityRanker:
         for issue in decomposed_issues:
             issue_id = issue.get("issue_id")
             if not issue_id:
+                continue
+            if not is_decomposed_issue_in_scope(
+                question,
+                issue,
+                primary_issue=primary_issue,
+            ):
                 continue
 
             has_ranked = any(
@@ -187,6 +235,8 @@ class AuthorityRanker:
         issue_keywords: list[str],
         dispute_frame: dict | None,
         max_authorities: int,
+        question: str = "",
+        primary_issue: str = "",
     ) -> list[dict]:
         """Promote one gated candidate per uncovered issue when post-filters pass."""
         promoted = list(ranked)
@@ -194,6 +244,12 @@ class AuthorityRanker:
         for issue in decomposed_issues:
             issue_id = issue.get("issue_id")
             if not issue_id:
+                continue
+            if not is_decomposed_issue_in_scope(
+                question,
+                issue,
+                primary_issue=primary_issue,
+            ):
                 continue
             if AuthorityRanker._issue_ranked_for_id(promoted, issue_id):
                 continue
@@ -217,6 +273,15 @@ class AuthorityRanker:
                 if AuthorityRanker._chunk_in_ranked(promoted, chunk):
                     continue
                 if is_boilerplate_chunk(chunk.text or ""):
+                    continue
+
+                mismatch = compute_topic_mismatch_penalty(
+                    chunk.text or "",
+                    question=question,
+                    primary_issue=primary_issue,
+                    dispute_frame=dispute_frame,
+                )
+                if exceeds_topic_mismatch_threshold(mismatch):
                     continue
 
                 score = float(metadata.get("combined_score") or 0.0)
@@ -275,6 +340,8 @@ class AuthorityRanker:
                 [candidate],
                 combined_keywords,
                 dispute_frame=dispute_frame,
+                question=question,
+                primary_issue=primary_issue,
             )
             if not filtered:
                 continue
@@ -323,6 +390,7 @@ class AuthorityRanker:
             )
 
         dispute_frame = (issue_analysis or {}).get("dispute_frame")
+        primary_issue = str((issue_analysis or {}).get("primary_issue") or "").strip()
         decomposed_issues = collect_decomposed_issues(issue_analysis)
 
         client = AuthorityRanker._client()
@@ -490,6 +558,8 @@ Rules:
             ranked,
             issue_keywords,
             dispute_frame=dispute_frame,
+            question=question,
+            primary_issue=primary_issue,
         )
 
         role_priority = {
@@ -517,12 +587,18 @@ Rules:
             issue_keywords,
             dispute_frame,
             max_authorities,
+            question=question,
+            primary_issue=primary_issue,
         )
+
+        ranked = AuthorityRanker._exclude_background_when_substantive(ranked)
 
         coverage_gaps = AuthorityRanker._ensure_multi_issue_coverage(
             ranked,
             decomposed_issues,
             chunks,
+            question=question,
+            primary_issue=primary_issue,
         )
 
         if retrieval_gaps is not None:

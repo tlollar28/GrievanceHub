@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-01 (Phase 0 final stabilization)
+Last updated: 2026-07-01 (Phase 0.1 Iteration A complete — local merge)
 
 ## Architecture
 
@@ -38,7 +38,7 @@ flowchart TD
 
 ## Codebase verification (2026-07-01)
 
-**Git:** This workspace is **not** a Git repository (no `.git` directory). State was verified by filesystem inspection instead of `git status` / `git diff`.
+**Git:** Local-only repository on branch `master` (merged from `phase0-1-iteration-a`). **No remote configured** — nothing pushed or uploaded.
 
 **Confirmed present and aligned with documentation:**
 
@@ -49,8 +49,71 @@ flowchart TD
 | Phase 2 case sessions | `app/services/case_service.py`, `app/api/routes/cases.py`, `app/main.py` (cases router registered), Alembic `a1b2c3d4e5f6_add_grievance_case_tables.py` |
 | Regression harness | `tests/fixtures/regression_questions.json` (8 questions), `tests/test_regression_harness.py`, `scripts/regression_report.py`, `scripts/diagnose_regression.py` |
 | Live scorecard artifact | `data/reports/regression_scorecard.json` — **8 PASS / 0 PARTIAL / 0 FAIL** (`phase0_iteration2_verification`, 2026-07-01) |
+| Phase 0.1 Iteration A | `tests/test_phase0_1_iteration_a.py`, topic-mismatch filters, honest gap disclosure — **verified 2026-07-01** |
 
-No uncommitted code changes were detected beyond this documentation update (Git unavailable).
+---
+
+## Phase 0.1 — Hardening Record (Iteration A)
+
+**Status:** Complete. **Iteration B is not required.** Phase 0.1 hardening is finished; Phase 1 and Phase 2 remain intact.
+
+### Original regression (unchanged)
+
+| Metric | Result |
+|--------|--------|
+| **PASS** | **8** |
+| **PARTIAL** | **0** |
+| **FAIL** | **0** |
+
+The eight-question benchmark harness (`tests/fixtures/regression_questions.json`) still scores **8 PASS / 0 PARTIAL / 0 FAIL** after Iteration A changes.
+
+### Iteration A — unseen-question verification highlights
+
+| Question | Outcome | Notes |
+|----------|---------|-------|
+| Q7 (grievance timeliness) | PASS | Substantive Article 15.2 timeliness language retrieved (“first learned” / filing-deadline excerpts) — **Iteration B not required** |
+| Q9 (investigatory interview / representation) | **PARTIAL (expected)** | Governing investigatory-representation authority is **not indexed**; report now prominently discloses `authority_topics_unavailable_in_index: ["investigatory_union_representation"]`; unrelated Article 17 and bargaining-unit-work substitutes **removed** |
+| Q10 (established practice) | PASS | LMOU listed under `unindexed_sources_requested`; Article 5 past-practice authorities **retained**; unrelated Article 7.2 and Section 12.7 authorities **removed** |
+
+### Defect repairs (summary)
+
+- **D1 false timeline gap** — eliminated false `issues_without_supporting_authority` flags (e.g. Q2).
+- **D2 timeliness depth** — Q7 retrieves grounded Article 15.2 filing-deadline language.
+- **D3 representation disclosure** — Q9 surfaces honest `authority_topics_unavailable_in_index` when Weingarten-type sources are absent from the index.
+- **D4 LMOU disclosure** — Q5/Q10 list `unindexed_sources_requested: ["LMOU"]` with prominent limitations caveats.
+- **D5 irrelevant authorities** — topic-mismatch filtering removes unrelated Article 17, BU-work, Article 7.2, Section 12.7, and similar substitutes while preserving on-topic authorities.
+
+### Files changed (Iteration A)
+
+| File | Changes |
+|------|---------|
+| `app/retrieval_config.py` | Topic-mismatch / disclosure configuration |
+| `app/services/relevance_utils.py` | Past-practice LMOU signals, topic-mismatch clusters, quote-only coverage |
+| `app/services/authority_ranker.py` | Topic-mismatch post-filters |
+| `app/services/analysis_service.py` | Honest gap metadata passthrough |
+| `app/services/legal_issue_analyzer.py` | Representation / LMOU issue signals |
+| `app/services/narrative_generator.py` | Prominent limitations for unindexed topics and LMOU |
+| `tests/test_phase0_1_iteration_a.py` | **New** — scope, LMOU, representation disclosure, topic mismatch |
+| `tests/test_retrieval_gaps.py` | Gap disclosure assertions |
+
+### Tests passed (Iteration A verification)
+
+| Suite | Result |
+|-------|--------|
+| `tests/test_phase0_1_iteration_a.py` | **25 passed** |
+| Non-integration (`pytest tests/ -m "not integration"`) | **68 passed, 1 deselected** |
+| Live original 8-question regression | **8 PASS / 0 PARTIAL / 0 FAIL** |
+
+Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_a_results_2026-07-01.md`, `data/reports/phase0_1_iteration_a_final_verification_2026-07-01.md`, `data/reports/phase0_1_local_merge_2026-07-01.md`.
+
+### Phase 1 and Phase 2 — confirmed intact
+
+- **Phase 1 (structured report + narratives):** Report schema, `NarrativeGenerator`, grounded `ReportBuilder` — unchanged except Iteration A gap/disclosure enhancements in narratives and analysis passthrough.
+- **Phase 2 (case sessions):** `CaseService`, `/cases/*` API, versioned reports — **not modified** in Iteration A.
+
+### Recommended next phase
+
+**Phase 3 — HTML/PDF report export:** Render structured `GrievanceHubReport` JSON to HTML with print CSS and PDF export. Backend schema and pipeline are stable; export layers should consume JSON without changing retrieval, ranking, or the regression rubric.
 
 ---
 
@@ -184,18 +247,7 @@ Future phases (3+) must **not** alter the following unless a new defect is repro
 | Citation quote grounding | `app/services/citation_validator.py` | Quotes must exist in source excerpts |
 | Structured report schema | `app/schemas/report_schema.py` | Required for Phase 3 HTML/PDF export |
 
-### Phase 1 and Phase 2 — confirmed intact
-
-- **Phase 1 (structured report + narratives):** Pydantic report schema (`GrievanceHubReport`, `REPORT_SECTIONS`), `NarrativeGenerator`, grounded `ReportBuilder`, provenance, expanded limitations/source references — **unchanged** in the final Phase 0 pass except retrieval-gap passthrough in `AnalysisService`.
-- **Phase 2 (case sessions):** `CaseService`, `/cases/*` API, versioned `CaseReportVersion`, optional `case_uuid` on `/sources/report`, Alembic migration `a1b2c3d4e5f6` — **verified present**; not modified in Iteration 2.
-
-Phases 3–5 (HTML/PDF export, grievance templates, frontend) **not started**.
-
-### Recommended next phase
-
-**Phase 3 — Report export and presentation:** HTML rendering, print CSS, and PDF export from the existing structured `GrievanceHubReport` JSON (`CaseReportVersion.report_data`). The backend schema and pipeline are stable; export layers should consume JSON without changing retrieval, ranking, or the regression rubric.
-
-Optional depth improvements (converted-regular nuance retrieval, richer remedy/timeline sections) may proceed in parallel only if they do not regress the 8/8 scorecard.
+Phases 3–5 (HTML/PDF export, grievance templates, frontend) **not started** beyond Phase 3 recommendation above.
 
 ---
 
