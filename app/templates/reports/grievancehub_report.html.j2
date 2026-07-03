@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ export.report.report_title }}</title>
+  <style>{{ embedded_css }}</style>
+</head>
+<body>
+  <header class="report-header">
+    <p class="brand">{{ export.report.brand }}</p>
+    <h1>{{ export.report.report_title }}</h1>
+    <dl class="report-meta">
+      {% if export.case_reference %}
+      <div><dt>Case Reference</dt><dd>{{ export.case_reference }}</dd></div>
+      {% endif %}
+      {% if export.version_number is not none %}
+      <div><dt>Report Version</dt><dd>{{ export.version_number }}</dd></div>
+      {% endif %}
+      {% if export.generated_at_display %}
+      <div><dt>Generated</dt><dd>{{ export.generated_at_display }}</dd></div>
+      {% endif %}
+      {% if export.report.case_information.case_title %}
+      <div><dt>Case Title</dt><dd>{{ export.report.case_information.case_title }}</dd></div>
+      {% endif %}
+      {% if export.report.case_information.local_number %}
+      <div><dt>Local</dt><dd>{{ export.report.case_information.local_number }}</dd></div>
+      {% endif %}
+      {% if export.presentation.top_governing_authorities %}
+      <div><dt>Top Authorities</dt><dd>{{ export.presentation.authority_count_label }}</dd></div>
+      {% endif %}
+    </dl>
+  </header>
+
+  {% if export.report.research_draft_notice %}
+  <aside class="notice-banner boxed-notice">
+    <strong>Research Draft —</strong> {{ export.report.research_draft_notice }}
+  </aside>
+  {% endif %}
+
+  <main class="report-body">
+    {% set pres = export.presentation %}
+    {% set ns = namespace(n=0) %}
+    {% from "_authority_block.html.j2" import authority_block, top_authority_card %}
+
+    {% if export.report.your_question %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Your Question</h2>
+      <p class="question-text">"{{ export.report.your_question }}"</p>
+    </section>
+    {% endif %}
+
+    {% set qa = pres.quick_assessment %}
+    {% if qa.summary or qa.grievability or qa.why %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section assessment-card">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Quick Assessment</h2>
+      {% if qa.summary %}<p class="assessment-summary">{{ qa.summary }}</p>{% endif %}
+      <p><strong>Grievability:</strong> {{ qa.grievability }}</p>
+      <p><strong>Confidence:</strong> {{ qa.confidence }}</p>
+      {% if qa.why %}<p>{{ qa.why }}</p>{% endif %}
+      {% if qa.cited_authorities %}
+      <ul class="cited-authorities">
+        {% for label in qa.cited_authorities %}
+        <li>{{ label }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if pres.issues_presented %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Issues Presented</h2>
+      <ul>
+        {% for issue in pres.issues_presented %}
+        <li>{{ issue }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if pres.key_contract_violations %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Key Contract Violations / Union Contentions</h2>
+      {% for item in pres.key_contract_violations %}
+      {{ authority_block(item) }}
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if pres.top_governing_authorities %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section top-authorities-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Top Governing Authorities</h2>
+      {% for item in pres.top_governing_authorities %}
+      {{ top_authority_card(item) }}
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if pres.management_limiting_authority %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section management-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Management-Limiting Authority / Management Position</h2>
+      {% for item in pres.management_limiting_authority %}
+      {{ authority_block(item) }}
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% set remedy = pres.recommended_remedy %}
+    {% if remedy.statements or remedy.insufficient_notice %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section remedy-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Recommended Remedy</h2>
+      {% if remedy.statements %}
+      <ul class="remedy-list">
+        {% for statement in remedy.statements %}
+        <li>{{ statement }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if remedy.insufficient_notice %}
+      <p class="insufficient-notice">{{ remedy.insufficient_notice }}</p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% set analysis = export.report.detailed_analysis %}
+    {% if pres.grievance_framework_display or analysis.evidence_to_gather or pres.strategic_tips or pres.known_facts %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section detailed-analysis-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Detailed Analysis</h2>
+
+      {% if pres.grievance_framework_display %}
+      <div class="analysis-subsection">
+        <h3 class="subsection-heading-box">Grievance Framework</h3>
+        <p><strong>Issue Statement:</strong> {{ pres.grievance_framework_display }}</p>
+      </div>
+      {% endif %}
+
+      {% if pres.known_facts %}
+      <div class="analysis-subsection">
+        <h3 class="subsection-heading-box">Facts Supporting the Union's Position</h3>
+        <ul>
+          {% for fact in pres.known_facts %}
+          <li>{{ fact }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if pres.management_supporting_facts %}
+      <div class="analysis-subsection">
+        <h3 class="subsection-heading-box">Facts That May Support Management</h3>
+        <ul>
+          {% for fact in pres.management_supporting_facts %}
+          <li>{{ fact }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if analysis.evidence_to_gather %}
+      <div class="analysis-subsection">
+        <h3 class="subsection-heading-box">Evidence and Documents Still Needed</h3>
+        <ul class="evidence-checklist">
+          {% for item in analysis.evidence_to_gather %}
+          <li><span class="checkbox">&#9744;</span> {{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {% if pres.supporting_evidence %}
+      <div class="analysis-subsection">
+        <h3 class="subsection-heading-box">Supporting Case Evidence</h3>
+        {% for item in pres.supporting_evidence %}
+        <article class="evidence-block">
+          <h4>{{ item.article_or_section or item.document_name }}</h4>
+          {% if item.direct_quote %}
+          <blockquote class="authority-quote">{{ item.direct_quote }}</blockquote>
+          {% endif %}
+          {% if item.what_it_supports %}<p>{{ item.what_it_supports }}</p>{% endif %}
+          {% if item.how_to_use %}<p><em>{{ item.how_to_use }}</em></p>{% endif %}
+          {% if item.citation_label %}
+          <p class="citation-meta">{{ item.citation_label }}</p>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      {% if pres.strategic_tips %}
+      {% set tip_count = pres.strategic_tips | length %}
+      {% set split_at = 1 if tip_count <= 2 else ((tip_count + 1) // 2) %}
+      <div class="analysis-subsection">
+        <h3 class="subsection-heading-box">Recommended Next Steps</h3>
+        {% for tip in pres.strategic_tips[:split_at] %}
+        <article class="strategic-tip">
+          <p><strong>{{ tip.title }}:</strong> {{ tip.text }}</p>
+        </article>
+        {% endfor %}
+      </div>
+      {% if tip_count > split_at %}
+      <div class="analysis-subsection">
+        <h3 class="subsection-heading-box">Strategic Considerations</h3>
+        {% for tip in pres.strategic_tips[split_at:] %}
+        <article class="strategic-tip">
+          <p><strong>{{ tip.title }}:</strong> {{ tip.text }}</p>
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% if pres.show_templates_section %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Matching Grievance Templates</h2>
+      {% for template in export.report.matching_grievance_templates %}
+      <article class="template-block">
+        <pre>{{ template }}</pre>
+      </article>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% set limitations = pres.limitations %}
+    {% if limitations.known_facts or limitations.missing_facts or limitations.caveats or limitations.retrieval_gaps %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Limitations and Missing Sources</h2>
+      {% from "_limitations.html.j2" import limitations_panel %}
+      {{ limitations_panel(export.report, pres) }}
+    </section>
+    {% endif %}
+
+    {% set refs = export.presentation.source_references_display %}
+    {% if refs.found or refs.not_found %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Source References</h2>
+      {% if refs.found %}
+      <h3 class="subsection-heading-box">Sources Found</h3>
+      <ul>
+        {% for item in refs.found %}
+        <li><strong>{{ item.source_type }}</strong>: {{ item.document_names | join(', ') }} — {{ item.summary_label }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if refs.not_found %}
+      <h3 class="subsection-heading-box">Sources Not Found / Gaps</h3>
+      <ul class="source-gap-list">
+        {% for item in refs.not_found %}
+        <li class="source-gap">
+          {% if item.source_type %}<strong>{{ item.source_type }}</strong> — {% endif %}
+          {{ item.issue }} — {{ item.reason }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% set citation = export.report.citation_validation %}
+    {% if citation and (citation.status or citation.notes) %}
+    {% set ns.n = ns.n + 1 %}
+    <section class="report-section report-section--closing">
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Citation Validation</h2>
+      <p><strong>Status:</strong> {{ citation.status }}</p>
+      {% if citation.notes %}
+      <ul>
+        {% for note in citation.notes %}
+        <li>{{ note }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <p class="final-disclaimer">
+        <strong>Research Draft —</strong> {{ export.report.research_draft_notice or (export.report.brand ~ " analysis for steward review. Not legal advice.") }}
+      </p>
+    </section>
+    {% else %}
+    <p class="final-disclaimer">
+      <strong>Research Draft —</strong> {{ export.report.research_draft_notice or (export.report.brand ~ " analysis for steward review. Not legal advice.") }}
+    </p>
+    {% endif %}
+  </main>
+</body>
+</html>

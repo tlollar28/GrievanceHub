@@ -26,6 +26,12 @@ htmlcov/
 
 # Reports / uploads / runtime data (generated or sensitive)
 reports/
+!app/templates/reports/
+!app/templates/reports/**
+!app/static/reports/
+!app/static/reports/**
+!tests/fixtures/reports/
+!tests/fixtures/reports/**
 data/reports/
 data/sources/
 app/sources/**/*.zip

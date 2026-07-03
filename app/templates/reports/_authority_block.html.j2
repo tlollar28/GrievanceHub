@@ -1,0 +1,42 @@
+{% macro authority_block(item, show_quote=true) -%}
+<article class="authority-block">
+  <h4 class="authority-heading">{{ item.heading_label or item.article_or_section }}{% if item.role_title %} — {{ item.role_title }}{% endif %}</h4>
+  {% if item.issue %}
+  <p class="authority-issue"><strong>Issue:</strong> {{ item.issue }}</p>
+  {% endif %}
+  {% if item.why_relevant %}
+  <p class="authority-why">{{ item.why_relevant }}</p>
+  {% endif %}
+  {% if show_quote and item.direct_quote %}
+  <blockquote class="authority-quote">{{ item.direct_quote }}</blockquote>
+  {% elif item.quote_suppressed %}
+  <p class="quote-reference"><em>See Top Governing Authorities for the full grounded quotation.</em></p>
+  {% endif %}
+  {% if item.citation_label %}
+  <p class="citation-meta">{{ item.citation_label }}</p>
+  {% endif %}
+</article>
+{%- endmacro %}
+
+{% macro top_authority_card(item) -%}
+<article class="authority-block top-authority-card">
+  <h4 class="authority-heading">{{ item.heading_label or item.article_or_section }}</h4>
+  {% if item.role_title %}
+  <p class="authority-role">{{ item.role_title }}</p>
+  {% endif %}
+  {% if item.issue %}
+  <p class="authority-issue"><strong>Why it matters:</strong> {{ item.issue if item.issue == item.why_relevant else item.issue }}</p>
+  {% endif %}
+  {% if item.why_relevant and item.why_relevant != item.issue %}
+  <p class="authority-why">{{ item.why_relevant }}</p>
+  {% elif item.why_relevant and not item.issue %}
+  <p class="authority-why"><strong>Why it matters:</strong> {{ item.why_relevant }}</p>
+  {% endif %}
+  {% for quote in item.direct_quotes %}
+  <blockquote class="authority-quote">{{ quote }}</blockquote>
+  {% endfor %}
+  {% if item.citation_label %}
+  <p class="citation-meta">{{ item.citation_label }}</p>
+  {% endif %}
+</article>
+{%- endmacro %}

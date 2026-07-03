@@ -11,6 +11,8 @@ INDEX_DIR = DATA_DIR / "indexes"
 LOG_DIR = DATA_DIR / "logs"
 BACKUP_DIR = DATA_DIR / "backups"
 REPORT_DIR = DATA_DIR / "reports"
+REPORT_TEMPLATE_DIR = PROJECT_ROOT / "app" / "templates" / "reports"
+REPORT_STATIC_DIR = PROJECT_ROOT / "app" / "static" / "reports"
 
 import os
 

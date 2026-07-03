@@ -1,0 +1,186 @@
+{
+  "title": "GrievanceHub Analysis Report",
+  "generated_at": "2026-07-01T12:00:00+00:00",
+  "question": "Can management cancel previously approved annual leave without an emergency?",
+  "retrieval_gaps": {
+    "missing_source_types": [],
+    "unindexed_sources_requested": ["LMOU"],
+    "authority_topics_unavailable_in_index": ["investigatory_union_representation"],
+    "issues_without_supporting_authority": ["Investigatory representation at interview"]
+  },
+  "known_facts": ["Leave was approved in writing two weeks before travel."],
+  "report": {
+    "report_title": "GrievanceHub Analysis Report",
+    "brand": "GrievanceHub",
+    "generated_at": "2026-07-01T12:00:00+00:00",
+    "case_information": {
+      "case_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "case_title": "Coverage fixture — all warning panels",
+      "user_name": "Test Steward",
+      "local_number": "300"
+    },
+    "research_draft_notice": "This analysis is a research starting point, not legal advice. Review all citations before using it in a grievance.",
+    "your_question": "Can management cancel previously approved annual leave without an emergency?",
+    "quick_assessment": {
+      "summary": "Sample issue regarding cancellation of approved annual leave.",
+      "grievability": "Possibly Grievable",
+      "confidence": "Medium",
+      "why": "Assessment based on retrieved authorities and stated facts only.",
+      "cited_authorities": ["Article 10 (NPMHU CIM v6, p. 137)"]
+    },
+    "secondary_issues": ["Notice of cancellation"],
+    "key_contract_violations": [
+      {
+        "article_or_section": "Article 10, Section 3",
+        "issue": "Approved annual leave entitlement",
+        "role": "union_supporting",
+        "role_title": "Union-Supporting Authority",
+        "why_relevant": "Supports the stated leave cancellation issue.",
+        "direct_quote": "Employees who have annual leave approved are entitled to such annual leave except in emergency situations.",
+        "relevance_score": 90,
+        "keyword_overlap": 0.42,
+        "citation": {
+          "document_name": "NPMHU CIM v6",
+          "document_type": "CIM",
+          "page": 137,
+          "chunk": 242
+        }
+      }
+    ],
+    "union_supporting_authority": [],
+    "procedural_requirements": [],
+    "information_rights": [],
+    "timeline_requirements": [],
+    "remedy_authority": [],
+    "management_limiting_authority": [
+      {
+        "article_or_section": "Article 3",
+        "issue": "Management rights",
+        "role": "management_limiting",
+        "role_title": "Management-Limiting Authority",
+        "why_relevant": "Management may argue operational needs justify schedule changes.",
+        "direct_quote": "Management retains the right to assign work.",
+        "relevance_score": 55,
+        "keyword_overlap": 0.12,
+        "citation": {
+          "document_name": "2022-2025 NPMHU National Agreement",
+          "document_type": "CONTRACT",
+          "page": 5,
+          "chunk": 12
+        }
+      }
+    ],
+    "background_authority": [],
+    "supporting_evidence": [
+      {
+        "article_or_section": "Article 10",
+        "document_name": "NPMHU CIM v6",
+        "document_type": "CIM",
+        "page": 137,
+        "chunk": 242,
+        "direct_quote": "Employees who have annual leave approved are entitled to such annual leave except in emergency situations.",
+        "what_it_supports": "Leave cancellation limits",
+        "how_to_use": "Compare management's stated reason against contract language."
+      },
+      {
+        "article_or_section": "Written leave approval",
+        "document_name": "Case document",
+        "document_type": "OTHER",
+        "page": null,
+        "chunk": null,
+        "direct_quote": "",
+        "what_it_supports": "Written leave approval notice showing pre-approved dates",
+        "how_to_use": "Obtain from the grievant and attach to the grievance file."
+      }
+    ],
+    "recommended_remedy": {
+      "statements": ["Request reinstatement of approved leave if facts confirm a violation."],
+      "grounding_authorities": ["Article 10 (NPMHU CIM v6, p. 137)"],
+      "insufficient_notice": null
+    },
+    "detailed_analysis": {
+      "grievance_framework": "Dispute frame: Management canceled previously approved annual leave without citing an emergency.",
+      "evidence_to_gather": ["Written leave approval", "Cancellation notice"],
+      "strategic_tips": [
+        {
+          "title": "Confirm missing fact",
+          "text": "Obtain and document whether leave was previously approved in writing."
+        }
+      ]
+    },
+    "matching_grievance_templates": [],
+    "matching_grievance_templates_notice": "Grievance template matching is not yet available.",
+    "limitations": {
+      "missing_facts": ["Whether management claimed an emergency"],
+      "retrieval_gaps": {
+        "missing_source_types": [],
+        "unindexed_sources_requested": ["LMOU"],
+        "authority_topics_unavailable_in_index": ["investigatory_union_representation"],
+        "issues_without_supporting_authority": ["Investigatory representation at interview"]
+      },
+      "known_facts": ["Leave was approved in writing two weeks before travel."],
+      "caveats": [
+        "LMOU / local memorandum language was referenced in the question but is not currently indexed in GrievanceHub.",
+        "This report is a research draft, not legal advice or a final grievance decision.",
+        "LMOU / local memorandum language was referenced in the question but is not currently indexed in GrievanceHub."
+      ]
+    },
+    "source_references": {
+      "found": [
+        {
+          "source_type": "CIM",
+          "document_names": ["NPMHU CIM v6"],
+          "authority_count": 1
+        }
+      ],
+      "not_found": [
+        {
+          "source_type": "LMOU",
+          "issue": "Sample leave issue",
+          "reason": "This source type was referenced but is not currently indexed."
+        }
+      ]
+    },
+    "source_summary": {
+      "selected_source_types": ["CIM", "CONTRACT"],
+      "ranked_authorities_count": 2
+    },
+    "citation_validation": {
+      "status": "Passed",
+      "evidence_items_checked": 1,
+      "direct_quotes_found": 1,
+      "notes": []
+    }
+  },
+  "ranked_authorities": [
+    {
+      "document_name": "NPMHU CIM v6",
+      "document_type": "CIM",
+      "page": 137,
+      "chunk": 242,
+      "relevance_score": 90,
+      "keyword_overlap": 0.42,
+      "role": "union_supporting",
+      "legal_issue": "Approved annual leave entitlement",
+      "article_or_section": "Article 10, Section 3",
+      "authority_type": "CIM",
+      "direct_quote": "Employees who have annual leave approved are entitled to such annual leave except in emergency situations.",
+      "why_it_matters": "Primary contract language on approved leave cancellation."
+    },
+    {
+      "document_name": "NPMHU CIM v6",
+      "document_type": "CIM",
+      "page": 137,
+      "chunk": 243,
+      "relevance_score": 82,
+      "keyword_overlap": 0.38,
+      "role": "union_supporting",
+      "legal_issue": "Emergency exception standard",
+      "article_or_section": "Article 10, Section 3",
+      "authority_type": "CIM",
+      "direct_quote": "Emergency situations are limited to those that could not have been anticipated.",
+      "why_it_matters": "Defines the emergency exception management must meet."
+    }
+  ],
+  "selected_source_types": ["CIM", "CONTRACT"]
+}

@@ -1,0 +1,64 @@
+{% macro limitations_panel(report, presentation) -%}
+{% set limitations = presentation.limitations %}
+{% set gaps = limitations.retrieval_gaps if limitations.retrieval_gaps else {} %}
+<div class="limitations-section warning-panel">
+  {% if limitations.known_facts %}
+  <div class="known-facts">
+    <h4>Known Facts Considered</h4>
+    <ul>
+      {% for fact in limitations.known_facts %}
+      <li>{{ fact }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if limitations.missing_facts %}
+  <div class="missing-facts">
+    <h4>Facts Still Needed</h4>
+    <ul>
+      {% for fact in limitations.missing_facts %}
+      <li>{{ fact }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% for source in gaps.get('unindexed_sources_requested', []) %}
+  <div class="source-gap unindexed-disclosure">
+    <strong>Unindexed source:</strong> {{ source }} was referenced but is not currently indexed in GrievanceHub.
+  </div>
+  {% endfor %}
+
+  {% for topic in gaps.get('authority_topics_unavailable_in_index', []) %}
+  <div class="source-gap unavailable-topic">
+    <strong>Unavailable authority topic:</strong> {{ topic }} was not found in indexed CONTRACT/CIM/ELM sources.
+  </div>
+  {% endfor %}
+
+  {% if gaps.get('missing_source_types') %}
+  <div class="source-gap">
+    <strong>Missing source types:</strong> {{ gaps.missing_source_types | join(', ') }}
+  </div>
+  {% endif %}
+
+  {% if gaps.get('issues_without_supporting_authority') %}
+  <div class="source-gap">
+    <strong>Issues without supporting authority:</strong>
+    <ul>
+      {% for issue in gaps.issues_without_supporting_authority %}
+      <li>{{ issue }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if limitations.caveats %}
+  <div class="caveats">
+    {% for caveat in limitations.caveats %}
+    <p class="caveat">{{ caveat }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{%- endmacro %}
