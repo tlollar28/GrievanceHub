@@ -71,7 +71,9 @@ Database models (Alembic migration `a1b2c3d4e5f6`):
 - `CaseMessage` — conversation history
 - `CaseReportVersion` — versioned structured report JSON
 
-**Not yet implemented:** case API routes, follow-up chat service, HTML rendering, print CSS, PDF export, grievance template storage. Backend report JSON must remain structured to support these.
+**Implemented:** case API routes (`/cases/*`), versioned report storage, HTML preview/download, PDF export.
+
+**Not yet implemented:** follow-up chat service, grievance template storage, production authentication for export routes.
 
 ## Development Rules
 

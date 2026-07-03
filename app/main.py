@@ -8,6 +8,7 @@ from uuid import uuid4
 from app.config import INCOMING_DIR, REPORT_DIR
 from app.api.routes.sources import router as sources_router
 from app.api.routes.cases import router as cases_router
+from app.api.routes.exports import router as exports_router
 
 from app.services.report_service import (
     create_cross_craft_report,
@@ -26,6 +27,7 @@ app = FastAPI(title="GrievanceHub")
 
 app.include_router(sources_router)
 app.include_router(cases_router)
+app.include_router(exports_router)
 
 INCOMING_DIR.mkdir(parents=True, exist_ok=True)
 REPORT_DIR.mkdir(parents=True, exist_ok=True)

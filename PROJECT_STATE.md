@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-01 (Phase 0.1 Iteration A complete — local merge)
+Last updated: 2026-07-02 (Phase 3 complete — local merge)
 
 ## Architecture
 
@@ -38,7 +38,7 @@ flowchart TD
 
 ## Codebase verification (2026-07-01)
 
-**Git:** Local-only repository on branch `master` (merged from `phase0-1-iteration-a`). **No remote configured** — nothing pushed or uploaded.
+**Git:** Local-only repository on branch `master` (Phase 3 merged locally 2026-07-02). **No remote configured** — nothing pushed or uploaded.
 
 **Confirmed present and aligned with documentation:**
 
@@ -47,6 +47,7 @@ flowchart TD
 | Phase 0 retrieval/ranking | `app/retrieval_config.py`, `relevance_utils.py`, `knowledge_retrieval_service.py`, `authority_ranker.py`, `citation_validator.py`, `analysis_service.py` |
 | Phase 1 report schema/narratives | `app/schemas/report_schema.py`, `narrative_generator.py`, `report_builder.py` |
 | Phase 2 case sessions | `app/services/case_service.py`, `app/api/routes/cases.py`, `app/main.py` (cases router registered), Alembic `a1b2c3d4e5f6_add_grievance_case_tables.py` |
+| Phase 3 HTML/PDF export | `app/services/report_export/`, `app/services/report_export_service.py`, `app/api/routes/exports.py`, Jinja templates + `report.css` |
 | Regression harness | `tests/fixtures/regression_questions.json` (8 questions), `tests/test_regression_harness.py`, `scripts/regression_report.py`, `scripts/diagnose_regression.py` |
 | Live scorecard artifact | `data/reports/regression_scorecard.json` — **8 PASS / 0 PARTIAL / 0 FAIL** (`phase0_iteration2_verification`, 2026-07-01) |
 | Phase 0.1 Iteration A | `tests/test_phase0_1_iteration_a.py`, topic-mismatch filters, honest gap disclosure — **verified 2026-07-01** |
@@ -113,7 +114,51 @@ Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_
 
 ### Recommended next phase
 
-**Phase 3 — HTML/PDF report export:** Render structured `GrievanceHubReport` JSON to HTML with print CSS and PDF export. Backend schema and pipeline are stable; export layers should consume JSON without changing retrieval, ranking, or the regression rubric.
+**Phase 3.1 — Source coverage / remedy grounding:** Improve upstream retrieval and report depth so live analyses surface distinct remedy authority, richer evidence checklists, and better multi-passage grouping inputs — separate from the completed export layer.
+
+**Phase 4 — Frontend / steward UI:** Build steward-facing case workspace consuming existing `/cases/*` and export routes. Export routes remain local/development-only until authentication is added.
+
+---
+
+## Phase 3 — HTML/PDF Report Export
+
+**Status:** Complete (2026-07-02). Read-only export layer merged to `master` locally. No changes to retrieval, ranking, narratives, or case versioning logic.
+
+### Capabilities
+
+| Export | Route |
+|--------|-------|
+| HTML preview (latest) | `GET /cases/{case_uuid}/export/preview` |
+| HTML download (latest) | `GET /cases/{case_uuid}/export/html` |
+| PDF download (latest) | `GET /cases/{case_uuid}/export/pdf` |
+| HTML preview (version) | `GET /cases/{case_uuid}/versions/{version_number}/export/preview` |
+| HTML download (version) | `GET /cases/{case_uuid}/versions/{version_number}/export/html` |
+| PDF download (version) | `GET /cases/{case_uuid}/versions/{version_number}/export/pdf` |
+
+- Consumes saved `CaseReportVersion.report_data` (AnalysisService wrapper) — **never** re-runs pipeline.
+- Self-contained HTML with embedded local CSS; PDF via WeasyPrint in memory.
+- Jinja2 autoescape + StrictUndefined; deny-by-default PDF URL fetcher.
+- Steward-facing presentation normalizers: citation hierarchy, dispute-frame prose, Quick Assessment dedupe, safe quote truncation, grouped multi-page citations, and Source References aggregation (`distinct authorities` vs `retrieved passages`).
+
+### Windows dependencies
+
+- MSYS2 (`C:\msys64`) with `mingw-w64-x86_64-pango`
+- Python: `Jinja2==3.1.6`, `weasyprint==69.0`
+- `WEASYPRINT_DLL_DIRECTORIES` **not required** on verified Windows setup (Pango detected natively after MSYS2 install)
+
+### Tests (Phase 3 final verification — 2026-07-02)
+
+| Suite | Result |
+|-------|--------|
+| Phase 3 export tests | **76 passed** |
+| PDF tests skipped | **0** |
+| Non-integration (`pytest tests/ -m "not integration"`) | **144 passed, 1 deselected** |
+
+Verification artifacts (local, not committed): `data/reports/phase3_live_synthetic_report_final_2026-07-01.html`, `data/reports/phase3_live_synthetic_report_final_2026-07-01.pdf`, `data/reports/phase3_final_visual_qa_2026-07-02.md`, `data/reports/phase3_final_micro_cleanup_2026-07-02.md`.
+
+### Recommended next phase
+
+**Phase 3.1 — Source coverage / remedy grounding** (upstream accuracy): deepen live retrieval/report content — remedy authority coverage, evidence checklists, and passage diversity — without further export-layer changes unless a new presentation defect is found.
 
 ---
 

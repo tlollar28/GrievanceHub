@@ -1,0 +1,367 @@
+{
+  "title": "GrievanceHub Analysis Report",
+  "generated_at": "2026-07-01T14:30:00+00:00",
+  "question": "Management canceled previously approved annual leave without explanation and ignored the union's information request. What rules apply and what remedy is appropriate?",
+  "retrieval_gaps": {
+    "missing_source_types": [],
+    "unindexed_sources_requested": ["LMOU"],
+    "authority_topics_unavailable_in_index": [],
+    "issues_without_supporting_authority": []
+  },
+  "known_facts": [
+    "Annual leave was approved in writing on May 12 for June 10–14.",
+    "Management canceled the leave on June 7 without citing an emergency.",
+    "The steward requested the cancellation notice and supporting records on June 8.",
+    "Management has not responded to the information request."
+  ],
+  "issue_analysis": {
+    "primary_issue": "Cancellation of previously approved annual leave",
+    "dispute_frame": {
+      "actor": "management",
+      "action": "canceled previously approved annual leave and did not respond to the union information request",
+      "management_actions": [],
+      "employee_actions": []
+    }
+  },
+  "report": {
+    "report_title": "GrievanceHub Analysis Report",
+    "brand": "GrievanceHub",
+    "generated_at": "2026-07-01T14:30:00+00:00",
+    "case_information": {
+      "case_id": "dddddddd-eeee-ffff-0000-111111111111",
+      "case_title": "Approved annual leave canceled without notice",
+      "user_name": "Demo Steward",
+      "local_number": "742"
+    },
+    "research_draft_notice": "This analysis is a research starting point, not legal advice. Review all citations and arguments before using it in a grievance.",
+    "your_question": "Management canceled previously approved annual leave without explanation and ignored the union's information request. What rules apply and what remedy is appropriate?",
+    "quick_assessment": {
+      "summary": "The stated facts describe cancellation of pre-approved annual leave shortly before the scheduled absence and an unanswered union information request. Retrieved contract and manual authorities address approved-leave entitlement, emergency exceptions, information rights, and grievance remedies. If the facts are confirmed, the cancellation may implicate Article 10 leave protections and Article 17 information obligations.",
+      "grievability": "Possibly Grievable",
+      "confidence": "Medium",
+      "why": "Assessment is grounded in retrieved Article 10 and Article 17 authorities and the stated facts only. Outcome depends on whether management can document a qualifying emergency and whether local LMOU provisions apply once indexed.",
+      "cited_authorities": [
+        "Article 10, Section 3 (NPMHU CIM v6, p. 137)",
+        "Article 17.3 (2022–2025 NPMHU National Agreement, p. 106)",
+        "Article 15.2 (2022–2025 NPMHU National Agreement, p. 98)"
+      ]
+    },
+    "secondary_issues": [
+      "Cancellation of approved annual leave",
+      "Failure to respond to union information request",
+      "Possible emergency exception"
+    ],
+    "key_contract_violations": [
+      {
+        "article_or_section": "Article 10, Section 3",
+        "issue": "Cancellation of approved annual leave",
+        "role": "union_supporting",
+        "role_title": "Union-Supporting Authority",
+        "why_relevant": "Contract language limits cancellation of approved annual leave to emergency situations.",
+        "direct_quote": "Employees who have annual leave approved are entitled to such annual leave except in emergency situations.",
+        "relevance_score": 92,
+        "keyword_overlap": 0.48,
+        "citation": {
+          "document_name": "NPMHU CIM v6",
+          "document_type": "CIM",
+          "page": 137,
+          "chunk": 242
+        }
+      },
+      {
+        "article_or_section": "Article 17.3",
+        "issue": "Information request ignored",
+        "role": "information_right",
+        "role_title": "Information Rights",
+        "why_relevant": "Management must furnish information necessary for the union to process a grievance.",
+        "direct_quote": "Upon request, the Employer shall furnish the Union with information necessary for the processing of a grievance.",
+        "relevance_score": 88,
+        "keyword_overlap": 0.41,
+        "citation": {
+          "document_name": "2022-2025 NPMHU National Agreement",
+          "document_type": "CONTRACT",
+          "page": 106,
+          "chunk": 318
+        }
+      }
+    ],
+    "union_supporting_authority": [
+      {
+        "article_or_section": "Article 10, Section 3",
+        "issue": "Emergency exception standard",
+        "role": "union_supporting",
+        "role_title": "Union-Supporting Authority",
+        "why_relevant": "Defines the emergency exception management must meet to cancel approved leave.",
+        "direct_quote": "Emergency situations are limited to those that could not have been anticipated.",
+        "relevance_score": 85,
+        "keyword_overlap": 0.36,
+        "citation": {
+          "document_name": "NPMHU CIM v6",
+          "document_type": "CIM",
+          "page": 138,
+          "chunk": 244
+        }
+      }
+    ],
+    "procedural_requirements": [
+      {
+        "article_or_section": "Article 15.2",
+        "issue": "Grievance filing timeline",
+        "role": "timeline_requirement",
+        "role_title": "Timeline Requirement",
+        "why_relevant": "Grievance must be filed within contractual time limits from when the union learned of the violation.",
+        "direct_quote": "A grievance must be filed within fourteen (14) days of when the grieving party first learned of the violation.",
+        "relevance_score": 78,
+        "keyword_overlap": 0.29,
+        "citation": {
+          "document_name": "2022-2025 NPMHU National Agreement",
+          "document_type": "CONTRACT",
+          "page": 98,
+          "chunk": 290
+        }
+      }
+    ],
+    "information_rights": [],
+    "timeline_requirements": [],
+    "remedy_authority": [
+      {
+        "article_or_section": "Article 15.1",
+        "issue": "Make-whole remedy",
+        "role": "remedy_support",
+        "role_title": "Remedy Authority",
+        "why_relevant": "Contract provides for corrective action and make-whole relief for proven violations.",
+        "direct_quote": "Where a violation is found, the Employer shall take corrective action and make the employee whole.",
+        "relevance_score": 74,
+        "keyword_overlap": 0.25,
+        "citation": {
+          "document_name": "2022-2025 NPMHU National Agreement",
+          "document_type": "CONTRACT",
+          "page": 97,
+          "chunk": 285
+        }
+      }
+    ],
+    "management_limiting_authority": [
+      {
+        "article_or_section": "Article 3.1",
+        "issue": "Management rights",
+        "role": "management_limiting",
+        "role_title": "Management-Limiting Authority",
+        "why_relevant": "Management may argue operational needs or unanticipated circumstances required schedule changes.",
+        "direct_quote": "The Employer retains the right to assign employees and to schedule work according to operational requirements.",
+        "relevance_score": 58,
+        "keyword_overlap": 0.14,
+        "citation": {
+          "document_name": "2022-2025 NPMHU National Agreement",
+          "document_type": "CONTRACT",
+          "page": 5,
+          "chunk": 12
+        }
+      }
+    ],
+    "background_authority": [],
+    "supporting_evidence": [
+      {
+        "article_or_section": "Written leave approval",
+        "document_name": "Leave approval notice",
+        "document_type": "OTHER",
+        "page": null,
+        "chunk": null,
+        "direct_quote": "",
+        "what_it_supports": "Written leave approval notice dated May 12 showing approved June 10–14 dates",
+        "how_to_use": "Attach to grievance file to establish pre-approved leave."
+      },
+      {
+        "article_or_section": "Cancellation notice",
+        "document_name": "Management cancellation email",
+        "document_type": "OTHER",
+        "page": null,
+        "chunk": null,
+        "direct_quote": "",
+        "what_it_supports": "Management cancellation notice dated June 7 and any stated reason",
+        "how_to_use": "Compare stated reason against the emergency exception standard."
+      },
+      {
+        "article_or_section": "Information request",
+        "document_name": "Union information request",
+        "document_type": "OTHER",
+        "page": null,
+        "chunk": null,
+        "direct_quote": "",
+        "what_it_supports": "Written information request dated June 8 and proof of delivery",
+        "how_to_use": "Document management's failure to respond under Article 17.3."
+      }
+    ],
+    "recommended_remedy": {
+      "statements": [
+        "Reinstate the previously approved annual leave for June 10–14 if no qualifying emergency is documented.",
+        "Provide all records relied upon for the cancellation, including any emergency determination.",
+        "Make the grievant whole for any leave or pay loss caused by the cancellation.",
+        "Respond promptly and completely to the union's information request."
+      ],
+      "grounding_authorities": [
+        "Article 10, Section 3 (NPMHU CIM v6, p. 137)",
+        "Article 15.1 (2022–2025 NPMHU National Agreement, p. 97)",
+        "Article 17.3 (2022–2025 NPMHU National Agreement, p. 106)"
+      ],
+      "insufficient_notice": null
+    },
+    "detailed_analysis": {
+      "grievance_framework": "Whether management violated Article 10 by canceling previously approved annual leave without a qualifying emergency and whether management violated Article 17 by failing to respond to the union's information request regarding the cancellation.",
+      "evidence_to_gather": [
+        "Complete written leave approval showing approved dates",
+        "Management cancellation notice and date of delivery",
+        "Any management claim of emergency and supporting records",
+        "Copy of the union information request and proof of delivery",
+        "Payroll or leave records showing any leave or pay loss",
+        "Witness statements regarding the cancellation conversation"
+      ],
+      "strategic_tips": [
+        {
+          "title": "Document the timeline",
+          "text": "Build a clear chronology from written approval through cancellation and the unanswered information request. Verify grievance filing deadlines under Article 15.2 from the date the union learned of each violation."
+        },
+        {
+          "title": "Information request follow-up",
+          "text": "Use Article 17.3 to request the cancellation notice, emergency determination, and any staffing records management relied upon. Document non-response in the grievance record."
+        },
+        {
+          "title": "Emergency exception analysis",
+          "text": "Compare management's stated reason against the CIM emergency standard. If the situation could have been anticipated before June 7, management may not meet the emergency exception."
+        },
+        {
+          "title": "Management-rights distinction",
+          "text": "Address Article 3.1 management-rights language separately. Operational scheduling authority does not automatically override approved-leave protections in Article 10."
+        }
+      ]
+    },
+    "matching_grievance_templates": [],
+    "matching_grievance_templates_notice": "Grievance template matching is not yet available.",
+    "limitations": {
+      "missing_facts": [
+        "Whether management documented a qualifying emergency",
+        "Whether any local LMOU leave provisions apply"
+      ],
+      "retrieval_gaps": {
+        "missing_source_types": [],
+        "unindexed_sources_requested": ["LMOU"],
+        "authority_topics_unavailable_in_index": [],
+        "issues_without_supporting_authority": []
+      },
+      "known_facts": [
+        "Annual leave was approved in writing on May 12 for June 10–14.",
+        "Management canceled the leave on June 7 without citing an emergency.",
+        "The steward requested the cancellation notice and supporting records on June 8.",
+        "Management has not responded to the information request."
+      ],
+      "caveats": [
+        "LMOU / local memorandum language was referenced but is not currently indexed in GrievanceHub.",
+        "This report is a research draft, not legal advice or a final grievance decision."
+      ]
+    },
+    "source_references": {
+      "found": [
+        {
+          "source_type": "CIM",
+          "document_names": ["NPMHU CIM v6"],
+          "authority_count": 2
+        },
+        {
+          "source_type": "CONTRACT",
+          "document_names": ["2022-2025 NPMHU National Agreement"],
+          "authority_count": 4
+        }
+      ],
+      "not_found": [
+        {
+          "source_type": "LMOU",
+          "issue": "Local leave provisions",
+          "reason": "This source type was referenced but is not currently indexed."
+        }
+      ]
+    },
+    "source_summary": {
+      "selected_source_types": ["CIM", "CONTRACT"],
+      "ranked_authorities_count": 6
+    },
+    "citation_validation": {
+      "status": "Passed",
+      "evidence_items_checked": 6,
+      "direct_quotes_found": 6,
+      "notes": []
+    }
+  },
+  "ranked_authorities": [
+    {
+      "document_name": "NPMHU CIM v6",
+      "document_type": "CIM",
+      "page": 137,
+      "chunk": 242,
+      "relevance_score": 92,
+      "keyword_overlap": 0.48,
+      "role": "union_supporting",
+      "legal_issue": "Cancellation of approved annual leave",
+      "article_or_section": "Article 10, Section 3",
+      "authority_type": "CIM",
+      "direct_quote": "Employees who have annual leave approved are entitled to such annual leave except in emergency situations.",
+      "why_it_matters": "Primary contract language on approved leave cancellation."
+    },
+    {
+      "document_name": "2022-2025 NPMHU National Agreement",
+      "document_type": "CONTRACT",
+      "page": 106,
+      "chunk": 318,
+      "relevance_score": 88,
+      "keyword_overlap": 0.41,
+      "role": "information_right",
+      "legal_issue": "Information request ignored",
+      "article_or_section": "Article 17.3",
+      "authority_type": "CONTRACT",
+      "direct_quote": "Upon request, the Employer shall furnish the Union with information necessary for the processing of a grievance.",
+      "why_it_matters": "Supports the unanswered information request issue."
+    },
+    {
+      "document_name": "NPMHU CIM v6",
+      "document_type": "CIM",
+      "page": 138,
+      "chunk": 244,
+      "relevance_score": 85,
+      "keyword_overlap": 0.36,
+      "role": "union_supporting",
+      "legal_issue": "Emergency exception standard",
+      "article_or_section": "Article 10, Section 3",
+      "authority_type": "CIM",
+      "direct_quote": "Emergency situations are limited to those that could not have been anticipated.",
+      "why_it_matters": "Defines the emergency exception management must meet."
+    },
+    {
+      "document_name": "2022-2025 NPMHU National Agreement",
+      "document_type": "CONTRACT",
+      "page": 98,
+      "chunk": 290,
+      "relevance_score": 78,
+      "keyword_overlap": 0.29,
+      "role": "timeline_requirement",
+      "legal_issue": "Grievance filing timeline",
+      "article_or_section": "Article 15.2",
+      "authority_type": "CONTRACT",
+      "direct_quote": "A grievance must be filed within fourteen (14) days of when the grieving party first learned of the violation.",
+      "why_it_matters": "Filing deadline for the leave cancellation grievance."
+    },
+    {
+      "document_name": "2022-2025 NPMHU National Agreement",
+      "document_type": "CONTRACT",
+      "page": 97,
+      "chunk": 285,
+      "relevance_score": 74,
+      "keyword_overlap": 0.25,
+      "role": "remedy_support",
+      "legal_issue": "Make-whole remedy",
+      "article_or_section": "Article 15.1",
+      "authority_type": "CONTRACT",
+      "direct_quote": "Where a violation is found, the Employer shall take corrective action and make the employee whole.",
+      "why_it_matters": "Remedy language for proven contract violations."
+    }
+  ],
+  "selected_source_types": ["CIM", "CONTRACT"]
+}
