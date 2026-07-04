@@ -21,6 +21,10 @@ class ReportVersionNotFoundError(Exception):
     pass
 
 
+class CaseReportRequiredError(Exception):
+    pass
+
+
 class CaseService:
     @staticmethod
     def _title_from_question(question: str) -> str:
@@ -496,3 +500,95 @@ class CaseService:
             if version.version_number == version_number:
                 return version
         raise ReportVersionNotFoundError(version_number)
+
+    @staticmethod
+    def get_grounding_report_version(
+        case: GrievanceCase,
+        version_number: int | None = None,
+    ) -> CaseReportVersion:
+        if not case.report_versions:
+            raise CaseReportRequiredError("Case has no saved report version")
+        if version_number is None:
+            return max(case.report_versions, key=lambda v: v.version_number)
+        for version in case.report_versions:
+            if version.version_number == version_number:
+                return version
+        raise ReportVersionNotFoundError(version_number)
+
+    @staticmethod
+    def is_follow_up_message(message: CaseMessage) -> bool:
+        meta = message.message_metadata or {}
+        return meta.get("intent") == "follow_up"
+
+    @staticmethod
+    def serialize_message(message: CaseMessage) -> dict:
+        return {
+            "id": message.id,
+            "role": message.role,
+            "content": message.content,
+            "metadata": message.message_metadata,
+            "created_at": message.created_at.isoformat() if message.created_at else None,
+        }
+
+    @staticmethod
+    def list_follow_up_messages(case: GrievanceCase) -> list[CaseMessage]:
+        return [
+            message
+            for message in sorted(case.messages or [], key=lambda m: m.created_at)
+            if CaseService.is_follow_up_message(message)
+            or (
+                message.role == "assistant"
+                and isinstance(message.message_metadata, dict)
+                and message.message_metadata.get("answer_type")
+            )
+        ]
+
+    @staticmethod
+    def add_follow_up_exchange(
+        db: Session,
+        case_uuid: str,
+        question: str,
+        answer,
+        report_version: CaseReportVersion,
+    ) -> tuple[CaseMessage, CaseMessage]:
+        case = CaseService._get_case_row(db, case_uuid)
+        if case is None:
+            raise CaseNotFoundError(case_uuid)
+
+        user_metadata = {
+            "intent": "follow_up",
+            "linked_report_version_id": report_version.id,
+            "linked_report_version_number": report_version.version_number,
+        }
+        user_message = CaseMessage(
+            case_id=case.id,
+            role="user",
+            content=question,
+            message_metadata=user_metadata,
+        )
+        db.add(user_message)
+        db.flush()
+
+        assistant_metadata = {
+            "intent": "follow_up",
+            "linked_report_version_id": report_version.id,
+            "linked_report_version_number": report_version.version_number,
+            "answer_type": answer.answer_type,
+            "citations": [c.model_dump() for c in answer.citations],
+            "disclosures": answer.disclosures,
+            "facts_needed": answer.facts_needed,
+            "requires_report_regen": answer.requires_report_regen,
+            "suggested_actions": answer.suggested_actions,
+        }
+        assistant_message = CaseMessage(
+            case_id=case.id,
+            role="assistant",
+            content=answer.answer,
+            message_metadata=assistant_metadata,
+        )
+        db.add(assistant_message)
+        case.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(user_message)
+        db.refresh(assistant_message)
+        return user_message, assistant_message

@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services.case_service import CaseNotFoundError, CaseService
+from app.services.case_service import CaseNotFoundError, CaseReportRequiredError, CaseService
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "reports" / "sample_wrapper_report.json"
 CASE_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -198,4 +198,120 @@ def test_regenerate_report_404_when_missing(client):
     ):
         response = client.post(f"/cases/{CASE_UUID}/reports/regenerate")
 
+    assert response.status_code == 404
+
+
+def test_post_followup_persists_messages_no_new_report_version(client):
+    user_msg = SimpleNamespace(
+        id=10,
+        role="user",
+        content="What evidence am I missing?",
+        message_metadata={"intent": "follow_up"},
+        created_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+    )
+    assistant_msg = SimpleNamespace(
+        id=11,
+        role="assistant",
+        content="Gather written leave approval.",
+        message_metadata={"intent": "follow_up", "answer_type": "missing_evidence"},
+        created_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+    )
+    expected = {
+        "user_message": user_msg,
+        "assistant_message": assistant_msg,
+        "answer": assistant_msg.content,
+        "answer_type": "missing_evidence",
+        "citations": [],
+        "disclosures": [],
+        "facts_needed": ["Written leave approval"],
+        "linked_report_version": {"id": 1, "version_number": 1},
+        "requires_report_regen": False,
+        "suggested_actions": [],
+    }
+
+    with patch(
+        "app.api.routes.cases.FollowUpChatService.answer_follow_up",
+        return_value=expected,
+    ) as mock_answer, patch.object(
+        CaseService,
+        "generate_report_version",
+    ) as mock_regen:
+        response = client.post(
+            f"/cases/{CASE_UUID}/followups",
+            json={"content": "What evidence am I missing?"},
+        )
+
+    assert response.status_code == 200
+    mock_answer.assert_called_once()
+    mock_regen.assert_not_called()
+    body = response.json()
+    assert body["answer_type"] == "missing_evidence"
+    assert body["linked_report_version"]["version_number"] == 1
+
+
+def test_post_followup_404_when_case_missing(client):
+    with patch(
+        "app.api.routes.cases.FollowUpChatService.answer_follow_up",
+        side_effect=CaseNotFoundError(CASE_UUID),
+    ):
+        response = client.post(
+            f"/cases/{CASE_UUID}/followups",
+            json={"content": "Follow-up question?"},
+        )
+    assert response.status_code == 404
+
+
+def test_post_followup_400_when_no_report_version(client):
+    with patch(
+        "app.api.routes.cases.FollowUpChatService.answer_follow_up",
+        side_effect=CaseReportRequiredError("Case has no saved report version"),
+    ):
+        response = client.post(
+            f"/cases/{CASE_UUID}/followups",
+            json={"content": "Follow-up question?"},
+        )
+    assert response.status_code == 400
+
+
+def test_post_followup_422_when_empty_question(client):
+    response = client.post(
+        f"/cases/{CASE_UUID}/followups",
+        json={"content": ""},
+    )
+    assert response.status_code == 422
+
+
+def test_get_followups_returns_thread(client):
+    thread = {
+        "case_uuid": CASE_UUID,
+        "linked_report_version": {"id": 1, "version_number": 1},
+        "messages": [
+            {
+                "id": 10,
+                "role": "user",
+                "content": "What evidence am I missing?",
+                "metadata": {"intent": "follow_up"},
+                "created_at": "2026-01-02T00:00:00+00:00",
+            }
+        ],
+    }
+    with patch(
+        "app.api.routes.cases.FollowUpChatService.list_follow_up_thread",
+        return_value=thread,
+    ):
+        response = client.get(f"/cases/{CASE_UUID}/followups")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["case_uuid"] == CASE_UUID
+    assert len(body["messages"]) == 1
+    assert body["linked_report_version"]["version_number"] == 1
+
+
+def test_get_followups_404_when_case_missing(client):
+    with patch(
+        "app.api.routes.cases.FollowUpChatService.list_follow_up_thread",
+        side_effect=CaseNotFoundError(CASE_UUID),
+    ):
+        response = client.get(f"/cases/{CASE_UUID}/followups")
     assert response.status_code == 404

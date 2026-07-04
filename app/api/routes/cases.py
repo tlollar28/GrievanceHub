@@ -7,9 +7,11 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.services.case_service import (
     CaseNotFoundError,
+    CaseReportRequiredError,
     CaseService,
     ReportVersionNotFoundError,
 )
+from app.services.follow_up_chat_service import FollowUpChatService
 
 
 router = APIRouter(
@@ -43,6 +45,11 @@ class UpdateStatusRequest(BaseModel):
 
 class RegenerateReportRequest(BaseModel):
     limit_per_source: int = 8
+
+
+class FollowUpRequest(BaseModel):
+    content: str = Field(..., min_length=1)
+    report_version: int | None = None
 
 
 def _serialize_message(message) -> dict:
@@ -189,6 +196,49 @@ def add_case_message(
         "report_version": _serialize_report_version(report_version),
         "case": _serialize_case_detail(case),
     }
+
+
+@router.post("/{case_uuid}/followups")
+def post_case_followup(
+    case_uuid: str,
+    payload: FollowUpRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+        result = FollowUpChatService.answer_follow_up(
+            db=db,
+            case_uuid=case_uuid,
+            content=payload.content,
+            report_version_number=payload.report_version,
+        )
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    except ReportVersionNotFoundError:
+        raise HTTPException(status_code=404, detail="Report version not found")
+    except CaseReportRequiredError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    return {
+        "user_message": CaseService.serialize_message(result["user_message"]),
+        "assistant_message": CaseService.serialize_message(result["assistant_message"]),
+        "answer": result["answer"],
+        "answer_type": result["answer_type"],
+        "citations": result["citations"],
+        "disclosures": result["disclosures"],
+        "facts_needed": result["facts_needed"],
+        "linked_report_version": result["linked_report_version"],
+        "requires_report_regen": result["requires_report_regen"],
+        "suggested_actions": result["suggested_actions"],
+    }
+
+
+@router.get("/{case_uuid}/followups")
+def list_case_followups(case_uuid: str, db: Session = Depends(get_db)):
+    try:
+        thread = FollowUpChatService.list_follow_up_thread(db, case_uuid)
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return thread
 
 
 @router.patch("/{case_uuid}/facts")

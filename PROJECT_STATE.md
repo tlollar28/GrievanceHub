@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-03 (Phase 1.1 retrieval-stability repair — pre-commit spot-check)
+Last updated: 2026-07-04 (Phase 1.3 follow-up Q&A — pre-commit review passed, not committed)
 
 ## Architecture
 
@@ -21,6 +21,8 @@ flowchart TD
     RB --> CV[CitationValidator]
     CV --> ReportJSON[Structured GrievanceHub report JSON]
     CaseSvc --> CaseDB[(GrievanceCase / CaseMessage / CaseReportVersion)]
+    CaseSvc --> FollowUp[FollowUpChatService]
+    FollowUp --> CaseDB
     ReportJSON --> CaseDB
     SourcesAPI --> KB[KnowledgeBaseService + SourceProcessingService]
     KB --> PG
@@ -167,6 +169,81 @@ Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_
 ### Recommended next phase
 
 **Phase 2+ roadmap (not started):** Add arbitrations, LMOU indexing, supervisor manuals, follow-up Q&A on saved cases, and Step 1/2/3 grievance form generation — after Phase 1.1 is committed.
+
+---
+
+## Phase 1.2A — Case Workspace and Report History Foundation
+
+**Status:** Complete on branch `phase1-2-case-workspace-history` (committed locally 2026-07-04). Alembic `b2c3d4e5f6a7` adds denormalized `retrieval_gaps`, `source_coverage_audit`, and `report_summary` on `case_report_versions`; workspace aggregate endpoint and explicit `POST /cases/{uuid}/reports/regenerate` route.
+
+**Prerequisite for Phase 1.3:** Follow-up Q&A loads saved report versions and history columns from this foundation.
+
+---
+
+## Phase 1.3 — Follow-Up Q&A Grounded in Saved Cases/Reports
+
+**Status:** Complete on branch `phase1-3-followup-qa` (uncommitted, local-only). Pre-commit review passed 2026-07-04. **Not yet committed.**
+
+### Scope delivered
+
+- Steward follow-up Q&A grounded in saved case/report workspace (no automatic full report regeneration)
+- Dedicated follow-up endpoints separate from legacy message append + regen
+- Grounding package from saved `CaseReportVersion` (report JSON, gaps, audit, authorities, case facts, uploads metadata, prior follow-up thread)
+- Citation post-validation against saved report excerpts; gap and remedy disclosures in response
+- Follow-up user + assistant messages persisted under same case history via `case_messages.message_metadata`
+
+### Endpoints added
+
+| Method | Route | Behavior |
+|--------|-------|----------|
+| `POST` | `/cases/{case_uuid}/followups` | Steward follow-up question → grounded answer; persists user + assistant messages; **does not** call `generate_report_version()` |
+| `GET` | `/cases/{case_uuid}/followups` | Lists follow-up thread with linked report version metadata |
+
+### Report regeneration (unchanged / explicit)
+
+| Path | Behavior |
+|------|----------|
+| Normal follow-up Q&A | **Does not** create a new `CaseReportVersion`; **does not** call `generate_report_version()` |
+| `POST /cases/{case_uuid}/reports/regenerate` | Explicit full-pipeline regeneration → new immutable report version |
+| `POST /cases/{case_uuid}/messages` | Legacy path — still appends message **and** regenerates report (deferred behavior change to Phase 1.3 slice 2) |
+
+When the steward introduces material new facts, follow-up may set `requires_report_regen: true` and suggest `regenerate_report` — **never** auto-regenerates.
+
+### Grounding and history
+
+- Default report version: **latest** saved version; optional `report_version` pins a specific version
+- Answers use saved report sections, `retrieval_gaps`, `source_coverage_audit`, ranked authorities, evidence checklist, and conversation context — not a fresh retrieval/ranker pass
+- Follow-up history listable via `GET /followups` and visible in case workspace messages
+
+### Files changed (Phase 1.3)
+
+| File | Role |
+|------|------|
+| `app/schemas/follow_up_schema.py` | Request/response/citation models |
+| `app/services/follow_up_chat_service.py` | Grounding builder, LLM answer, citation validation |
+| `app/services/case_service.py` | `add_follow_up_exchange()`, `get_grounding_report_version()`, follow-up message helpers |
+| `app/api/routes/cases.py` | `/followups` routes |
+| `tests/test_follow_up_chat.py` | Unit tests (mocked LLM) |
+| `tests/test_case_api.py` | Follow-up API route tests |
+
+**Not added in Phase 1.3:** Step 1/2/3 grievance form generation, arbitration ingestion, LMOU ingestion, supervisor-manual ingestion, production auth/security layer, supplemental corpus retrieval in follow-up.
+
+### Tests passed (Phase 1.3 verification)
+
+| Suite | Result |
+|-------|--------|
+| Targeted (`tests/test_follow_up_chat.py`, `tests/test_case_api.py`) | **28 passed** |
+| Non-integration (`pytest tests/ -m "not integration"`) | **207 passed, 1 deselected** |
+
+All LLM-dependent tests use injected `llm_callable` mocks or patched service calls — **no live OpenAI calls** during tests or pre-commit review.
+
+Verification artifacts (local, not committed): `data/reports/phase1_3_followup_qa_implementation_2026-07-04.md`, `data/reports/phase1_3_followup_qa_precommit_review_2026-07-04.md`.
+
+### Recommended next phase
+
+**Phase 1.4 — Closed Internal App + Sensitive RAG Security Gate:** Harden local-only steward workflow, sensitive-data handling, and RAG access controls **before** arbitration, settlement, or other private-source ingestion. Proposed-remedy drafting and richer report-level relief blocks may follow within or after this security gate per roadmap priority.
+
+**Deferred after 1.4 security gate:** Arbitration/settlement ingestion (Phase 1.6), LMOU indexing, supervisor-manual ingestion, grievance form generation (Phase 1.5), follow-up `POST /messages` default change (Phase 1.3 slice 2).
 
 ---
 
@@ -373,8 +450,10 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `app/services/analysis_service.py` | Pipeline orchestration + retrieval gaps |
 | `app/services/narrative_generator.py` | Grounded narrative sections |
 | `app/services/report_builder.py` | Structured report assembly |
-| `app/services/case_service.py` | Case sessions and versioned reports |
-| `app/api/routes/cases.py` | Case REST API |
+| `app/services/case_service.py` | Case sessions, versioned reports, follow-up persistence |
+| `app/services/follow_up_chat_service.py` | Follow-up Q&A grounding and answer generation |
+| `app/schemas/follow_up_schema.py` | Follow-up request/response models |
+| `app/api/routes/cases.py` | Case REST API (`/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |
 | `scripts/diagnose_regression.py` | Pipeline diagnostics |
 | `scripts/regression_report.py` | Live scorecard |
