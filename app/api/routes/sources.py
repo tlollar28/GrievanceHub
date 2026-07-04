@@ -237,6 +237,7 @@ def generate_report(
         all_chunks=results.get("all_chunks"),
         retrieval_gaps_list=results.get("retrieval_gaps"),
         indexed_source_types=results.get("indexed_source_types"),
+        source_coverage_audit=results.get("source_coverage_audit"),
     )
 
 

@@ -93,6 +93,163 @@ ISSUE_TYPE_BACKFILL_TEMPLATES: dict[str, list[str]] = {
     ],
 }
 
+# Per indexed source type — general issue-type backfill (not question-specific).
+SOURCE_TYPE_ISSUE_BACKFILL_TEMPLATES: dict[str, dict[str, list[str]]] = {
+    "CONTRACT": {
+        "legal": [
+            "national agreement contract employee entitlement obligation",
+            "contract provision management action bargaining unit rights",
+            "national agreement annual leave advance commitment honored",
+            "contract approved annual leave entitlement emergency",
+        ],
+        "remedy": [
+            "national agreement grievance remedy make whole appropriate remedy",
+            "contract relief violation employee restoration",
+        ],
+        "timeline": [
+            "national agreement grievance filing deadline time limit days",
+            "contract grievance procedure timeline notice",
+        ],
+        "information_rights": [
+            "national agreement union information request furnish records",
+            "contract union access information collective bargaining",
+        ],
+    },
+    "CIM": {
+        "legal": [
+            "contract interpretation manual governing rule employee rights",
+            "CIM management obligation contract application",
+        ],
+        "remedy": [
+            "CIM grievance remedy make whole rescind reinstatement",
+            "contract interpretation appropriate remedy violation",
+        ],
+        "timeline": [
+            "CIM grievance filing deadline time limit procedure",
+            "contract interpretation grievance timeline days",
+        ],
+        "information_rights": [
+            "CIM union information request employer furnish",
+            "contract interpretation union records access",
+        ],
+    },
+    "ELM": {
+        "legal": [
+            "employee labor relations manual leave personnel action rule",
+            "ELM administrative procedure employee rights obligation",
+        ],
+        "remedy": [
+            "ELM grievance remedy corrective action make whole",
+            "employee labor relations manual relief personnel action",
+        ],
+        "timeline": [
+            "ELM grievance filing deadline time limit days",
+            "employee labor relations manual procedure timeline",
+        ],
+        "information_rights": [
+            "ELM union information request records access",
+            "employee labor relations manual union disclosure",
+        ],
+    },
+}
+
+EMPLOYEE_INITIATED_LEAVE_CANCELLATION_SIGNALS = [
+    "employee cancel",
+    "an employee cancel",
+    "can an employee cancel",
+    "employee may cancel",
+    "employee may request",
+    "employee request to cancel",
+    "may request cancellation",
+    "request cancellation of",
+    "requests for annual leave cancellation",
+    "request annual leave cancellation",
+    "consideration to requests for annual leave cancellation",
+    "reasonable consideration to requests for",
+    "employee wishes to cancel",
+    "employee-initiated cancellation",
+    "employee requests cancellation",
+]
+
+MANAGEMENT_LEAVE_COMMITMENT_SIGNALS = [
+    "advance commitments",
+    "must be honored",
+    "honored except",
+    "approved are entitled",
+    "entitled to such annual leave",
+    "previously approved annual leave",
+]
+
+# Dispute-aware backfill when management-revocation leave frame is detected.
+DISPUTE_LEAVE_REVOCATION_BACKFILL: dict[str, dict[str, list[str]]] = {
+    "CONTRACT": {
+        "legal": [
+            "advance commitments annual leave honored except emergency",
+            "approved annual leave entitlement management cancel revoke",
+            "national agreement annual leave previously approved honored",
+        ],
+        "remedy": [
+            "annual leave commitment violation appropriate remedy",
+            "contract advance leave commitment rescind restore",
+        ],
+    },
+    "CIM": {
+        "legal": [
+            "contract interpretation annual leave approved honored emergency",
+            "CIM management cancel previously approved annual leave",
+        ],
+    },
+    "ELM": {
+        "legal": [
+            "employee labor relations manual annual leave approved canceled",
+            "ELM leave cancellation management revoke approved leave",
+        ],
+    },
+}
+
+EMPLOYEE_ENTITLEMENT_RULE_SIGNALS = [
+    "are entitled",
+    "shall be entitled",
+    "entitled to such",
+    "except in emergency",
+]
+
+MANAGEMENT_REVOCATION_LEAVE_SIGNALS = [
+    "management cancel",
+    "employer cancel",
+    "supervisor cancel",
+    "canceled previously approved",
+    "cancel previously approved",
+    "revoke approved",
+    "revoked approved",
+    "management revoked",
+    "employer revoked",
+]
+
+REMEDY_RELIEF_LANGUAGE_SIGNALS = [
+    "make whole",
+    "make-whole",
+    "reinstate",
+    "reinstatement",
+    "rescind",
+    "restore",
+    "restoration",
+    "compensat",
+    "back pay",
+    "backpay",
+    "expunge",
+    "expungement",
+    "cease and desist",
+    "corrective action",
+    "appropriate remedy",
+    "remedy shall",
+    "relief",
+    "reimburse",
+    "payment",
+    "pay the employee",
+    "award",
+]
+
 ISSUE_TYPE_QUESTION_SIGNALS: dict[str, list[str]] = {
     "timeline": [
         "untimely",
@@ -689,6 +846,58 @@ def _append_safety_queries_from_issue_tokens(queries: list[str], issue_text: str
 
 
 
+def build_source_type_backfill_queries(
+    issue: dict,
+    dispute_frame: dict | None,
+    source_type: str,
+    question: str = "",
+) -> list[str]:
+    """Issue-type templates scoped to one indexed source type."""
+    issue_type = str(issue.get("issue_type") or "").lower()
+    templates = (
+        SOURCE_TYPE_ISSUE_BACKFILL_TEMPLATES.get(str(source_type).upper(), {}).get(
+            issue_type,
+            [],
+        )
+    )
+    if not templates:
+        queries = build_issue_type_backfill_queries(issue, dispute_frame)
+    else:
+        issue_name = str(issue.get("issue") or "").strip()
+        queries: list[str] = []
+        for template in templates:
+            queries.append(template)
+            if issue_name:
+                queries.append(f"{issue_name} {template}")
+
+        frame_summary = build_dispute_frame_summary(dispute_frame)
+        if frame_summary and issue_name:
+            queries.append(f"{issue_name} {frame_summary[:80]}")
+
+    if dispute_concerns_management_revoking_approved_leave(dispute_frame, question):
+        dispute_templates = (
+            DISPUTE_LEAVE_REVOCATION_BACKFILL.get(str(source_type).upper(), {}).get(
+                issue_type,
+                [],
+            )
+        )
+        for template in dispute_templates:
+            queries.append(template)
+            issue_name = str(issue.get("issue") or "").strip()
+            if issue_name:
+                queries.append(f"{issue_name} {template}")
+
+    unique_queries: list[str] = []
+    seen: set[str] = set()
+    for query in queries:
+        cleaned = str(query or "").strip()
+        lowered = cleaned.lower()
+        if cleaned and lowered not in seen:
+            unique_queries.append(cleaned)
+            seen.add(lowered)
+    return unique_queries
+
+
 def build_issue_type_backfill_queries(
     issue: dict,
     dispute_frame: dict | None = None,
@@ -980,7 +1189,147 @@ def compute_direction_match_score(text: str, dispute_frame: dict | None) -> floa
     return max(management_hits, employee_hits) / total_hits
 
 
-def compute_direction_penalty(text: str, dispute_frame: dict | None) -> float:
+def passage_states_employee_entitlement_rule(text: str) -> bool:
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return False
+    return any(signal in lowered for signal in EMPLOYEE_ENTITLEMENT_RULE_SIGNALS)
+
+
+def question_mentions_union_information_request(question: str) -> bool:
+    lowered = (question or "").lower()
+    if not lowered.strip():
+        return False
+    signals = (
+        "information request",
+        "union's information",
+        "union information",
+        "furnish information",
+        "records request",
+        "requested information",
+        "provide information",
+        "ignored the union",
+    )
+    return any(signal in lowered for signal in signals)
+
+
+def dispute_concerns_management_revoking_approved_leave(
+    dispute_frame: dict | None,
+    question: str = "",
+) -> bool:
+    revoke_signals = ("cancel", "revoke", "rescind", "withdraw")
+    leave_signals = ("leave", "annual leave", "approved leave", "vacation")
+
+    blobs: list[str] = []
+    if dispute_frame and isinstance(dispute_frame, dict):
+        blobs.append(str(dispute_frame.get("summary") or ""))
+        blobs.extend(_normalize_string_list(dispute_frame.get("management_actions", [])))
+
+    cleaned_question = str(question or "").strip()
+    if cleaned_question:
+        blobs.append(cleaned_question)
+
+    if not blobs:
+        return False
+
+    blob = " ".join(blobs).lower()
+    has_revoke = any(signal in blob for signal in revoke_signals)
+    has_leave = any(signal in blob for signal in leave_signals)
+    return has_revoke and has_leave
+
+
+def passage_describes_employee_initiated_leave_cancellation(text: str) -> bool:
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return False
+
+    employee_signal = any(
+        signal in lowered for signal in EMPLOYEE_INITIATED_LEAVE_CANCELLATION_SIGNALS
+    )
+    leave_context = any(
+        token in lowered for token in ("leave", "annual leave", "vacation")
+    )
+    if employee_signal and leave_context:
+        return True
+
+    # Q&A format about employee-initiated cancellation without explicit "employee cancel".
+    if leave_context and "cancel" in lowered:
+        if re.search(r"can an employee.*cancel", lowered):
+            return True
+        if "under what circumstances" in lowered and "cancel" in lowered:
+            return True
+
+    return False
+
+
+def passage_describes_management_leave_commitment(text: str) -> bool:
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return False
+    return any(signal in lowered for signal in MANAGEMENT_LEAVE_COMMITMENT_SIGNALS)
+
+
+def compute_actor_action_direction_mismatch(
+    text: str,
+    dispute_frame: dict | None,
+    question: str = "",
+) -> float:
+    if not dispute_concerns_management_revoking_approved_leave(dispute_frame, question):
+        return 0.0
+    if passage_describes_employee_initiated_leave_cancellation(text):
+        return DIRECTION_CONTRADICTION_PENALTY
+    return 0.0
+
+
+def chunk_fails_actor_direction_gate(
+    text: str,
+    dispute_frame: dict | None,
+    question: str = "",
+) -> bool:
+    return (
+        compute_actor_action_direction_mismatch(text, dispute_frame, question)
+        >= DIRECTION_CONTRADICTION_PENALTY
+    )
+
+
+def passage_expresses_remedy_relief(text: str) -> bool:
+    lowered = (text or "").lower()
+    if not lowered.strip():
+        return False
+    return any(signal in lowered for signal in REMEDY_RELIEF_LANGUAGE_SIGNALS)
+
+
+def compute_direction_penalty(
+    text: str,
+    dispute_frame: dict | None,
+    question: str = "",
+) -> float:
+    actor_mismatch = compute_actor_action_direction_mismatch(
+        text,
+        dispute_frame,
+        question=question,
+    )
+    if actor_mismatch >= DIRECTION_CONTRADICTION_PENALTY:
+        return actor_mismatch
+
+    if (
+        passage_states_employee_entitlement_rule(text)
+        and dispute_concerns_management_revoking_approved_leave(
+            dispute_frame,
+            question,
+        )
+    ):
+        return actor_mismatch
+
+    if (
+        passage_describes_management_leave_commitment(text)
+        and dispute_concerns_management_revoking_approved_leave(
+            dispute_frame,
+            question,
+        )
+    ):
+        return actor_mismatch
+
     if not dispute_frame or not isinstance(dispute_frame, dict):
         return 0.0
 
@@ -1005,20 +1354,28 @@ def compute_direction_penalty(text: str, dispute_frame: dict | None) -> float:
 
     if management_hits > 0 and employee_hits > 0:
         if _opposite_direction_verbs(management_terms, employee_terms):
-            return DIRECTION_CONTRADICTION_PENALTY * 0.5
-        return 0.0
+            return max(actor_mismatch, DIRECTION_CONTRADICTION_PENALTY * 0.5)
+        return actor_mismatch
 
     if frame_management and employee_hits > management_hits:
-        return DIRECTION_CONTRADICTION_PENALTY
+        return max(actor_mismatch, DIRECTION_CONTRADICTION_PENALTY)
 
     if frame_employee and management_hits > employee_hits:
-        return DIRECTION_CONTRADICTION_PENALTY
+        return max(actor_mismatch, DIRECTION_CONTRADICTION_PENALTY)
 
-    return 0.0
+    return actor_mismatch
 
 
-def passes_retrieval_gate(retrieved: RetrievedChunk, combined_score: float) -> bool:
+def passes_retrieval_gate(
+    retrieved: RetrievedChunk,
+    combined_score: float,
+    dispute_frame: dict | None = None,
+    question: str = "",
+) -> bool:
     text = retrieved.chunk.text or ""
+    if chunk_fails_actor_direction_gate(text, dispute_frame, question):
+        return False
+
     emb = max(0.0, 1.0 - retrieved.best_embedding_distance)
     if combined_score >= MIN_COMBINED_RETRIEVAL_SCORE:
         return True
@@ -1188,6 +1545,7 @@ def _score_chunk_core(
     keywords: list[str],
     dispute_frame: dict | None,
     article_mentions: list[str] | None,
+    question: str = "",
 ) -> tuple[float, float, bool]:
     source_type = (retrieved.chunk.source_document.source_type or "").upper()
     embedding_similarity = max(0.0, 1.0 - retrieved.best_embedding_distance)
@@ -1215,7 +1573,9 @@ def _score_chunk_core(
     if is_procedural_only_passage(text):
         score -= PROCEDURAL_ONLY_PENALTY
 
-    score -= compute_direction_penalty(text, dispute_frame)
+    score -= compute_direction_penalty(text, dispute_frame, question=question)
+    if chunk_fails_actor_direction_gate(text, dispute_frame, question):
+        score = 0.0
     score = max(score, 0.0)
 
     return score, keyword_overlap, boilerplate
@@ -1228,6 +1588,7 @@ def score_chunk_for_issue(
     issue: dict | None = None,
     article_mentions: list[str] | None = None,
     global_keywords: list[str] | None = None,
+    question: str = "",
 ) -> float:
     chunk = retrieved.chunk
     text = chunk.text or ""
@@ -1238,6 +1599,7 @@ def score_chunk_for_issue(
         issue_keywords,
         dispute_frame,
         article_mentions,
+        question=question,
     )
     score = issue_score
 
@@ -1248,6 +1610,7 @@ def score_chunk_for_issue(
             global_keywords,
             dispute_frame,
             article_mentions,
+            question=question,
         )
         score = max(issue_score, global_score)
         keyword_overlap = max(keyword_overlap, global_overlap)
@@ -1271,7 +1634,10 @@ def score_chunk_for_issue(
         "matched_query_count": retrieved.matched_query_count,
         "is_boilerplate": boilerplate,
         "substantive_score": round(compute_substantive_score(text), 4),
-        "direction_penalty": round(compute_direction_penalty(text, dispute_frame), 4),
+        "direction_penalty": round(
+            compute_direction_penalty(text, dispute_frame, question=question),
+            4,
+        ),
         "matched_issue_ids": matched_issue_ids,
     }
 

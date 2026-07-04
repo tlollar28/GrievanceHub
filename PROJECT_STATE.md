@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-02 (Phase 3 complete — local merge)
+Last updated: 2026-07-03 (Phase 1.1 retrieval-stability repair — pre-commit spot-check)
 
 ## Architecture
 
@@ -117,6 +117,56 @@ Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_
 **Phase 3.1 — Source coverage / remedy grounding:** Improve upstream retrieval and report depth so live analyses surface distinct remedy authority, richer evidence checklists, and better multi-passage grouping inputs — separate from the completed export layer.
 
 **Phase 4 — Frontend / steward UI:** Build steward-facing case workspace consuming existing `/cases/*` and export routes. Export routes remain local/development-only until authentication is added.
+
+---
+
+## Phase 1.1 — Source Coverage, Remedy Grounding, and Retrieval Stability
+
+**Status:** Complete on branch `phase1-1-source-coverage-remedy` (uncommitted, local-only). Pre-commit steward spot-check passed 2026-07-03. **Not yet committed.**
+
+### Scope delivered
+
+- Honest per-source search coverage (CONTRACT, CIM, ELM) with steward-readable source-gap disclosure
+- Actor/action direction filters excluding employee-initiated leave-cancellation passages from management-revocation disputes
+- Remedy authority grounded only when explicit relief language survives gates
+- Steward-facing export wording repairs (Authority support label, plain-English source gaps, neutral citation-check language)
+- **Retrieval-stability blocker fixed:** question-text fallback for direction detection, direction gate in retrieval, dispute-aware CONTRACT backfill, ranker authority-mix floor, CONTRACT pool supplement
+
+### Frozen management-revocation scenario — verified behavior
+
+| Expectation | Result |
+|-------------|--------|
+| CONTRACT Article 10.5 retained | Yes — advance-leave commitment language (p. 44) |
+| CIM Article 31 retained | Yes — information-request language (p. 468) |
+| CIM Article 10 p.137 excluded | Yes — employee-cancellation Q&A not retained |
+| National Agreement and CIM cited separately | Yes — distinct document names, citations, and source-reference rows |
+| ELM coverage | Searched; honest no-match disclosure |
+| Remedy authority | None (honest gap) |
+| Repeated live stability | **5/5** golden-mix passes |
+
+### Tests passed (Phase 1.1 verification)
+
+| Suite | Result |
+|-------|--------|
+| `tests/test_phase1_1_source_coverage.py` | **13 passed** |
+| `tests/test_phase1_1_retrieval_stability.py` | **13 passed** |
+| Non-integration (`pytest tests/ -m "not integration"`) | **175 passed, 1 deselected** |
+| 8-question live regression | **8 PASS / 0 PARTIAL / 0 FAIL** |
+| 5-run live regeneration stability | **5/5 PASS** |
+| Unseen Q9 (representation) / Q10 (past practice) | **PASS** |
+
+### Steward review artifacts (local)
+
+- `data/reports/phase1_1_live_synthetic_report_2026-07-02.html`
+- `data/reports/phase1_1_live_synthetic_report_2026-07-02.pdf`
+- `data/reports/phase1_1_source_coverage_results_2026-07-02.json`
+- `data/reports/phase1_1_source_coverage_results_2026-07-02.md`
+
+**Dale's feedback (2026-07-03):** Report looked pretty good after wording/stability repairs.
+
+### Recommended next phase
+
+**Phase 2+ roadmap (not started):** Add arbitrations, LMOU indexing, supervisor manuals, follow-up Q&A on saved cases, and Step 1/2/3 grievance form generation — after Phase 1.1 is committed.
 
 ---
 

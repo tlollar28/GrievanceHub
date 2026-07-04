@@ -7,6 +7,7 @@ from openai import OpenAI
 from app.retrieval_config import (
     DIRECTION_CONTRADICTION_PENALTY,
     MAX_AUTHORITIES_TO_RANKER,
+    MAX_DISTINCT_REPORT_AUTHORITIES,
     MIN_AUTHORITY_RELEVANCE_SCORE,
     MIN_KEYWORD_OVERLAP_FOR_MANAGEMENT,
     MIN_KEYWORD_OVERLAP_FOR_SUPPORTING,
@@ -18,6 +19,7 @@ from app.services.relevance_utils import (
     build_dispute_frame_summary,
     build_issue_context_summary,
     collect_decomposed_issues,
+    compute_actor_action_direction_mismatch,
     compute_direction_penalty,
     compute_distinctive_overlap_score,
     compute_topic_mismatch_penalty,
@@ -27,6 +29,12 @@ from app.services.relevance_utils import (
     extract_issue_keywords_for_issue,
     is_boilerplate_chunk,
     is_decomposed_issue_in_scope,
+    is_procedural_only_passage,
+    dispute_concerns_management_revoking_approved_leave,
+    passage_describes_management_leave_commitment,
+    passage_expresses_remedy_relief,
+    passage_states_employee_entitlement_rule,
+    question_mentions_union_information_request,
     verify_quote_in_chunk,
 )
 
@@ -87,8 +95,16 @@ class AuthorityRanker:
             direction_penalty = compute_direction_penalty(
                 chunk.text or "",
                 dispute_frame,
+                question=question,
             )
             item["direction_penalty"] = round(direction_penalty, 4)
+
+            actor_mismatch = compute_actor_action_direction_mismatch(
+                chunk.text or "",
+                dispute_frame,
+                question=question,
+            )
+            item["actor_action_mismatch"] = round(actor_mismatch, 4)
 
             topic_mismatch = compute_topic_mismatch_penalty(
                 chunk.text or "",
@@ -104,8 +120,22 @@ class AuthorityRanker:
             if direction_penalty >= DIRECTION_CONTRADICTION_PENALTY:
                 continue
 
+            if actor_mismatch >= DIRECTION_CONTRADICTION_PENALTY:
+                continue
+
             if exceeds_topic_mismatch_threshold(topic_mismatch):
                 continue
+
+            role = item.get("role", "background_only")
+            quote_text = quote or chunk.text or ""
+            if role == "remedy_support" and not passage_expresses_remedy_relief(quote_text):
+                if is_procedural_only_passage(chunk.text or ""):
+                    item["role"] = "procedural_requirement"
+                    item["authority_type"] = "Procedural"
+                else:
+                    item["role"] = "union_supporting"
+                    item["authority_type"] = "Union-Supporting"
+                role = item["role"]
 
             if role == "management_limiting":
                 if relevance_score < MIN_MANAGEMENT_LIMITING_RELEVANCE_SCORE:
@@ -369,6 +399,206 @@ class AuthorityRanker:
         return promoted[:max_authorities]
 
     @staticmethod
+    def _passage_supports_leave_commitment(text: str) -> bool:
+        return passage_describes_management_leave_commitment(
+            text
+        ) or passage_states_employee_entitlement_rule(text)
+
+    @staticmethod
+    def _ranked_has_contract_leave_commitment(ranked: list[dict]) -> bool:
+        for item in ranked:
+            if str(item.get("document_type") or "").upper() != "CONTRACT":
+                continue
+            chunk = item.get("chunk")
+            if chunk and AuthorityRanker._passage_supports_leave_commitment(
+                chunk.text or ""
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _ranked_has_cim_information_authority(ranked: list[dict]) -> bool:
+        for item in ranked:
+            if str(item.get("document_type") or "").upper() != "CIM":
+                continue
+            role = str(item.get("role") or "")
+            if role in {"information_right", "union_supporting", "procedural_requirement"}:
+                quote = str(item.get("direct_quote") or "").lower()
+                if "union" in quote and "information" in quote:
+                    return True
+        return False
+
+    @staticmethod
+    def _promote_pool_candidate(
+        ranked: list[dict],
+        chunks: list[SourceChunk],
+        predicate,
+        default_role: str,
+        issue_keywords: list[str],
+        dispute_frame: dict | None,
+        question: str,
+        primary_issue: str,
+        legal_issue: str,
+        why_it_matters: str,
+    ) -> list[dict]:
+        if any(predicate(item) for item in ranked):
+            return ranked
+
+        best_chunk = None
+        best_score = -1.0
+
+        for chunk in chunks:
+            if AuthorityRanker._chunk_in_ranked(ranked, chunk):
+                continue
+            if is_boilerplate_chunk(chunk.text or ""):
+                continue
+            if not predicate({"chunk": chunk, "document_type": chunk.source_document.source_type}):
+                continue
+
+            metadata = getattr(chunk, "retrieval_metadata", {}) or {}
+            score = float(metadata.get("combined_score") or 0.0)
+            if score <= best_score:
+                continue
+            best_score = score
+            best_chunk = chunk
+
+        if best_chunk is None:
+            return ranked
+
+        source = best_chunk.source_document
+        quote = extract_grounded_quote_snippet(
+            best_chunk.text or "",
+            issue_keywords=issue_keywords,
+        )
+        if not verify_quote_in_chunk(quote, best_chunk.text or ""):
+            return ranked
+
+        relevance_score = int(
+            min(
+                99,
+                max(
+                    MIN_AUTHORITY_RELEVANCE_SCORE,
+                    round((best_score or 0.0) * 100),
+                ),
+            )
+        )
+
+        candidate = {
+            "ref_id": f"PROMOTE_{default_role}",
+            "chunk": best_chunk,
+            "document_name": source.name,
+            "document_type": source.source_type,
+            "page": best_chunk.page_number,
+            "chunk_index": best_chunk.chunk_index,
+            "relevance_score": relevance_score,
+            "role": default_role,
+            "legal_issue": legal_issue,
+            "article_or_section": "Unknown",
+            "authority_type": default_role.replace("_", " ").title(),
+            "direct_quote": quote,
+            "why_it_matters": why_it_matters,
+            "retrieval_metadata": getattr(best_chunk, "retrieval_metadata", {}) or {},
+        }
+
+        filtered = AuthorityRanker._apply_post_filters(
+            [candidate],
+            issue_keywords,
+            dispute_frame=dispute_frame,
+            question=question,
+            primary_issue=primary_issue,
+        )
+        if not filtered:
+            return ranked
+
+        promoted = list(ranked)
+        promoted.append(filtered[0])
+        return promoted
+
+    @staticmethod
+    def _ensure_management_revocation_authority_mix(
+        ranked: list[dict],
+        chunks: list[SourceChunk],
+        issue_keywords: list[str],
+        dispute_frame: dict | None,
+        question: str,
+        primary_issue: str,
+    ) -> list[dict]:
+        if not dispute_concerns_management_revoking_approved_leave(
+            dispute_frame,
+            question,
+        ):
+            return ranked
+
+        promoted = ranked
+
+        if not AuthorityRanker._ranked_has_contract_leave_commitment(promoted):
+            promoted = AuthorityRanker._promote_pool_candidate(
+                promoted,
+                chunks,
+                lambda item: (
+                    str(item.get("document_type") or "").upper() == "CONTRACT"
+                    and AuthorityRanker._passage_supports_leave_commitment(
+                        (item.get("chunk").text or "")
+                        if item.get("chunk")
+                        else ""
+                    )
+                ),
+                "union_supporting",
+                issue_keywords,
+                dispute_frame,
+                question,
+                primary_issue,
+                "Management honoring previously approved annual leave commitments",
+                (
+                    "Retrieved governing contract language on honoring advance "
+                    "annual-leave commitments when management revokes or fails "
+                    "to honor approved leave."
+                ),
+            )
+
+        if question_mentions_union_information_request(question) and (
+            not AuthorityRanker._ranked_has_cim_information_authority(promoted)
+        ):
+            promoted = AuthorityRanker._promote_pool_candidate(
+                promoted,
+                chunks,
+                lambda item: (
+                    str(item.get("document_type") or "").upper() == "CIM"
+                    and item.get("chunk")
+                    and "union" in (item["chunk"].text or "").lower()
+                    and "information" in (item["chunk"].text or "").lower()
+                ),
+                "information_right",
+                issue_keywords,
+                dispute_frame,
+                question,
+                primary_issue,
+                "Union right to requested information",
+                (
+                    "Retrieved CIM language on the employer's obligation to furnish "
+                    "information upon a written union request."
+                ),
+            )
+
+        role_priority = {
+            "union_supporting": 7,
+            "procedural_requirement": 6,
+            "information_right": 6,
+            "remedy_support": 5,
+            "timeline_requirement": 4,
+            "management_limiting": 3,
+            "background_only": 1,
+        }
+        promoted.sort(
+            key=lambda item: (
+                role_priority.get(item.get("role", "background_only"), 0),
+                item.get("relevance_score", 0),
+            ),
+            reverse=True,
+        )
+        return promoted[:MAX_DISTINCT_REPORT_AUTHORITIES]
+
+    @staticmethod
     def rank_authorities(
         question: str,
         chunks: list[SourceChunk],
@@ -444,6 +674,13 @@ class AuthorityRanker:
                         "Topical similarity alone is insufficient. The excerpt must address "
                         "the specific management action, employee right, procedure, timeline, "
                         "information right, or remedy at issue in the question.\n\n"
+                        "Use remedy_support ONLY when the grounded quote expressly supports "
+                        "a form of relief (make-whole, reinstatement, rescission, restoration, "
+                        "payment, expungement, corrective action, or similar explicit remedy). "
+                        "Procedural rules, obligations, or violation standards are NOT remedy authority.\n\n"
+                        "If an excerpt describes an employee-initiated action (e.g., an employee "
+                        "requesting to cancel their own leave) it must NOT be classified as "
+                        "governing management revoking previously approved leave.\n\n"
                         "If an excerpt discusses a related but different legal issue within "
                         "the same subject area, classify it as background_only or irrelevant.\n\n"
                         "Union-supporting authorities should almost always rank above "
@@ -591,6 +828,15 @@ Rules:
             primary_issue=primary_issue,
         )
 
+        ranked = AuthorityRanker._ensure_management_revocation_authority_mix(
+            ranked,
+            chunks,
+            issue_keywords,
+            dispute_frame,
+            question,
+            primary_issue,
+        )
+
         ranked = AuthorityRanker._exclude_background_when_substantive(ranked)
 
         coverage_gaps = AuthorityRanker._ensure_multi_issue_coverage(
@@ -604,7 +850,7 @@ Rules:
         if retrieval_gaps is not None:
             retrieval_gaps.extend(coverage_gaps)
 
-        return ranked
+        return ranked[:MAX_DISTINCT_REPORT_AUTHORITIES]
 
     @staticmethod
     def authorities_to_context(ranked_authorities: list[dict]) -> str:

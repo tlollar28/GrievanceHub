@@ -26,11 +26,14 @@ from app.services.report_export.text_formatter import (
     dedupe_semantic_disclosures,
     extract_management_supporting_facts,
     format_authority_heading,
+    format_citation_check_display,
     format_display_quote,
     format_grievance_framework_display,
+    format_limitations_for_display,
     format_recommended_remedy_display,
     format_strategic_tips_display,
     rebuild_quick_assessment_display,
+    sanitize_authority_description,
 )
 
 _MANAGEMENT_ROLES = frozenset({"management_limiting", "management_limiting_authority"})
@@ -401,9 +404,20 @@ def build_source_references_display(raw: dict[str, Any], report: dict[str, Any])
 def _enrich_authority_item(item: dict[str, Any]) -> dict[str, Any]:
     citation = item.get("citation") or {}
     direct_quote = format_display_quote(item.get("direct_quote"))
+    raw_quote = item.get("direct_quote")
+    why_relevant = sanitize_authority_description(
+        item.get("why_relevant") or "",
+        direct_quote=raw_quote,
+    )
+    issue = sanitize_authority_description(
+        item.get("issue") or "",
+        direct_quote=raw_quote,
+    )
     enriched = {
         **item,
         "direct_quote": direct_quote,
+        "why_relevant": why_relevant,
+        "issue": issue,
         "citation_label": format_steward_citation(
             citation,
             article_or_section=item.get("article_or_section"),
@@ -414,6 +428,7 @@ def _enrich_authority_item(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _enrich_top_authority_card(card: dict[str, Any]) -> dict[str, Any]:
+    raw_quote = (card.get("direct_quotes") or [""])[0]
     quotes = [
         formatted
         for formatted in (
@@ -424,6 +439,14 @@ def _enrich_top_authority_card(card: dict[str, Any]) -> dict[str, Any]:
     return {
         **card,
         "direct_quotes": quotes,
+        "why_relevant": sanitize_authority_description(
+            card.get("why_relevant") or "",
+            direct_quote=raw_quote,
+        ),
+        "issue": sanitize_authority_description(
+            card.get("issue") or "",
+            direct_quote=raw_quote,
+        ),
         "heading_label": card.get("heading_label") or format_authority_heading(card),
     }
 
@@ -458,14 +481,22 @@ def prepare_presentation(
         displayed_quotes,
     )
 
-    limitations = dedupe_semantic_disclosures(prepare_limitations(report))
+    limitations = dedupe_semantic_disclosures(
+        format_limitations_for_display(prepare_limitations(report))
+    )
     source_summary = dict(report.get("source_summary") or {})
     authority_count = len(top_authorities)
+    missing_facts = limitations.get("missing_facts") or []
+    remedy_authority_found = bool((report.get("recommended_remedy") or {}).get("statements"))
+    union_supporting_count = len(top_authorities)
 
     authority_items_for_qa = top_authorities + key_violations
     quick_assessment_display = rebuild_quick_assessment_display(
         report.get("quick_assessment") or {},
         authority_items_for_qa,
+        missing_facts_count=len(missing_facts),
+        remedy_authority_found=remedy_authority_found,
+        union_supporting_count=union_supporting_count,
     )
     recommended_remedy_display = format_recommended_remedy_display(
         report.get("recommended_remedy") or {},
@@ -484,6 +515,7 @@ def prepare_presentation(
     )
 
     generated_at_raw = report.get("generated_at") or raw.get("generated_at")
+    citation_check = format_citation_check_display(report.get("citation_validation"))
     return {
         "top_governing_authorities": top_authorities,
         "key_contract_violations": key_violations,
@@ -497,13 +529,14 @@ def prepare_presentation(
         "source_references_display": build_source_references_display(raw, report),
         "show_templates_section": has_real_templates(report),
         "known_facts": limitations.get("known_facts") or [],
-        "missing_facts": limitations.get("missing_facts") or [],
+        "missing_facts": missing_facts,
         "quick_assessment": quick_assessment_display,
         "recommended_remedy": recommended_remedy_display,
         "issues_presented": issues_presented,
         "grievance_framework_display": grievance_framework_display,
         "management_supporting_facts": management_supporting_facts,
         "strategic_tips": strategic_tips_display,
+        "citation_check": citation_check,
         "primary_issue_available": bool(
             _clean((raw.get("issue_analysis") or report.get("issue_analysis") or {}).get("primary_issue"))
         ),
