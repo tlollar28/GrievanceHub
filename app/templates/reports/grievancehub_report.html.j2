@@ -58,7 +58,11 @@
       <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Quick Assessment</h2>
       {% if qa.summary %}<p class="assessment-summary">{{ qa.summary }}</p>{% endif %}
       <p><strong>Grievability:</strong> {{ qa.grievability }}</p>
-      <p><strong>Confidence:</strong> {{ qa.confidence }}</p>
+      {% if qa.authority_support %}
+      <p><strong>Authority support:</strong> {{ qa.authority_support }}</p>
+      {% elif qa.confidence %}
+      <p><strong>Authority support:</strong> {{ qa.confidence }}</p>
+      {% endif %}
       {% if qa.why %}<p>{{ qa.why }}</p>{% endif %}
       {% if qa.cited_authorities %}
       <ul class="cited-authorities">
@@ -74,11 +78,15 @@
     {% set ns.n = ns.n + 1 %}
     <section class="report-section">
       <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Issues Presented</h2>
-      <ul>
+      {% if pres.issues_presented | length == 1 %}
+      <p class="issues-presented-single">{{ pres.issues_presented[0] }}</p>
+      {% else %}
+      <ul class="issues-presented-list">
         {% for issue in pres.issues_presented %}
         <li>{{ issue }}</li>
         {% endfor %}
       </ul>
+      {% endif %}
     </section>
     {% endif %}
 
@@ -269,19 +277,12 @@
     </section>
     {% endif %}
 
-    {% set citation = export.report.citation_validation %}
-    {% if citation and (citation.status or citation.notes) %}
+    {% set citation = pres.citation_check %}
+    {% if citation and citation.message %}
     {% set ns.n = ns.n + 1 %}
     <section class="report-section report-section--closing">
-      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> Citation Validation</h2>
-      <p><strong>Status:</strong> {{ citation.status }}</p>
-      {% if citation.notes %}
-      <ul>
-        {% for note in citation.notes %}
-        <li>{{ note }}</li>
-        {% endfor %}
-      </ul>
-      {% endif %}
+      <h2 class="section-heading-box"><span class="section-number">{{ ns.n }}.</span> {{ citation.heading }}</h2>
+      <p>{{ citation.message }}</p>
       <p class="final-disclaimer">
         <strong>Research Draft —</strong> {{ export.report.research_draft_notice or (export.report.brand ~ " analysis for steward review. Not legal advice.") }}
       </p>

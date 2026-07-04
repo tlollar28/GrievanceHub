@@ -34,7 +34,7 @@ def test_required_sections_appear(export_context):
     assert "Detailed Analysis" in html
     assert "Limitations and Missing Sources" in html
     assert "Source References" in html
-    assert "Citation Validation" in html
+    assert "Citation check" in html
 
 
 def test_grounded_quote_and_citation_appear(export_context):

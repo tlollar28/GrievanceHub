@@ -106,8 +106,8 @@ class NarrativeGenerator:
         grievability = legal_issues.get("grievability", "Not Enough Information")
 
         why_bits = [
-            "This assessment uses only the steward question, stated facts, ranked authorities, "
-            "and extracted evidence — not assumed violations."
+            "This assessment uses only the steward question, stated facts, retained sources, "
+            "and cited passages — not assumed violations."
         ]
         if known_facts:
             why_bits.append(
@@ -131,7 +131,7 @@ class NarrativeGenerator:
             )
         if evidence_items:
             why_bits.append(
-                f"{len(evidence_items)} grounded evidence item(s) support the analysis."
+                f"{len(evidence_items)} cited passage(s) are included in this report."
             )
 
         citation_status = None
@@ -492,6 +492,36 @@ class NarrativeGenerator:
                 + ", ".join(retrieval_gaps["missing_source_types"])
                 + "."
             )
+
+        for entry in retrieval_gaps.get("source_coverage_audit") or []:
+            source_type = str(entry.get("source_type") or "").upper()
+            if not source_type:
+                continue
+            queries_count = len(entry.get("queries_issued") or [])
+            found = int(entry.get("passages_found") or 0)
+            retained = int(entry.get("passages_retained_in_pool") or 0)
+            ranked = int(entry.get("passages_ranked") or 0)
+            disposition = str(entry.get("final_disposition") or "").replace("_", " ")
+            if ranked:
+                caveats.append(
+                    f"{source_type}: searched ({queries_count} queries), "
+                    f"{found} passage(s) found, {ranked} ranked in final report."
+                )
+            elif retained:
+                caveats.append(
+                    f"{source_type}: searched ({queries_count} queries), "
+                    f"{retained} passage(s) retrieved but not ranked above relevance gates."
+                )
+            elif found:
+                caveats.append(
+                    f"{source_type}: searched ({queries_count} queries), "
+                    f"{found} candidate(s) found but rejected by relevance or direction gates."
+                )
+            else:
+                caveats.append(
+                    f"{source_type}: searched ({queries_count} queries), "
+                    f"no governing passage survived retrieval — {disposition}."
+                )
 
         return {
             "missing_facts": missing_facts,

@@ -170,6 +170,79 @@ class AnalysisService:
         return relevant & global_possible
 
     @staticmethod
+    def _summarize_source_coverage_audit(
+        audit: list[dict] | None,
+        ranked_authorities: list[dict],
+        pool_chunks: list | None,
+    ) -> list[dict]:
+        if not audit:
+            return []
+
+        ranked_keys = {
+            (
+                str(item.get("document_type") or "").upper(),
+                item.get("page"),
+                item.get("chunk_index") or item.get("chunk"),
+            )
+            for item in ranked_authorities
+        }
+        pool_by_source: dict[str, int] = {}
+        for chunk in pool_chunks or []:
+            doc = getattr(chunk, "source_document", None)
+            if not doc:
+                continue
+            st = str(doc.source_type or "").upper()
+            pool_by_source[st] = pool_by_source.get(st, 0) + 1
+
+        by_source: dict[str, dict] = {}
+        for entry in audit:
+            source_type = str(entry.get("source_type") or "").upper()
+            if not source_type:
+                continue
+            bucket = by_source.setdefault(
+                source_type,
+                {
+                    "source_type": source_type,
+                    "searched": False,
+                    "queries_issued": [],
+                    "passages_found": 0,
+                    "passages_retained_in_pool": pool_by_source.get(source_type, 0),
+                    "passages_ranked": sum(
+                        1
+                        for item in ranked_authorities
+                        if str(item.get("document_type") or "").upper() == source_type
+                    ),
+                    "dispositions": [],
+                },
+            )
+            bucket["searched"] = bucket["searched"] or bool(entry.get("searched"))
+            for query in entry.get("queries_issued") or []:
+                cleaned = str(query or "").strip()
+                if cleaned and cleaned not in bucket["queries_issued"]:
+                    bucket["queries_issued"].append(cleaned)
+            bucket["passages_found"] = max(
+                bucket["passages_found"],
+                int(entry.get("passages_found") or 0),
+            )
+            disposition = str(entry.get("disposition") or "").strip()
+            if disposition and disposition not in bucket["dispositions"]:
+                bucket["dispositions"].append(disposition)
+
+        for source_type, bucket in by_source.items():
+            if bucket["passages_ranked"]:
+                bucket["final_disposition"] = "authorities_ranked"
+            elif bucket["passages_retained_in_pool"]:
+                bucket["final_disposition"] = "retrieved_not_ranked"
+            elif bucket["passages_found"]:
+                bucket["final_disposition"] = "found_rejected_by_gates"
+            elif bucket["searched"]:
+                bucket["final_disposition"] = "searched_no_matches"
+            else:
+                bucket["final_disposition"] = "not_searched"
+
+        return [by_source[key] for key in sorted(by_source)]
+
+    @staticmethod
     def _build_retrieval_gaps(
         issue_analysis: dict,
         ranked_authorities: list[dict],
@@ -178,6 +251,7 @@ class AnalysisService:
         retrieval_gaps_from_krs: list | None = None,
         indexed_source_types: set[str] | list[str] | None = None,
         question: str = "",
+        source_coverage_audit: list[dict] | None = None,
     ) -> dict:
         issue_keywords = issue_keywords or []
         pool_chunks = all_chunks or []
@@ -270,6 +344,12 @@ class AnalysisService:
             ranked_authorities=ranked_authorities,
         )
 
+        source_audit_summary = AnalysisService._summarize_source_coverage_audit(
+            source_coverage_audit,
+            ranked_authorities,
+            pool_chunks,
+        )
+
         return {
             "missing_source_types": missing_source_types,
             "issues_without_supporting_authority": issues_without_support,
@@ -277,6 +357,7 @@ class AnalysisService:
             "found_source_types": sorted(found_types),
             "unindexed_sources_requested": unindexed_sources_requested,
             "authority_topics_unavailable_in_index": authority_topics_unavailable,
+            "source_coverage_audit": source_audit_summary,
         }
 
     @staticmethod
@@ -347,6 +428,7 @@ class AnalysisService:
         all_chunks: list[SourceChunk] | None = None,
         retrieval_gaps_list: list | None = None,
         indexed_source_types: set[str] | list[str] | None = None,
+        source_coverage_audit: list[dict] | None = None,
     ) -> dict:
         if issue_analysis is None:
             issue_analysis = LegalIssueAnalyzer.analyze(question)
@@ -384,6 +466,7 @@ class AnalysisService:
             retrieval_gaps_from_krs=retrieval_gaps_list,
             indexed_source_types=indexed_source_types,
             question=question,
+            source_coverage_audit=source_coverage_audit,
         )
 
         legal_issues = LegalIssueIdentifier.identify_issues(

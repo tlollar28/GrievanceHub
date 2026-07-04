@@ -17,12 +17,16 @@ from app.services.relevance_utils import (
     RetrievedChunk,
     build_issue_type_backfill_queries,
     build_queries_for_issue,
+    build_source_type_backfill_queries,
     collect_decomposed_issues,
     extract_issue_keywords,
     extract_issue_keywords_for_issue,
     is_boilerplate_chunk,
     merge_issue_retrieval_pools,
     passes_retrieval_gate,
+    dispute_concerns_management_revoking_approved_leave,
+    passage_describes_management_leave_commitment,
+    passage_states_employee_entitlement_rule,
     score_chunk_for_issue,
 )
 
@@ -111,6 +115,7 @@ class KnowledgeRetrievalService:
         dispute_frame: dict | None = None,
         issue: dict | None = None,
         global_keywords: list[str] | None = None,
+        question: str = "",
     ) -> float:
         mention_source = " ".join(issue_keywords)
         if global_keywords:
@@ -126,6 +131,7 @@ class KnowledgeRetrievalService:
             issue=issue,
             article_mentions=article_mentions,
             global_keywords=global_keywords,
+            question=question,
         )
 
     @staticmethod
@@ -204,6 +210,7 @@ class KnowledgeRetrievalService:
         dispute_frame: dict | None,
         issue: dict,
         global_keywords: list[str],
+        question: str = "",
     ) -> None:
         existing_keys = {
             KnowledgeRetrievalService._chunk_key(item.chunk) for item in pool
@@ -217,8 +224,14 @@ class KnowledgeRetrievalService:
                 dispute_frame=dispute_frame,
                 issue=issue,
                 global_keywords=global_keywords,
+                question=question,
             )
-            if passes_retrieval_gate(retrieved, score):
+            if passes_retrieval_gate(
+                retrieved,
+                score,
+                dispute_frame=dispute_frame,
+                question=question,
+            ):
                 retrieved.combined_score = score
                 scored_candidates.append((score, retrieved))
 
@@ -283,6 +296,252 @@ class KnowledgeRetrievalService:
             issue_pools[issue_id] = pool
 
     @staticmethod
+    def _backfill_missing_source_types(
+        db: Session,
+        issue_pools: dict[str, list[RetrievedChunk]],
+        decomposed_issues: list[dict],
+        dispute_frame: dict | None,
+        issue_keywords: list[str],
+        limit_per_source: int,
+        indexed_source_types: set[str],
+        question: str = "",
+    ) -> list[dict]:
+        """One retrieval pass per indexed source type absent from all issue pools."""
+        applicable_issue_types = {
+            "legal",
+            "remedy",
+            "timeline",
+            "information_rights",
+        }
+        applicable_issues = [
+            issue
+            for issue in decomposed_issues
+            if str(issue.get("issue_type") or "").lower() in applicable_issue_types
+        ]
+        if not applicable_issues:
+            return []
+
+        pool_source_types: set[str] = set()
+        for pool in issue_pools.values():
+            for item in pool:
+                doc = getattr(item.chunk, "source_document", None)
+                if doc and doc.source_type:
+                    pool_source_types.add(str(doc.source_type).upper())
+
+        audit: list[dict] = []
+
+        for source_type in sorted(indexed_source_types):
+            if source_type == "LMOU" and source_type not in indexed_source_types:
+                continue
+
+            if source_type in pool_source_types:
+                retained = sum(
+                    1
+                    for pool in issue_pools.values()
+                    for item in pool
+                    if str(item.chunk.source_document.source_type or "").upper()
+                    == source_type
+                )
+                audit.append(
+                    {
+                        "source_type": source_type,
+                        "searched": True,
+                        "queries_issued": [],
+                        "passages_found": retained,
+                        "passages_retained": retained,
+                        "disposition": "retained_in_pool",
+                    }
+                )
+                continue
+
+            combined_queries: list[str] = []
+            for issue in applicable_issues:
+                combined_queries.extend(
+                    build_queries_for_issue(issue, dispute_frame)[:3]
+                )
+                combined_queries.extend(
+                    build_source_type_backfill_queries(
+                        issue,
+                        dispute_frame,
+                        source_type,
+                        question=question,
+                    )[
+                        :2
+                    ]
+                )
+            combined_queries = list(dict.fromkeys(combined_queries))[:8]
+            if (
+                source_type == "CONTRACT"
+                and dispute_concerns_management_revoking_approved_leave(
+                    dispute_frame,
+                    question,
+                )
+                and question.strip()
+            ):
+                combined_queries = list(
+                    dict.fromkeys([question.strip()[:160], *combined_queries])
+                )[:10]
+
+            chunk_map = KnowledgeRetrievalService._retrieve_queries_into_pool(
+                db=db,
+                queries=combined_queries,
+                limit_per_source=limit_per_source,
+                issue=None,
+                allowed_source_types={source_type},
+            )
+
+            retained_total = 0
+            for issue in applicable_issues:
+                issue_id = issue.get("issue_id")
+                if not issue_id:
+                    continue
+                issue_keywords_for_issue = extract_issue_keywords_for_issue(
+                    issue,
+                    dispute_frame=dispute_frame,
+                )
+                pool = issue_pools.setdefault(issue_id, [])
+                before = len(pool)
+                for retrieved in chunk_map.values():
+                    metadata = retrieved.retrieval_metadata or {}
+                    ids = set(metadata.get("matched_issue_ids") or [])
+                    ids.add(issue_id)
+                    retrieved.retrieval_metadata = {
+                        **metadata,
+                        "matched_issue_ids": sorted(ids),
+                    }
+                KnowledgeRetrievalService._append_passing_chunks_to_pool(
+                    chunk_map,
+                    pool,
+                    issue_keywords_for_issue,
+                    dispute_frame,
+                    issue,
+                    issue_keywords,
+                    question=question,
+                )
+                pool.sort(key=lambda item: item.combined_score, reverse=True)
+                issue_pools[issue_id] = pool
+                retained_total += max(0, len(pool) - before)
+
+            found = len(chunk_map)
+            if retained_total:
+                disposition = "retained_in_pool"
+            elif found:
+                disposition = "none_passed_gates"
+            else:
+                disposition = "no_embedding_matches"
+
+            audit.append(
+                {
+                    "source_type": source_type,
+                    "searched": True,
+                    "queries_issued": combined_queries,
+                    "passages_found": found,
+                    "passages_retained": retained_total,
+                    "disposition": disposition,
+                }
+            )
+
+            if retained_total:
+                pool_source_types.add(source_type)
+
+        return audit
+
+    @staticmethod
+    def _pool_has_contract_leave_commitment(
+        issue_pools: dict[str, list[RetrievedChunk]],
+    ) -> bool:
+        for pool in issue_pools.values():
+            for item in pool:
+                doc = getattr(item.chunk, "source_document", None)
+                if not doc or str(doc.source_type or "").upper() != "CONTRACT":
+                    continue
+                text = item.chunk.text or ""
+                if passage_describes_management_leave_commitment(
+                    text
+                ) or passage_states_employee_entitlement_rule(text):
+                    return True
+        return False
+
+    @staticmethod
+    def _supplement_contract_leave_commitment_pool(
+        db: Session,
+        issue_pools: dict[str, list[RetrievedChunk]],
+        decomposed_issues: list[dict],
+        dispute_frame: dict | None,
+        issue_keywords: list[str],
+        limit_per_source: int,
+        question: str,
+    ) -> None:
+        """Extra CONTRACT retrieval when leave-revocation disputes lack commitment language."""
+        if not dispute_concerns_management_revoking_approved_leave(
+            dispute_frame,
+            question,
+        ):
+            return
+        if KnowledgeRetrievalService._pool_has_contract_leave_commitment(issue_pools):
+            return
+
+        legal_issues = [
+            issue
+            for issue in decomposed_issues
+            if str(issue.get("issue_type") or "").lower() == "legal"
+        ]
+        target_issue = legal_issues[0] if legal_issues else None
+        if target_issue is None:
+            for issue in decomposed_issues:
+                if str(issue.get("issue_type") or "").lower() in {
+                    "legal",
+                    "remedy",
+                }:
+                    target_issue = issue
+                    break
+
+        supplement_queries = [
+            question.strip()[:160],
+            "national agreement advance annual leave commitment honored emergency",
+            "contract approved annual leave must be honored except emergency",
+            "previously approved annual leave commitment national agreement",
+        ]
+        supplement_queries = [
+            q for q in dict.fromkeys(supplement_queries) if q and q.strip()
+        ]
+
+        chunk_map = KnowledgeRetrievalService._retrieve_queries_into_pool(
+            db=db,
+            queries=supplement_queries,
+            limit_per_source=limit_per_source,
+            issue=target_issue,
+            allowed_source_types={"CONTRACT"},
+        )
+
+        if not chunk_map:
+            return
+
+        issue_id = (
+            str(target_issue.get("issue_id") or "global")
+            if target_issue
+            else "global"
+        )
+        issue_keywords_for_issue = (
+            extract_issue_keywords_for_issue(target_issue, dispute_frame=dispute_frame)
+            if target_issue
+            else issue_keywords
+        )
+        pool = issue_pools.setdefault(issue_id, [])
+
+        KnowledgeRetrievalService._append_passing_chunks_to_pool(
+            chunk_map,
+            pool,
+            issue_keywords_for_issue,
+            dispute_frame,
+            target_issue or {"issue_id": issue_id, "issue_type": "legal", "issue": ""},
+            issue_keywords,
+            question=question,
+        )
+        pool.sort(key=lambda item: item.combined_score, reverse=True)
+        issue_pools[issue_id] = pool
+
+    @staticmethod
     def search_all(
         db: Session,
         query: str,
@@ -340,9 +599,15 @@ class KnowledgeRetrievalService:
                     dispute_frame=dispute_frame,
                     issue=issue,
                     global_keywords=issue_keywords,
+                    question=query,
                 )
 
-                if passes_retrieval_gate(retrieved, score):
+                if passes_retrieval_gate(
+                    retrieved,
+                    score,
+                    dispute_frame=dispute_frame,
+                    question=query,
+                ):
                     scored_pool.append(retrieved)
 
             scored_pool.sort(
@@ -383,6 +648,7 @@ class KnowledgeRetrievalService:
                 dispute_frame=dispute_frame,
                 issue=None,
                 global_keywords=issue_keywords,
+                question=query,
             )
             best_score = global_score
 
@@ -394,6 +660,7 @@ class KnowledgeRetrievalService:
                     dispute_frame=dispute_frame,
                     issue=issue,
                     global_keywords=issue_keywords,
+                    question=query,
                 )
                 if scored > best_score:
                     best_score = scored
@@ -401,7 +668,12 @@ class KnowledgeRetrievalService:
                     best_issue = issue
                     best_keywords = ikw
 
-            if not passes_retrieval_gate(retrieved, best_score):
+            if not passes_retrieval_gate(
+                retrieved,
+                best_score,
+                dispute_frame=dispute_frame,
+                question=query,
+            ):
                 continue
 
             KnowledgeRetrievalService._score_chunk_match(
@@ -410,6 +682,7 @@ class KnowledgeRetrievalService:
                 dispute_frame=dispute_frame,
                 issue=best_issue,
                 global_keywords=issue_keywords,
+                question=query,
             )
             retrieved.combined_score = best_score
 
@@ -433,6 +706,27 @@ class KnowledgeRetrievalService:
             issue_keywords=issue_keywords,
             limit_per_source=limit_per_source,
             indexed_source_types=indexed_source_types,
+        )
+
+        source_coverage_audit = KnowledgeRetrievalService._backfill_missing_source_types(
+            db=db,
+            issue_pools=issue_pools,
+            decomposed_issues=decomposed_issues,
+            dispute_frame=dispute_frame,
+            issue_keywords=issue_keywords,
+            limit_per_source=limit_per_source,
+            indexed_source_types=indexed_source_types,
+            question=query,
+        )
+
+        KnowledgeRetrievalService._supplement_contract_leave_commitment_pool(
+            db=db,
+            issue_pools=issue_pools,
+            decomposed_issues=decomposed_issues,
+            dispute_frame=dispute_frame,
+            issue_keywords=issue_keywords,
+            limit_per_source=limit_per_source,
+            question=query,
         )
 
         retrieval_gaps = [
@@ -491,4 +785,5 @@ class KnowledgeRetrievalService:
             "merge_metadata": merge_metadata,
             "retrieval_gaps": retrieval_gaps,
             "indexed_source_types": indexed_source_types,
+            "source_coverage_audit": source_coverage_audit,
         }

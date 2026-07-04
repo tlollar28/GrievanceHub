@@ -74,7 +74,244 @@ _INTERNAL_PIPELINE_TERMS = (
     (r"\bdecomposed issues?\b", "identified issues"),
     (r"\bmodel outputs?\b", "analysis"),
     (r"\bcoverage floors?\b", "source review"),
+    (r"\branked authorities\b", "retained sources"),
+    (r"\bextracted evidence\b", "cited passages"),
+    (r"\bgrounded evidence item\(s\)\b", "cited passage(s)"),
+    (r"\bsurvived retrieval\b", "met the report inclusion standard"),
+    (r"\bembedding matches?\b", "indexed search"),
+    (r"\bbackfill quer(y|ies)\b", "supplemental search"),
+    (r"\bsource coverage audit\b", "source search summary"),
+    (r"\bmissing source types\b", "sources without retained authority"),
+    (r"\bsearched no matches\b", "no relevant passage was located"),
+    (r"\branked in final report\b", "included in this report"),
 )
+
+_SOURCE_COLLECTION_LABELS = {
+    "CONTRACT": "National Agreement (CONTRACT)",
+    "CIM": "Contract Interpretation Manual (CIM)",
+    "ELM": "Employee and Labor Relations Manual (ELM)",
+    "LMOU": "Local Memorandum of Understanding (LMOU)",
+}
+
+_REMEDY_OVERSTATEMENT_PATTERNS = (
+    r"compensation or alternatives",
+    r"entitled to compensation",
+    r"make-whole",
+    r"make whole",
+    r"replacement leave",
+    r"guaranteed relief",
+    r"guaranteed remedy",
+    r"guaranteed to prevail",
+)
+
+_QUOTE_REMEDY_TERMS = (
+    "compensation",
+    "make whole",
+    "make-whole",
+    "remedy",
+    "reinstate",
+    "rescind",
+    "replacement leave",
+)
+
+_COMMITMENT_RULE_MARKERS = (
+    "advance commitments",
+    "must be honored",
+    "honored except",
+)
+
+
+def _source_collection_label(source_type: str) -> str:
+    key = str(source_type or "").strip().upper()
+    return _SOURCE_COLLECTION_LABELS.get(key, key or "Source collection")
+
+
+def _quote_supports_remedy_language(quote: str | None) -> bool:
+    lowered = (quote or "").lower()
+    return any(term in lowered for term in _QUOTE_REMEDY_TERMS)
+
+
+def _quote_states_commitment_rule(quote: str | None) -> bool:
+    lowered = (quote or "").lower()
+    return any(marker in lowered for marker in _COMMITMENT_RULE_MARKERS)
+
+
+def _contains_remedy_overstatement(text: str | None) -> bool:
+    lowered = (text or "").lower()
+    return any(re.search(pattern, lowered) for pattern in _REMEDY_OVERSTATEMENT_PATTERNS)
+
+
+def sanitize_authority_description(
+    text: str | None,
+    *,
+    direct_quote: str | None = None,
+) -> str:
+    """Remove unsupported remedy claims not grounded in the cited passage."""
+    cleaned = sanitize_public_text(text)
+    if not cleaned or not _contains_remedy_overstatement(cleaned):
+        return cleaned
+    if _quote_supports_remedy_language(direct_quote):
+        return cleaned
+    if _quote_states_commitment_rule(direct_quote):
+        return (
+            "This language requires management to honor advance commitments to grant "
+            "annual leave except in serious emergency situations. A steward may still "
+            "evaluate and request appropriate relief based on the facts and other "
+            "governing sources."
+        )
+    stripped = cleaned
+    for pattern in _REMEDY_OVERSTATEMENT_PATTERNS:
+        stripped = re.sub(pattern, "", stripped, flags=re.IGNORECASE)
+    stripped = re.sub(r"\s{2,}", " ", stripped).strip(" .;,")
+    if stripped:
+        return stripped
+    return (
+        "Review the cited language for the governing obligation. Requested relief must "
+        "be supported by the facts and applicable contract or manual sources."
+    )
+
+
+def format_authority_support_label(
+    confidence: str | None,
+    *,
+    missing_facts_count: int = 0,
+    remedy_authority_found: bool = False,
+    union_supporting_count: int = 0,
+) -> str:
+    """Steward-facing support label that does not overstate case merits."""
+    level = (confidence or "").strip().lower()
+    if union_supporting_count <= 0:
+        strength = (
+            "Limited; no union-supporting contractual rule was retained in this report"
+        )
+    elif level == "high":
+        strength = "Strong for the cited contractual rule"
+    elif level == "medium":
+        strength = "Moderate for the cited contractual rule"
+    elif level == "low":
+        strength = "Limited for the cited contractual rule"
+    else:
+        strength = "Preliminary for the cited contractual rule"
+
+    qualifiers: list[str] = []
+    if missing_facts_count:
+        qualifiers.append("key facts still need verification")
+    if not remedy_authority_found:
+        qualifiers.append("requested relief language was not located in retained sources")
+    qualifiers.append("factual conclusions and grievance merits require steward review")
+
+    if qualifiers:
+        return f"{strength}; {'; '.join(qualifiers)}."
+    return f"{strength}; factual conclusions and grievance merits require steward review."
+
+
+def format_source_coverage_caveat(entry: dict[str, Any]) -> str:
+    """Plain-English disclosure for one indexed source collection."""
+    source_type = str(entry.get("source_type") or "").upper()
+    if not source_type:
+        return ""
+    label = _source_collection_label(source_type)
+    found = int(entry.get("passages_found") or 0)
+    retained = int(entry.get("passages_retained_in_pool") or 0)
+    ranked = int(entry.get("passages_ranked") or 0)
+
+    if ranked:
+        if found > ranked:
+            excluded = found - ranked
+            return (
+                f"{label}: searched; relevant material was found and "
+                f"{ranked} governing passage(s) included in this report. "
+                f"{excluded} other candidate passage(s) from this source were "
+                "reviewed but not included."
+            )
+        return (
+            f"{label}: searched; relevant material was found and included "
+            "in this report."
+        )
+    if retained:
+        return (
+            f"{label}: searched; material was found in the indexed collection "
+            "but was not included as governing authority in this report."
+        )
+    if found:
+        return (
+            f"{label}: searched; candidate passages were found but excluded "
+            "because they were not sufficiently relevant or did not match the "
+            "dispute direction."
+        )
+    return (
+        f"{label}: searched; no relevant passage was located in the indexed "
+        "collection for this question."
+    )
+
+
+def format_limitations_for_display(limitations: dict[str, Any]) -> dict[str, Any]:
+    """Rewrite limitation caveats in steward-readable language."""
+    limitations = dict(limitations or {})
+    gaps = dict(limitations.get("retrieval_gaps") or {})
+    retained_caveats: list[str] = []
+
+    for caveat in limitations.get("caveats") or []:
+        text = str(caveat or "").strip()
+        if not text:
+            continue
+        lowered = text.lower()
+        if lowered.startswith(("this report is a research draft", "arguments must tie")):
+            retained_caveats.append(text)
+            continue
+        if "not currently indexed in grievancehub" in lowered or "unindexed" in lowered:
+            retained_caveats.append(sanitize_public_text(text))
+            continue
+        if "weingarten" in lowered or "authority topic" in lowered:
+            retained_caveats.append(sanitize_public_text(text))
+            continue
+        if "no ranked authorities" in lowered or "missing source types" in lowered:
+            types_match = re.search(r":\s*(.+)\.$", text)
+            types_text = types_match.group(1) if types_match else "some suggested sources"
+            retained_caveats.append(
+                f"No governing passage from {types_text} was retained in this report."
+            )
+            continue
+        if re.match(r"^[A-Z]+:\s*searched", text):
+            continue
+        sanitized = sanitize_public_text(text)
+        if sanitized:
+            retained_caveats.append(sanitized)
+
+    for entry in gaps.get("source_coverage_audit") or []:
+        caveat = format_source_coverage_caveat(entry)
+        if caveat:
+            retained_caveats.append(caveat)
+
+    limitations["caveats"] = dedupe_public_citation_labels(retained_caveats)
+    limitations["retrieval_gaps"] = gaps
+    return limitations
+
+
+def format_citation_check_display(citation_validation: dict[str, Any] | None) -> dict[str, str]:
+    """Steward-neutral citation check wording."""
+    citation_validation = citation_validation or {}
+    status = str(citation_validation.get("status") or "").strip().lower()
+    if status == "passed":
+        message = (
+            "Displayed quotations and references were matched to the retrieved "
+            "source passages."
+        )
+    elif status == "needs review":
+        message = (
+            "One or more displayed quotations could not be fully matched to the "
+            "retrieved source passages. Verify citations against the source PDFs "
+            "before use."
+        )
+    else:
+        message = (
+            "Displayed quotations should be verified against the retrieved source "
+            "passages before use in a grievance."
+        )
+    return {
+        "heading": "Citation check",
+        "message": message,
+    }
 
 
 def format_display_quote(
@@ -559,6 +796,10 @@ def sanitize_cited_authority_strings(labels: list[str]) -> list[str]:
 def rebuild_quick_assessment_display(
     quick_assessment: dict[str, Any],
     authority_items: list[dict[str, Any]],
+    *,
+    missing_facts_count: int = 0,
+    remedy_authority_found: bool = False,
+    union_supporting_count: int = 0,
 ) -> dict[str, Any]:
     """Sanitize Quick Assessment fields for steward-facing export."""
     deduped_items = dedupe_authority_items(authority_items)
@@ -586,11 +827,25 @@ def rebuild_quick_assessment_display(
     )
     summary = sanitize_public_text(summary)
 
+    why = sanitize_public_text(quick_assessment.get("why") or "")
+    why = re.sub(
+        r"(\d+)\s+cited passage\(s\) support the analysis\.",
+        r"\1 cited passage(s) are included in this report.",
+        why,
+        flags=re.IGNORECASE,
+    )
+
     return {
         "summary": summary,
         "grievability": quick_assessment.get("grievability") or "",
         "confidence": quick_assessment.get("confidence") or "",
-        "why": sanitize_public_text(quick_assessment.get("why") or ""),
+        "authority_support": format_authority_support_label(
+            quick_assessment.get("confidence"),
+            missing_facts_count=missing_facts_count,
+            remedy_authority_found=remedy_authority_found,
+            union_supporting_count=union_supporting_count,
+        ),
+        "why": why,
         "cited_authorities": cited_labels,
     }
 

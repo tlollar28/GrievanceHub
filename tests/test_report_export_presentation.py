@@ -19,11 +19,15 @@ from app.services.report_export.pdf_generator import ReportPdfGenerator
 from app.services.report_export.presentation import build_top_governing_authorities, format_generated_at
 from app.services.report_export.text_formatter import (
     EMBEDDED_QUOTE_MAX_LENGTH,
+    format_authority_support_label,
+    format_citation_check_display,
     format_dispute_frame_sentence,
     format_display_quote,
     format_grievance_framework_display,
+    format_source_coverage_caveat,
     normalize_article_section_label,
     rebuild_quick_assessment_display,
+    sanitize_authority_description,
     sanitize_embedded_quotes_in_text,
     sanitize_public_text,
 )
@@ -168,7 +172,7 @@ def test_pdf_has_no_footer_only_blank_page(demo_context):
     reader = PdfReader(BytesIO(pdf_bytes))
     assert len(reader.pages) >= 1
     last_text = (reader.pages[-1].extract_text() or "").strip()
-    assert "Citation Validation" in last_text or "Source References" in last_text
+    assert "Citation check" in last_text or "Source References" in last_text
 
 
 def test_build_top_authorities_from_report_sections_when_ranked_missing():
@@ -427,3 +431,71 @@ def test_live_style_quick_assessment_normalization():
     assert "Article 10 (" not in qa["summary"]
     assert qa["summary"] == "Cancellation of previously approved annual leave."
     assert len(qa["cited_authorities"]) == 2
+
+
+def test_sanitize_authority_description_removes_unsupported_remedy_claim():
+    quote = (
+        "All advance commitments for granting annual leave must be honored except "
+        "in serious emergency situations."
+    )
+    cleaned = sanitize_authority_description(
+        "This authority can be used to argue that employees are entitled to "
+        "compensation or alternatives if their leave is canceled improperly.",
+        direct_quote=quote,
+    )
+    assert "compensation or alternatives" not in cleaned.lower()
+    assert "must be honored" in cleaned.lower() or "advance commitments" in cleaned.lower()
+
+
+def test_authority_support_label_limits_overconfidence():
+    label = format_authority_support_label(
+        "High",
+        missing_facts_count=1,
+        remedy_authority_found=False,
+        union_supporting_count=2,
+    )
+    assert "Strong for the cited contractual rule" in label
+    assert "steward review" in label.lower()
+    assert label.count("High") == 0
+
+    limited = format_authority_support_label(
+        "High",
+        missing_facts_count=1,
+        remedy_authority_found=False,
+        union_supporting_count=0,
+    )
+    assert "no union-supporting contractual rule was retained" in limited.lower()
+
+
+def test_source_coverage_caveat_plain_english():
+    caveat = format_source_coverage_caveat(
+        {
+            "source_type": "ELM",
+            "passages_found": 0,
+            "passages_retained_in_pool": 0,
+            "passages_ranked": 0,
+        }
+    )
+    assert "searched" in caveat.lower()
+    assert "no relevant passage" in caveat.lower()
+    assert "0 queries" not in caveat
+    assert "survived retrieval" not in caveat
+
+
+def test_citation_check_display_is_steward_neutral():
+    display = format_citation_check_display({"status": "Passed"})
+    assert display["heading"] == "Citation check"
+    assert "Validation" not in display["message"]
+    assert "matched to the retrieved source passages" in display["message"]
+
+
+def test_steward_report_repair_wording_in_html(demo_context):
+    html = ReportHtmlRenderer.render(demo_context)
+    lowered = html.lower()
+    assert "confidence:" not in lowered
+    assert "authority support:" in lowered
+    assert "citation check" in lowered
+    assert "citation validation" not in lowered
+    assert "compensation or alternatives" not in lowered
+    assert "ranked authorities" not in lowered
+    assert "survived retrieval" not in lowered
