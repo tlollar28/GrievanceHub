@@ -124,6 +124,9 @@ class CaseReportVersion(Base):
     ranked_authorities: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     issue_analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     evidence_items: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    retrieval_gaps: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    source_coverage_audit: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    report_summary: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     case: Mapped["GrievanceCase"] = relationship(back_populates="report_versions")

@@ -41,6 +41,10 @@ class UpdateStatusRequest(BaseModel):
     status: Literal["open", "closed"]
 
 
+class RegenerateReportRequest(BaseModel):
+    limit_per_source: int = 8
+
+
 def _serialize_message(message) -> dict:
     return {
         "id": message.id,
@@ -57,6 +61,9 @@ def _serialize_report_version(version, include_report: bool = True) -> dict:
         "version_number": version.version_number,
         "trigger_message_id": version.trigger_message_id,
         "created_at": version.created_at.isoformat() if version.created_at else None,
+        "retrieval_gaps": getattr(version, "retrieval_gaps", None),
+        "source_coverage_audit": getattr(version, "source_coverage_audit", None),
+        "report_summary": getattr(version, "report_summary", None),
     }
     if include_report:
         payload["report_data"] = version.report_data
@@ -67,21 +74,7 @@ def _serialize_report_version(version, include_report: bool = True) -> dict:
 
 
 def _serialize_case_summary(case) -> dict:
-    latest_version = None
-    if case.report_versions:
-        latest_version = max(case.report_versions, key=lambda v: v.version_number)
-    return {
-        "case_uuid": case.case_uuid,
-        "title": case.title,
-        "user_name": case.user_name,
-        "local_number": case.local_number,
-        "initial_question": case.initial_question,
-        "known_facts": case.known_facts,
-        "status": case.status,
-        "created_at": case.created_at.isoformat() if case.created_at else None,
-        "updated_at": case.updated_at.isoformat() if case.updated_at else None,
-        "latest_report_version": latest_version.version_number if latest_version else None,
-    }
+    return CaseService.serialize_case_list_summary(case)
 
 
 def _serialize_case_detail(case) -> dict:
@@ -124,6 +117,37 @@ def list_cases(status: str | None = None, db: Session = Depends(get_db)):
     return {
         "count": len(cases),
         "cases": [_serialize_case_summary(case) for case in cases],
+    }
+
+
+@router.get("/{case_uuid}/workspace")
+def get_case_workspace(case_uuid: str, db: Session = Depends(get_db)):
+    try:
+        workspace = CaseService.get_case_workspace(db, case_uuid)
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return workspace
+
+
+@router.post("/{case_uuid}/reports/regenerate")
+def regenerate_case_report(
+    case_uuid: str,
+    payload: RegenerateReportRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    try:
+        report_version = CaseService.generate_report_version(
+            db=db,
+            case_uuid=case_uuid,
+            limit_per_source=(payload.limit_per_source if payload else 8),
+        )
+        case = CaseService.get_case(db, case_uuid)
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    return {
+        "report_version": _serialize_report_version(report_version),
+        "case": _serialize_case_detail(case),
     }
 
 

@@ -76,10 +76,228 @@ class CaseService:
 
     @staticmethod
     def list_cases(db: Session, status: str | None = None) -> list[GrievanceCase]:
-        query = db.query(GrievanceCase).order_by(GrievanceCase.updated_at.desc())
+        query = (
+            db.query(GrievanceCase)
+            .options(joinedload(GrievanceCase.report_versions))
+            .order_by(GrievanceCase.updated_at.desc())
+        )
         if status is not None:
             query = query.filter(GrievanceCase.status == status)
         return query.all()
+
+    @staticmethod
+    def _normalize_ranked_authorities(ranked_authorities) -> list[dict]:
+        if not ranked_authorities:
+            return []
+        if isinstance(ranked_authorities, list):
+            return [item for item in ranked_authorities if isinstance(item, dict)]
+        return []
+
+    @staticmethod
+    def _format_article_label(authority: dict) -> str:
+        doc_type = str(authority.get("document_type") or "").strip().upper()
+        article = str(authority.get("article_or_section") or "").strip()
+        if not article:
+            return doc_type or "Unknown"
+        if doc_type:
+            return f"{doc_type} {article}"
+        return article
+
+    @staticmethod
+    def _has_remedy_authority(report_result: dict, ranked_authorities: list[dict]) -> bool:
+        for authority in ranked_authorities:
+            if authority.get("role") == "remedy_support":
+                return True
+        report = report_result.get("report") if isinstance(report_result.get("report"), dict) else {}
+        remedy_section = report.get("remedy_authority") if isinstance(report, dict) else None
+        return bool(remedy_section)
+
+    @staticmethod
+    def _has_source_gaps(retrieval_gaps: dict | None) -> bool:
+        if not isinstance(retrieval_gaps, dict):
+            return False
+        return bool(
+            retrieval_gaps.get("missing_source_types")
+            or retrieval_gaps.get("unindexed_sources_requested")
+            or retrieval_gaps.get("authority_topics_unavailable_in_index")
+            or retrieval_gaps.get("issues_without_supporting_authority")
+            or retrieval_gaps.get("facts_still_needed")
+        )
+
+    @staticmethod
+    def build_retrieval_gaps_summary(retrieval_gaps: dict | None) -> dict:
+        if not isinstance(retrieval_gaps, dict):
+            return {
+                "has_gaps": False,
+                "found_source_types": [],
+                "missing_source_types": [],
+                "unindexed_sources_requested": [],
+            }
+        return {
+            "has_gaps": CaseService._has_source_gaps(retrieval_gaps),
+            "found_source_types": list(retrieval_gaps.get("found_source_types") or []),
+            "missing_source_types": list(retrieval_gaps.get("missing_source_types") or []),
+            "unindexed_sources_requested": list(
+                retrieval_gaps.get("unindexed_sources_requested") or []
+            ),
+        }
+
+    @staticmethod
+    def build_report_summary(
+        case: GrievanceCase,
+        report_result: dict,
+        *,
+        message_count: int | None = None,
+    ) -> dict:
+        ranked_authorities = CaseService._normalize_ranked_authorities(
+            report_result.get("ranked_authorities")
+        )
+        retrieval_gaps = report_result.get("retrieval_gaps")
+        if not isinstance(retrieval_gaps, dict):
+            retrieval_gaps = {}
+
+        issue_analysis = report_result.get("issue_analysis")
+        if not isinstance(issue_analysis, dict):
+            issue_analysis = {}
+
+        primary_issue = str(
+            issue_analysis.get("primary_issue")
+            or case.title
+            or case.initial_question
+        ).strip()
+
+        source_types_found = sorted(
+            {
+                str(item.get("document_type")).upper()
+                for item in ranked_authorities
+                if item.get("document_type")
+            }
+        )
+
+        articles: list[str] = []
+        seen_articles: set[str] = set()
+        for authority in ranked_authorities:
+            label = CaseService._format_article_label(authority)
+            if label not in seen_articles:
+                seen_articles.add(label)
+                articles.append(label)
+
+        if message_count is None:
+            message_count = len(case.messages or [])
+
+        return {
+            "primary_issue": primary_issue,
+            "articles": articles,
+            "source_types_found": source_types_found,
+            "authority_count": len(ranked_authorities),
+            "has_remedy_authority": CaseService._has_remedy_authority(
+                report_result,
+                ranked_authorities,
+            ),
+            "has_source_gaps": CaseService._has_source_gaps(retrieval_gaps),
+            "message_count": message_count,
+        }
+
+    @staticmethod
+    def build_export_metadata(case_uuid: str, version_number: int | None) -> dict:
+        version_suffix = f"/versions/{version_number}" if version_number else ""
+        base = f"/cases/{case_uuid}{version_suffix}/export"
+        return {
+            "preview_url": f"{base}/preview",
+            "html_url": f"{base}/html",
+            "pdf_url": f"{base}/pdf",
+        }
+
+    @staticmethod
+    def get_case_workspace(db: Session, case_uuid: str) -> dict:
+        case = CaseService.get_case(db, case_uuid)
+        versions = sorted(case.report_versions, key=lambda v: v.version_number)
+        latest = versions[-1] if versions else None
+
+        version_summaries = [
+            CaseService.serialize_report_version_summary(version) for version in versions
+        ]
+
+        workspace = {
+            "case_uuid": case.case_uuid,
+            "title": case.title,
+            "user_name": case.user_name,
+            "local_number": case.local_number,
+            "initial_question": case.initial_question,
+            "known_facts": case.known_facts,
+            "status": case.status,
+            "created_at": case.created_at.isoformat() if case.created_at else None,
+            "updated_at": case.updated_at.isoformat() if case.updated_at else None,
+            "messages": [
+                {
+                    "id": message.id,
+                    "role": message.role,
+                    "content": message.content,
+                    "metadata": message.message_metadata,
+                    "created_at": message.created_at.isoformat()
+                    if message.created_at
+                    else None,
+                }
+                for message in sorted(case.messages, key=lambda m: m.created_at)
+            ],
+            "report_versions": version_summaries,
+            "latest_report_version": latest.version_number if latest else None,
+            "latest_report": CaseService.serialize_report_version_summary(latest)
+            if latest
+            else None,
+            "retrieval_gaps": latest.retrieval_gaps if latest else None,
+            "source_coverage_audit": latest.source_coverage_audit if latest else None,
+            "report_summary": latest.report_summary if latest else None,
+            "retrieval_gaps_summary": CaseService.build_retrieval_gaps_summary(
+                latest.retrieval_gaps if latest else None
+            ),
+            "exports": CaseService.build_export_metadata(
+                case.case_uuid,
+                latest.version_number if latest else None,
+            ),
+        }
+        return workspace
+
+    @staticmethod
+    def serialize_report_version_summary(version: CaseReportVersion | None) -> dict | None:
+        if version is None:
+            return None
+        return {
+            "id": version.id,
+            "version_number": version.version_number,
+            "trigger_message_id": version.trigger_message_id,
+            "created_at": version.created_at.isoformat() if version.created_at else None,
+            "ranked_authorities": version.ranked_authorities,
+            "issue_analysis": version.issue_analysis,
+            "evidence_items": version.evidence_items,
+            "retrieval_gaps": version.retrieval_gaps,
+            "source_coverage_audit": version.source_coverage_audit,
+            "report_summary": version.report_summary,
+        }
+
+    @staticmethod
+    def serialize_case_list_summary(case: GrievanceCase) -> dict:
+        latest_version = None
+        if case.report_versions:
+            latest_version = max(case.report_versions, key=lambda v: v.version_number)
+
+        summary = {
+            "case_uuid": case.case_uuid,
+            "title": case.title,
+            "user_name": case.user_name,
+            "local_number": case.local_number,
+            "initial_question": case.initial_question,
+            "known_facts": case.known_facts,
+            "status": case.status,
+            "created_at": case.created_at.isoformat() if case.created_at else None,
+            "updated_at": case.updated_at.isoformat() if case.updated_at else None,
+            "latest_report_version": latest_version.version_number if latest_version else None,
+            "report_summary": latest_version.report_summary if latest_version else None,
+            "retrieval_gaps_summary": CaseService.build_retrieval_gaps_summary(
+                latest_version.retrieval_gaps if latest_version else None
+            ),
+        }
+        return summary
 
     @staticmethod
     def add_message(
@@ -230,6 +448,20 @@ class CaseService:
         if isinstance(report_data, dict):
             evidence_items = report_data.get("supporting_evidence")
 
+        retrieval_gaps = report_result.get("retrieval_gaps")
+        if not isinstance(retrieval_gaps, dict):
+            retrieval_gaps = {}
+
+        source_coverage_audit = retrieval_gaps.get("source_coverage_audit")
+        if source_coverage_audit is None:
+            source_coverage_audit = results.get("source_coverage_audit")
+
+        report_summary = CaseService.build_report_summary(
+            case,
+            report_result,
+            message_count=len(case.messages or []),
+        )
+
         version = CaseReportVersion(
             case_id=case.id,
             version_number=next_version,
@@ -238,6 +470,9 @@ class CaseService:
             ranked_authorities=report_result.get("ranked_authorities"),
             issue_analysis=report_result.get("issue_analysis"),
             evidence_items=evidence_items,
+            retrieval_gaps=retrieval_gaps,
+            source_coverage_audit=source_coverage_audit,
+            report_summary=report_summary,
         )
         db.add(version)
         case.updated_at = datetime.utcnow()
