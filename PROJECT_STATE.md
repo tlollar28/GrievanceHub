@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-06 (Phase 1.4A template registry foundation)
+Last updated: 2026-07-06 (Phase 1.4B draft form builder foundation)
 
 ## Architecture
 
@@ -286,7 +286,7 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 ## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation (planned)
 
-**Status:** Phase 1.4A (template registry foundation) implemented on branch `phase1-4-template-registry` — committed locally (`bcc852c`). Template assets refactored to `app/assets/grievance_templates/` (pre-commit review pending). Slices 1.4B–1.4E not started.
+**Status:** Phase 1.4A (template registry foundation) committed locally (`bcc852c`); template assets refactored to `app/assets/grievance_templates/` (`50019c9`). Phase 1.4B (draft form builder foundation) implemented on branch `phase1-4B-draft-form-builder` — **not committed** (awaiting review). Slices 1.4C–1.4E not started.
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
@@ -300,7 +300,17 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 - `.gitignore` hardened for generated filled forms; exception for blank template PDFs under `app/assets/grievance_templates/`
 - Tests: `tests/test_grievance_template_registry.py` (18 passed)
 
-**Not yet implemented:** form prefill, draft CRUD, approve/export, API routes, DB tables, steward editing UI.
+**Phase 1.4B delivered (draft builder foundation only):**
+
+- Draft schemas: `app/schemas/grievance_form_draft_schema.py` — draft status, field values, provenance, validation, page plan, exact-template mapping metadata
+- Draft builder: `app/services/grievance_form_draft_builder.py` — deterministic draft assembly from registered template + synthetic/case-like input (no OpenAI, no export)
+- Local 300 exact-template field mappings (official label, page, section, required/protected flags) for future official PDF export
+- Never-invent enforcement for protected fields; steward overrides tracked as `steward_override` provenance
+- Default page plan pages 1–2; optional page 3 overflow only when requested/needed
+- Report-first drafting: `GrievanceFormDraftReportContent` (primary prefill) and `GrievanceFormDraftFollowUpContext` (secondary); raw uploads/concern are case context only
+- Tests: `tests/test_grievance_form_draft_builder.py`
+
+**Not yet implemented:** draft persistence/CRUD, steward editing UI, approve/export, API routes, DB tables, PDF/DOCX generation.
 
 **Scope (summary):** Template registry (Step 1/2/3), field mapping from saved case/report (no report regeneration), draft → validate → approve → export (PDF/DOCX), versioned forms tied to case and report version, protected storage under `data/generated/forms/` and `data/case_forms/`.
 
@@ -519,7 +529,9 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `app/services/follow_up_chat_service.py` | Follow-up Q&A grounding and answer generation |
 | `app/schemas/follow_up_schema.py` | Follow-up request/response models |
 | `app/schemas/grievance_template_schema.py` | Grievance template registry Pydantic models |
+| `app/schemas/grievance_form_draft_schema.py` | Editable grievance form draft Pydantic models |
 | `app/services/grievance_template_registry.py` | Static template registry, asset validation, output-path safety |
+| `app/services/grievance_form_draft_builder.py` | Draft builder from template + case/report-like input |
 | `app/assets/grievance_templates/` | Blank committed grievance form templates (e.g. Local 300 Form 79-1) |
 | `app/api/routes/cases.py` | Case REST API (`/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |
