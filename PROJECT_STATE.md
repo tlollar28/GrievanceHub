@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-04 (app-wide sensitive-data clarification; Phase 1.4 plan documented)
+Last updated: 2026-07-06 (Phase 1.4A template registry foundation)
 
 ## Architecture
 
@@ -286,11 +286,21 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 ## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation (planned)
 
-**Status:** Planning complete — **not implemented**. Branch target: `phase1-4-grievance-templates` from `phase1-3-followup-qa`.
+**Status:** Phase 1.4A (template registry foundation) implemented on branch `phase1-4-template-registry` — **not committed**. Slices 1.4B–1.4E not started.
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
-**Scope (summary):** Template registry (Step 1/2/3), field mapping from saved case/report (no report regeneration), draft → validate → approve → export (PDF/DOCX), versioned forms tied to case and report version, protected storage under `data/case_forms/`.
+**Phase 1.4A delivered (foundation only):**
+
+- Static Python registry: `app/services/grievance_template_registry.py` + `app/schemas/grievance_template_schema.py`
+- Local 300 Form 79-1 registered as **`step_2_appeal`** with Step 1 usage **`unconfirmed_pending_steward_confirmation`** and Step 3 **`deferred_separate_form_required`**
+- Config paths: `GRIEVANCE_TEMPLATE_DIR`, `GENERATED_FORM_OUTPUT_DIR` (`data/generated/forms/`), `CASE_FORM_OUTPUT_DIR` (`data/case_forms/`)
+- `.gitignore` hardened for generated filled forms
+- Tests: `tests/test_grievance_template_registry.py` (18 passed)
+
+**Not yet implemented:** form prefill, draft CRUD, approve/export, API routes, DB tables, steward editing UI.
+
+**Scope (summary):** Template registry (Step 1/2/3), field mapping from saved case/report (no report regeneration), draft → validate → approve → export (PDF/DOCX), versioned forms tied to case and report version, protected storage under `data/generated/forms/` and `data/case_forms/`.
 
 **Sensitive-data alignment:** Generated forms follow the **app-wide sensitive-data policy** (see above). Forms may contain names, EINs, facts, remedies, and citations — that is expected for official filing. Security controls target unauthorized access, accidental commits, public/static exposure, and raw logging — not removal of sensitive content from authorized outputs.
 
@@ -506,6 +516,8 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `app/services/case_service.py` | Case sessions, versioned reports, follow-up persistence |
 | `app/services/follow_up_chat_service.py` | Follow-up Q&A grounding and answer generation |
 | `app/schemas/follow_up_schema.py` | Follow-up request/response models |
+| `app/schemas/grievance_template_schema.py` | Grievance template registry Pydantic models |
+| `app/services/grievance_template_registry.py` | Static template registry, asset validation, output-path safety |
 | `app/api/routes/cases.py` | Case REST API (`/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |
 | `scripts/diagnose_regression.py` | Pipeline diagnostics |
