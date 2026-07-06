@@ -49,6 +49,8 @@ data/generated/forms/
 # Raw documents and exports
 *.xlsx
 *.pdf
+!app/assets/grievance_templates/
+!app/assets/grievance_templates/**
 
 # Local database files
 *.db

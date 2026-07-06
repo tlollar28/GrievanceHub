@@ -286,7 +286,7 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 ## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation (planned)
 
-**Status:** Phase 1.4A (template registry foundation) implemented on branch `phase1-4-template-registry` — **not committed**. Slices 1.4B–1.4E not started.
+**Status:** Phase 1.4A (template registry foundation) implemented on branch `phase1-4-template-registry` — committed locally (`bcc852c`). Template assets refactored to `app/assets/grievance_templates/` (pre-commit review pending). Slices 1.4B–1.4E not started.
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
@@ -294,8 +294,10 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 - Static Python registry: `app/services/grievance_template_registry.py` + `app/schemas/grievance_template_schema.py`
 - Local 300 Form 79-1 registered as **`step_2_appeal`** with Step 1 usage **`unconfirmed_pending_steward_confirmation`** and Step 3 **`deferred_separate_form_required`**
-- Config paths: `GRIEVANCE_TEMPLATE_DIR`, `GENERATED_FORM_OUTPUT_DIR` (`data/generated/forms/`), `CASE_FORM_OUTPUT_DIR` (`data/case_forms/`)
-- `.gitignore` hardened for generated filled forms
+- **Blank template assets:** `app/assets/grievance_templates/` (committed app assets; not under `data/`)
+- **Generated filled forms:** `data/generated/forms/`, `data/case_forms/` (gitignored runtime output only)
+- Config paths: `GRIEVANCE_TEMPLATE_DIR` (`app/assets/grievance_templates/`), `GENERATED_FORM_OUTPUT_DIR`, `CASE_FORM_OUTPUT_DIR`
+- `.gitignore` hardened for generated filled forms; exception for blank template PDFs under `app/assets/grievance_templates/`
 - Tests: `tests/test_grievance_template_registry.py` (18 passed)
 
 **Not yet implemented:** form prefill, draft CRUD, approve/export, API routes, DB tables, steward editing UI.
@@ -518,6 +520,7 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `app/schemas/follow_up_schema.py` | Follow-up request/response models |
 | `app/schemas/grievance_template_schema.py` | Grievance template registry Pydantic models |
 | `app/services/grievance_template_registry.py` | Static template registry, asset validation, output-path safety |
+| `app/assets/grievance_templates/` | Blank committed grievance form templates (e.g. Local 300 Form 79-1) |
 | `app/api/routes/cases.py` | Case REST API (`/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |
 | `scripts/diagnose_regression.py` | Pipeline diagnostics |

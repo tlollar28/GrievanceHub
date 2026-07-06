@@ -21,11 +21,11 @@ from app.services.grievance_template_registry import (
 
 LOCAL_300_TEMPLATE_ID = "local_300_standard_grievance_form_79_1"
 LOCAL_300_PDF = (
-    "data/templates/grievance/local_300/Standard_Grievance_Form-Local-300 (2).pdf"
+    "app/assets/grievance_templates/local_300/Standard_Grievance_Form-Local-300 (2).pdf"
 )
 LOCAL_300_JPGS = [
-    "data/templates/grievance/local_300/IMG_5394.jpg",
-    "data/templates/grievance/local_300/IMG_5395.jpg",
+    "app/assets/grievance_templates/local_300/IMG_5394.jpg",
+    "app/assets/grievance_templates/local_300/IMG_5395.jpg",
 ]
 
 
@@ -115,6 +115,12 @@ def test_generated_output_rejected_under_templates_or_static():
     assert (
         is_safe_generated_form_output_path(
             GRIEVANCE_TEMPLATE_DIR / "local_300" / "filled.pdf"
+        )
+        is False
+    )
+    assert (
+        is_safe_generated_form_output_path(
+            PROJECT_ROOT / "app" / "assets" / "grievance_templates" / "filled.pdf"
         )
         is False
     )

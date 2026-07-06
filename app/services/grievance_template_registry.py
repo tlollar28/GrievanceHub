@@ -22,10 +22,10 @@ from app.schemas.grievance_template_schema import (
 )
 
 _LOCAL_300_PDF = (
-    "data/templates/grievance/local_300/Standard_Grievance_Form-Local-300 (2).pdf"
+    "app/assets/grievance_templates/local_300/Standard_Grievance_Form-Local-300 (2).pdf"
 )
-_LOCAL_300_JPG_PAGE_1 = "data/templates/grievance/local_300/IMG_5394.jpg"
-_LOCAL_300_JPG_PAGE_2 = "data/templates/grievance/local_300/IMG_5395.jpg"
+_LOCAL_300_JPG_PAGE_1 = "app/assets/grievance_templates/local_300/IMG_5394.jpg"
+_LOCAL_300_JPG_PAGE_2 = "app/assets/grievance_templates/local_300/IMG_5395.jpg"
 
 _STANDARD_EDIT_BEFORE_PRINT = EditBeforePrintRequirement()
 
