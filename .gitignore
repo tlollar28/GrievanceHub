@@ -42,9 +42,15 @@ data/indexes/
 data/logs/
 uploads/
 
+# Generated grievance forms (filled exports — never commit)
+data/case_forms/
+data/generated/forms/
+
 # Raw documents and exports
 *.xlsx
 *.pdf
+!app/assets/grievance_templates/
+!app/assets/grievance_templates/**
 
 # Local database files
 *.db

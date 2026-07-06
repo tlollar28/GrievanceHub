@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-04 (Phase 1.3 follow-up Q&A — pre-commit review passed, not committed)
+Last updated: 2026-07-06 (Phase 1.4A template registry foundation)
 
 ## Architecture
 
@@ -35,6 +35,45 @@ flowchart TD
 **LMOU:** Approved in `AGENTS.md` but **not currently indexed** in the database. Retrieval and gap logic must **not** treat LMOU as available until documents are ingested and embedded.
 
 **Authoritative specs:** Report section requirements in `AGENTS.md` and `app/schemas/report_schema.py` (`REPORT_SECTIONS`, `GrievanceHubReport`). Implementation phases tracked in this document.
+
+---
+
+## Sensitive data and security model (app-wide)
+
+GrievanceHub is a **closed internal steward/admin application**. Only authorized stewards and union officials should have access. **Sensitive information is allowed throughout the app by design** — authorized outputs may intentionally contain sensitive grievance information.
+
+### Surfaces where sensitive data is expected
+
+| Surface | Sensitive data allowed? |
+|---------|-------------------------|
+| GrievanceHub Analysis Reports | Yes |
+| Follow-up Q&A | Yes |
+| Saved case workspaces | Yes |
+| Generated Step 1/2/3 grievance forms | Yes |
+| Exports / downloads (HTML, PDF, DOCX) | Yes |
+| Case history | Yes |
+| Future RAG outputs (protected-source lane, when authorized) | Yes |
+
+Examples of data that may appear: employee names, EINs/employee IDs, grievance facts, dates, management names, steward names, remedies, citations, and other case-specific or private grievance-related information.
+
+### Security goals (what we protect)
+
+The security goal is **not** to remove sensitive information from authorized steward/admin outputs.
+
+The security goal **is** to:
+
+- Keep unauthorized users out of the app
+- Prevent public or anonymous access to case data
+- Prevent accidental GitHub commits of private generated outputs
+- Prevent storage of case artifacts in public/static folders
+- Prevent raw sensitive logging (log metadata only, not narrative bodies or field values)
+- Prevent unauthenticated report, form, or export URLs
+- Prevent unintended uploads, syncs, deployments, or external transmission of private case artifacts
+- Keep reports, forms, exports, and history inside the authenticated case workspace workflow
+
+**Current state:** Export and case routes are development/local-only with an auth stub (`_authorize_export()`). Production authentication and case access controls are planned for Phase 1.7. Phase 1.4 grievance form generation extends the same containment model to generated forms.
+
+**Planning reference:** `data/reports/phase1_4_official_grievance_templates_plan_2026-07-04.md`
 
 ---
 
@@ -182,7 +221,7 @@ Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_
 
 ## Phase 1.3 — Follow-Up Q&A Grounded in Saved Cases/Reports
 
-**Status:** Complete on branch `phase1-3-followup-qa` (uncommitted, local-only). Pre-commit review passed 2026-07-04. **Not yet committed.**
+**Status:** Complete on branch `phase1-3-followup-qa` (committed locally 2026-07-04). Commit `b3bc528a7d77be5dfe2cbf4709eade0975effd9e` — `feat: add Phase 1.3 follow-up Q&A`.
 
 ### Scope delivered
 
@@ -241,9 +280,35 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 ### Recommended next phase
 
-**Phase 1.4 — Closed Internal App + Sensitive RAG Security Gate:** Harden local-only steward workflow, sensitive-data handling, and RAG access controls **before** arbitration, settlement, or other private-source ingestion. Proposed-remedy drafting and richer report-level relief blocks may follow within or after this security gate per roadmap priority.
+**Phase 1.4 — Official Step 1/2/3 grievance template generation** (planned, not started). See planning report below.
 
-**Deferred after 1.4 security gate:** Arbitration/settlement ingestion (Phase 1.6), LMOU indexing, supervisor-manual ingestion, grievance form generation (Phase 1.5), follow-up `POST /messages` default change (Phase 1.3 slice 2).
+---
+
+## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation (planned)
+
+**Status:** Phase 1.4A (template registry foundation) implemented on branch `phase1-4-template-registry` — committed locally (`bcc852c`). Template assets refactored to `app/assets/grievance_templates/` (pre-commit review pending). Slices 1.4B–1.4E not started.
+
+**Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
+
+**Phase 1.4A delivered (foundation only):**
+
+- Static Python registry: `app/services/grievance_template_registry.py` + `app/schemas/grievance_template_schema.py`
+- Local 300 Form 79-1 registered as **`step_2_appeal`** with Step 1 usage **`unconfirmed_pending_steward_confirmation`** and Step 3 **`deferred_separate_form_required`**
+- **Blank template assets:** `app/assets/grievance_templates/` (committed app assets; not under `data/`)
+- **Generated filled forms:** `data/generated/forms/`, `data/case_forms/` (gitignored runtime output only)
+- Config paths: `GRIEVANCE_TEMPLATE_DIR` (`app/assets/grievance_templates/`), `GENERATED_FORM_OUTPUT_DIR`, `CASE_FORM_OUTPUT_DIR`
+- `.gitignore` hardened for generated filled forms; exception for blank template PDFs under `app/assets/grievance_templates/`
+- Tests: `tests/test_grievance_template_registry.py` (18 passed)
+
+**Not yet implemented:** form prefill, draft CRUD, approve/export, API routes, DB tables, steward editing UI.
+
+**Scope (summary):** Template registry (Step 1/2/3), field mapping from saved case/report (no report regeneration), draft → validate → approve → export (PDF/DOCX), versioned forms tied to case and report version, protected storage under `data/generated/forms/` and `data/case_forms/`.
+
+**Sensitive-data alignment:** Generated forms follow the **app-wide sensitive-data policy** (see above). Forms may contain names, EINs, facts, remedies, and citations — that is expected for official filing. Security controls target unauthorized access, accidental commits, public/static exposure, and raw logging — not removal of sensitive content from authorized outputs.
+
+**Planning artifact:** `data/reports/phase1_4_official_grievance_templates_plan_2026-07-04.md`
+
+**Deferred after Phase 1.4:** Sensitive RAG Security Gate (Phase 1.7+), arbitration/settlement ingestion (Phase 1.6+), LMOU indexing, supervisor-manual ingestion, follow-up `POST /messages` default change (Phase 1.3 slice 2).
 
 ---
 
@@ -453,6 +518,9 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `app/services/case_service.py` | Case sessions, versioned reports, follow-up persistence |
 | `app/services/follow_up_chat_service.py` | Follow-up Q&A grounding and answer generation |
 | `app/schemas/follow_up_schema.py` | Follow-up request/response models |
+| `app/schemas/grievance_template_schema.py` | Grievance template registry Pydantic models |
+| `app/services/grievance_template_registry.py` | Static template registry, asset validation, output-path safety |
+| `app/assets/grievance_templates/` | Blank committed grievance form templates (e.g. Local 300 Form 79-1) |
 | `app/api/routes/cases.py` | Case REST API (`/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |
 | `scripts/diagnose_regression.py` | Pipeline diagnostics |

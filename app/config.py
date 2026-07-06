@@ -14,6 +14,19 @@ REPORT_DIR = DATA_DIR / "reports"
 REPORT_TEMPLATE_DIR = PROJECT_ROOT / "app" / "templates" / "reports"
 REPORT_STATIC_DIR = PROJECT_ROOT / "app" / "static" / "reports"
 
+# Blank grievance form templates (committed app assets — not runtime data/)
+GRIEVANCE_TEMPLATE_DIR = PROJECT_ROOT / "app" / "assets" / "grievance_templates"
+
+# Generated filled grievance forms — never commit; never write under GRIEVANCE_TEMPLATE_DIR
+GENERATED_FORM_OUTPUT_DIR = DATA_DIR / "generated" / "forms"
+CASE_FORM_OUTPUT_DIR = DATA_DIR / "case_forms"
+
+FORBIDDEN_GENERATED_FORM_PATH_PREFIXES: tuple[Path, ...] = (
+    GRIEVANCE_TEMPLATE_DIR,
+    PROJECT_ROOT / "app" / "static",
+    DATA_DIR / "templates",
+)
+
 import os
 
 DATABASE_URL = os.getenv(
