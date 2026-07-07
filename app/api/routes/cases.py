@@ -12,6 +12,13 @@ from app.services.case_service import (
     ReportVersionNotFoundError,
 )
 from app.services.follow_up_chat_service import FollowUpChatService
+from app.services.saved_case_service import SavedCaseService
+from app.schemas.saved_case_schema import (
+    OpenCaseRequest,
+    ReopenCaseRequest,
+    SavedCaseStatusFilter,
+)
+from app.schemas.case_step_progression_schema import StepType
 
 
 router = APIRouter(
@@ -125,6 +132,84 @@ def list_cases(status: str | None = None, db: Session = Depends(get_db)):
         "count": len(cases),
         "cases": [_serialize_case_summary(case) for case in cases],
     }
+
+
+@router.get("/saved")
+def list_saved_cases(
+    status: SavedCaseStatusFilter = "all",
+    step: StepType | None = None,
+    search: str | None = None,
+    order: Literal["newest_first", "oldest_first"] = "newest_first",
+    db: Session = Depends(get_db),
+):
+    return SavedCaseService.list_saved_cases(
+        db,
+        status_filter=status,
+        step_filter=step,
+        search=search,
+        newest_first=order == "newest_first",
+    ).model_dump(mode="json")
+
+
+@router.get("/saved/{case_uuid}")
+def get_saved_case(case_uuid: str, db: Session = Depends(get_db)):
+    try:
+        summary = SavedCaseService.get_saved_case(db, case_uuid)
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return summary.model_dump(mode="json")
+
+
+@router.post("/saved/{case_uuid}/open")
+def open_saved_case(
+    case_uuid: str,
+    payload: OpenCaseRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    try:
+        result = SavedCaseService.open_case(
+            db,
+            case_uuid,
+            source=(payload.source if payload else "manual_ui"),
+        )
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return result.model_dump(mode="json")
+
+
+@router.post("/saved/{case_uuid}/reopen")
+def reopen_saved_case(
+    case_uuid: str,
+    payload: ReopenCaseRequest | None = None,
+    db: Session = Depends(get_db),
+):
+    try:
+        result = SavedCaseService.reopen_case(
+            db,
+            case_uuid,
+            reason=payload.reason if payload else None,
+            source=(payload.source if payload else "manual_ui"),
+        )
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return result.model_dump(mode="json")
+
+
+@router.get("/saved/{case_uuid}/timeline")
+def get_saved_case_timeline(
+    case_uuid: str,
+    order: Literal["oldest_first", "newest_first"] = "oldest_first",
+    db: Session = Depends(get_db),
+):
+    try:
+        timeline = SavedCaseService.get_case_timeline(
+            db,
+            case_uuid,
+            newest_first=order == "newest_first",
+        )
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return timeline.model_dump(mode="json")
 
 
 @router.get("/{case_uuid}/workspace")
