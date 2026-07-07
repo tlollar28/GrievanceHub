@@ -88,6 +88,13 @@ class GrievanceCase(Base):
     report_versions: Mapped[list["CaseReportVersion"]] = relationship(
         back_populates="case"
     )
+    case_steps: Mapped[list["CaseStep"]] = relationship(back_populates="case")
+    timeline_events: Mapped[list["CaseTimelineEventRecord"]] = relationship(
+        back_populates="case",
+    )
+    form_draft_records: Mapped[list["CaseFormDraftRecord"]] = relationship(
+        back_populates="case",
+    )
 
 
 class CaseMessage(Base):
@@ -130,3 +137,163 @@ class CaseReportVersion(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     case: Mapped["GrievanceCase"] = relationship(back_populates="report_versions")
+
+
+class CaseStep(Base):
+    """One grievance step/stage within a saved case workspace (Phase 1.4D)."""
+
+    __tablename__ = "case_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
+    case_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    step_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    step_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="open")
+    is_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    was_reopened: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    appealed_from_prior_step: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    prior_step_id: Mapped[int | None] = mapped_column(
+        ForeignKey("case_steps.id"),
+        nullable=True,
+    )
+    prior_step_outcome_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    report_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("case_report_versions.id"),
+        nullable=True,
+    )
+    report_version_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    follow_up_message_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    template_id: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    template_available: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    template_availability: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    step_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    opened_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reopened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    case: Mapped["GrievanceCase"] = relationship(back_populates="case_steps")
+    prior_step: Mapped["CaseStep | None"] = relationship(
+        remote_side="CaseStep.id",
+        foreign_keys=[prior_step_id],
+    )
+    outcomes: Mapped[list["CaseStepOutcome"]] = relationship(
+        back_populates="case_step",
+        foreign_keys="CaseStepOutcome.case_step_id",
+    )
+    timeline_events: Mapped[list["CaseTimelineEventRecord"]] = relationship(
+        back_populates="case_step",
+    )
+    form_draft_records: Mapped[list["CaseFormDraftRecord"]] = relationship(
+        back_populates="case_step",
+    )
+
+
+class CaseStepOutcome(Base):
+    """Management decision/outcome for a grievance step (Phase 1.4D)."""
+
+    __tablename__ = "case_step_outcomes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    outcome_uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
+    case_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    case_step_id: Mapped[int] = mapped_column(ForeignKey("case_steps.id"), nullable=False)
+    step_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    outcome_type: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
+    decision_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decision_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    decision_maker_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    decision_maker_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    decision_document_refs: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    steward_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    close_step: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    close_case: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    appeal_to_next_step: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    next_step_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    case_step: Mapped["CaseStep"] = relationship(
+        back_populates="outcomes",
+        foreign_keys=[case_step_id],
+    )
+
+
+class CaseTimelineEventRecord(Base):
+    """Timestamped case workspace history event (Phase 1.4D)."""
+
+    __tablename__ = "case_timeline_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    event_uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
+    case_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    case_step_id: Mapped[int | None] = mapped_column(
+        ForeignKey("case_steps.id"),
+        nullable=True,
+    )
+    step_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    event_timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    report_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("case_report_versions.id"),
+        nullable=True,
+    )
+    report_version_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    follow_up_message_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    draft_record_id: Mapped[int | None] = mapped_column(
+        ForeignKey("case_form_draft_records.id"),
+        nullable=True,
+    )
+    draft_record_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    upload_refs: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    outcome_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    prior_step_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    next_step_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    export_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    case: Mapped["GrievanceCase"] = relationship(back_populates="timeline_events")
+    case_step: Mapped["CaseStep | None"] = relationship(back_populates="timeline_events")
+
+
+class CaseFormDraftRecord(Base):
+    """Persisted metadata for an editable grievance form draft (Phase 1.4D)."""
+
+    __tablename__ = "case_form_draft_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    draft_uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
+    case_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    case_step_id: Mapped[int] = mapped_column(ForeignKey("case_steps.id"), nullable=False)
+    template_id: Mapped[str] = mapped_column(String(150), nullable=False)
+    report_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("case_report_versions.id"),
+        nullable=True,
+    )
+    report_version_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    follow_up_message_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    draft_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    draft_status: Mapped[str] = mapped_column(String(50), nullable=False)
+    validation_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    missing_required_field_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    steward_override_field_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    approval_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    export_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    export_attempted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    exported_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    case: Mapped["GrievanceCase"] = relationship(back_populates="form_draft_records")
+    case_step: Mapped["CaseStep"] = relationship(back_populates="form_draft_records")

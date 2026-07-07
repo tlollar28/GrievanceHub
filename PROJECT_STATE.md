@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-06 (Phase 1.4C case step progression foundation)
+Last updated: 2026-07-06 (Phase 1.4E saved cases API / reopen workflow foundation)
 
 ## Architecture
 
@@ -286,7 +286,7 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 ## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation (planned)
 
-**Status:** Phase 1.4A (template registry foundation) committed locally (`bcc852c`); template assets refactored to `app/assets/grievance_templates/` (`50019c9`); Phase 1.4B (draft form builder foundation) committed locally (`6f84479`). Phase 1.4C (case step progression / outcome / draft history / reopenable timeline foundation) implemented on branch `phase1-4C-case-step-progression` — **not committed** (awaiting review). Slices 1.4D–1.4E not started.
+**Status:** Phase 1.4A (template registry foundation) committed locally (`bcc852c`); template assets refactored to `app/assets/grievance_templates/` (`50019c9`); Phase 1.4B (draft form builder foundation) committed locally (`6f84479`); Phase 1.4C (case step progression foundation) committed locally (`1a0b657`); Phase 1.4D (case step timeline / draft history database persistence) on branch `phase1-4D-persist-case-step-timeline` — **not committed** (awaiting review); Phase 1.4E (saved cases API / reopen workflow foundation) implemented on branch `phase1-4E-saved-cases-reopen-api` — **not committed** (awaiting review).
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
@@ -319,9 +319,33 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 - Step 2 draft integration wraps Phase 1.4B builder (`build_step_form_draft`) with case/step/report/follow-up context and history events
 - Step 1 template: **not available** (`unconfirmed_pending_steward_confirmation`); Step 3 template: **deferred** (`deferred_separate_form_required`); only Step 2 Local 300 Form 79-1 is buildable
 - Tests: `tests/test_case_step_progression.py` (23 passed, synthetic data only)
-- **Persistence deferred:** no Alembic migration or database tables in 1.4C (follows 1.4A/1.4B in-memory foundation pattern)
+- **Persistence deferred to 1.4D:** in-memory foundation only in 1.4C
 
-**Not yet implemented:** step progression DB persistence/CRUD, API routes, steward editing UI, approve/export, PDF/DOCX generation, final filled-form disk output.
+**Phase 1.4D delivered (case step timeline database persistence only):**
+
+- SQLAlchemy models: `CaseStep`, `CaseStepOutcome`, `CaseTimelineEventRecord`, `CaseFormDraftRecord` in `app/database/models.py`
+- Alembic migration `c4d5e6f7a8b9` — tables `case_steps`, `case_step_outcomes`, `case_timeline_events`, `case_form_draft_records`
+- Persistence service: `app/services/case_step_progression_persistence_service.py` — create/get steps, outcomes, close/reopen, Step 1 → Step 2 → Step 3 transitions, timeline events (oldest/newest-first), form draft history records
+- Same `case_uuid` preserved across steps, reopen, and appeal — prior close/outcome/timeline history is append-only in the database
+- Phase 1.4C in-memory service/schemas/tests remain intact alongside persistence layer
+- Foreign keys to `grievance_cases`, `case_steps`, and `case_report_versions` where straightforward; `prior_step_outcome_uuid` stored as string reference (no circular FK)
+- Step 1 template: **not available**; Step 3 template: **deferred**; only Step 2 Local 300 Form 79-1 is buildable
+- Tests: `tests/test_case_step_progression_persistence.py` (17 passed with PostgreSQL; skipped when DB unavailable)
+- **Not added:** steward editing UI, approve/export, PDF/DOCX generation, final filled-form disk output
+
+**Phase 1.4E delivered (saved cases API / reopen workflow foundation only):**
+
+- Saved case schemas: `app/schemas/saved_case_schema.py` — list/detail summaries, available actions, open/reopen requests/responses, timeline response
+- Saved case service: `app/services/saved_case_service.py` — list/filter/search saved cases by last activity, unified `open_case` / `reopen_case` (manual UI and AI command share same backend), timeline retrieval
+- API routes (registered before `/{case_uuid}` to avoid shadowing): `GET /cases/saved`, `GET /cases/saved/{case_uuid}`, `POST /cases/saved/{case_uuid}/open`, `POST /cases/saved/{case_uuid}/reopen`, `GET /cases/saved/{case_uuid}/timeline`
+- Reopen is idempotent when already open (no duplicate timeline event); closed cases require `reopen_case` (not `open_case`)
+- Reopen persists `case_reopened` timeline event via Phase 1.4D persistence + syncs `GrievanceCase.status`
+- Saved case list ordered by last timeline activity (newest-first default); filters by workspace status and current step
+- **UI:** polished saved-cases frontend deferred; backend ready for clickable case rows/cards and future AI commands
+- Tests: `tests/test_saved_cases_api.py`, `tests/test_saved_case_service.py` (26 passed)
+- **Not added:** PDF/DOCX export, source ingestion, polished steward UI, OpenAI integration
+
+**Not yet implemented:** steward editing UI, approve/export, PDF/DOCX generation, final filled-form disk output, production auth for saved-case routes.
 
 **Scope (summary):** Template registry (Step 1/2/3), field mapping from saved case/report (no report regeneration), same-case step progression with outcomes and reopenable history, draft → validate → approve → export (PDF/DOCX), versioned forms tied to case step and report version, protected storage under `data/generated/forms/` and `data/case_forms/`.
 
@@ -544,7 +568,10 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `app/services/grievance_template_registry.py` | Static template registry, asset validation, output-path safety |
 | `app/services/grievance_form_draft_builder.py` | Draft builder from template + case/report-like input |
 | `app/schemas/case_step_progression_schema.py` | Case step, outcome, timeline, and draft history Pydantic models |
-| `app/services/case_step_progression_service.py` | Same-case step progression, close/reopen, appeal, draft history |
+| `app/services/case_step_progression_service.py` | Same-case step progression, close/reopen, appeal, draft history (in-memory) |
+| `app/services/case_step_progression_persistence_service.py` | SQLAlchemy persistence for step progression, timeline, outcomes, draft records |
+| `app/schemas/saved_case_schema.py` | Saved case summary, open/reopen, timeline API models |
+| `app/services/saved_case_service.py` | Saved case list/query, unified open/reopen, timeline retrieval |
 | `app/assets/grievance_templates/` | Blank committed grievance form templates (e.g. Local 300 Form 79-1) |
 | `app/api/routes/cases.py` | Case REST API (`/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |
