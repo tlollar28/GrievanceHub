@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-06 (Phase 1.4E saved cases API / reopen workflow foundation)
+Last updated: 2026-07-06 (Phase 1.4F saved cases UI / clickable reopen workflow foundation)
 
 ## Architecture
 
@@ -286,7 +286,7 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 ## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation (planned)
 
-**Status:** Phase 1.4A (template registry foundation) committed locally (`bcc852c`); template assets refactored to `app/assets/grievance_templates/` (`50019c9`); Phase 1.4B (draft form builder foundation) committed locally (`6f84479`); Phase 1.4C (case step progression foundation) committed locally (`1a0b657`); Phase 1.4D (case step timeline / draft history database persistence) on branch `phase1-4D-persist-case-step-timeline` — **not committed** (awaiting review); Phase 1.4E (saved cases API / reopen workflow foundation) implemented on branch `phase1-4E-saved-cases-reopen-api` — **not committed** (awaiting review).
+**Status:** Phase 1.4A (template registry foundation) committed locally (`bcc852c`); template assets refactored to `app/assets/grievance_templates/` (`50019c9`); Phase 1.4B (draft form builder foundation) committed locally (`6f84479`); Phase 1.4C (case step progression foundation) committed locally (`1a0b657`); Phase 1.4D (case step timeline / draft history database persistence) on branch `phase1-4D-persist-case-step-timeline` — **not committed** (awaiting review); Phase 1.4E (saved cases API / reopen workflow foundation) implemented on branch `phase1-4E-saved-cases-reopen-api` — **not committed** (awaiting review); Phase 1.4F (saved cases UI / clickable reopen workflow foundation) implemented on branch `phase1-4F-saved-cases-ui-foundation` — **not committed** (awaiting review).
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
@@ -345,7 +345,17 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 - Tests: `tests/test_saved_cases_api.py`, `tests/test_saved_case_service.py` (26 passed)
 - **Not added:** PDF/DOCX export, source ingestion, polished steward UI, OpenAI integration
 
-**Not yet implemented:** steward editing UI, approve/export, PDF/DOCX generation, final filled-form disk output, production auth for saved-case routes.
+**Phase 1.4F delivered (saved cases UI / clickable reopen workflow foundation only):**
+
+- **UI:** Polished saved-cases frontend **deferred** (no React/Next.js app in repo yet). Steward-facing screen spec documented in `docs/saved_cases_ui_contract.md`.
+- API client helper: `app/clients/saved_case_client.py` — `SavedCaseApiClient` wraps Phase 1.4E endpoints; `resolve_case_click_action()` and `activate_case()` implement clickable open/reopen behavior for future UI.
+- Manual row/card click reopen and future AI-command reopen both call `POST /cases/saved/{case_uuid}/reopen` via the same backend `SavedCaseService` — **no duplicate reopen path**.
+- Click workflow: closed case → `reopen_case`; active case → `open_case`; then navigate to `GET /cases/{case_uuid}/workspace`.
+- Timeline: client helper calls `GET /cases/saved/{case_uuid}/timeline` (oldest-first default).
+- Tests: `tests/test_saved_case_client.py` (client + click workflow); existing `tests/test_saved_cases_api.py`, `tests/test_saved_case_service.py` unchanged and passing.
+- **Not added:** PDF/DOCX export, source ingestion, generated filled forms, production auth UI, OpenAI integration, committed frontend app.
+
+**Not yet implemented:** steward editing UI, approve/export, PDF/DOCX generation, final filled-form disk output, production auth for saved-case routes, Phase 4 React/Next.js saved-cases screen.
 
 **Scope (summary):** Template registry (Step 1/2/3), field mapping from saved case/report (no report regeneration), same-case step progression with outcomes and reopenable history, draft → validate → approve → export (PDF/DOCX), versioned forms tied to case step and report version, protected storage under `data/generated/forms/` and `data/case_forms/`.
 
@@ -572,6 +582,8 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `app/services/case_step_progression_persistence_service.py` | SQLAlchemy persistence for step progression, timeline, outcomes, draft records |
 | `app/schemas/saved_case_schema.py` | Saved case summary, open/reopen, timeline API models |
 | `app/services/saved_case_service.py` | Saved case list/query, unified open/reopen, timeline retrieval |
+| `app/clients/saved_case_client.py` | Frontend-ready HTTP client for saved cases open/reopen/timeline |
+| `docs/saved_cases_ui_contract.md` | Deferred saved-cases UI route/component contract |
 | `app/assets/grievance_templates/` | Blank committed grievance form templates (e.g. Local 300 Form 79-1) |
 | `app/api/routes/cases.py` | Case REST API (`/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |
