@@ -1,6 +1,6 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-06 (Phase 1.4B draft form builder foundation)
+Last updated: 2026-07-06 (Phase 1.4C case step progression foundation)
 
 ## Architecture
 
@@ -286,7 +286,7 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 ## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation (planned)
 
-**Status:** Phase 1.4A (template registry foundation) committed locally (`bcc852c`); template assets refactored to `app/assets/grievance_templates/` (`50019c9`). Phase 1.4B (draft form builder foundation) implemented on branch `phase1-4B-draft-form-builder` — **not committed** (awaiting review). Slices 1.4C–1.4E not started.
+**Status:** Phase 1.4A (template registry foundation) committed locally (`bcc852c`); template assets refactored to `app/assets/grievance_templates/` (`50019c9`); Phase 1.4B (draft form builder foundation) committed locally (`6f84479`). Phase 1.4C (case step progression / outcome / draft history / reopenable timeline foundation) implemented on branch `phase1-4C-case-step-progression` — **not committed** (awaiting review). Slices 1.4D–1.4E not started.
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
@@ -310,9 +310,20 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 - Report-first drafting: `GrievanceFormDraftReportContent` (primary prefill) and `GrievanceFormDraftFollowUpContext` (secondary); raw uploads/concern are case context only
 - Tests: `tests/test_grievance_form_draft_builder.py`
 
-**Not yet implemented:** draft persistence/CRUD, steward editing UI, approve/export, API routes, DB tables, PDF/DOCX generation.
+**Phase 1.4C delivered (case step progression foundation only):**
 
-**Scope (summary):** Template registry (Step 1/2/3), field mapping from saved case/report (no report regeneration), draft → validate → approve → export (PDF/DOCX), versioned forms tied to case and report version, protected storage under `data/generated/forms/` and `data/case_forms/`.
+- Step progression schemas: `app/schemas/case_step_progression_schema.py` — step types/statuses, outcomes, timestamped timeline events, form draft history records
+- Step progression service: `app/services/case_step_progression_service.py` — in-memory same-case Step 1 → Step 2 → Step 3 lifecycle, decision/outcome capture, close/reopen, appeal transitions, draft history linkage
+- Same `case_uuid` preserved across steps, reopen, and appeal — prior close/outcome history is append-only (never deleted or overwritten)
+- Timestamped case timeline with oldest-first and newest-first ordering helpers
+- Step 2 draft integration wraps Phase 1.4B builder (`build_step_form_draft`) with case/step/report/follow-up context and history events
+- Step 1 template: **not available** (`unconfirmed_pending_steward_confirmation`); Step 3 template: **deferred** (`deferred_separate_form_required`); only Step 2 Local 300 Form 79-1 is buildable
+- Tests: `tests/test_case_step_progression.py` (23 passed, synthetic data only)
+- **Persistence deferred:** no Alembic migration or database tables in 1.4C (follows 1.4A/1.4B in-memory foundation pattern)
+
+**Not yet implemented:** step progression DB persistence/CRUD, API routes, steward editing UI, approve/export, PDF/DOCX generation, final filled-form disk output.
+
+**Scope (summary):** Template registry (Step 1/2/3), field mapping from saved case/report (no report regeneration), same-case step progression with outcomes and reopenable history, draft → validate → approve → export (PDF/DOCX), versioned forms tied to case step and report version, protected storage under `data/generated/forms/` and `data/case_forms/`.
 
 **Sensitive-data alignment:** Generated forms follow the **app-wide sensitive-data policy** (see above). Forms may contain names, EINs, facts, remedies, and citations — that is expected for official filing. Security controls target unauthorized access, accidental commits, public/static exposure, and raw logging — not removal of sensitive content from authorized outputs.
 
@@ -532,6 +543,8 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `app/schemas/grievance_form_draft_schema.py` | Editable grievance form draft Pydantic models |
 | `app/services/grievance_template_registry.py` | Static template registry, asset validation, output-path safety |
 | `app/services/grievance_form_draft_builder.py` | Draft builder from template + case/report-like input |
+| `app/schemas/case_step_progression_schema.py` | Case step, outcome, timeline, and draft history Pydantic models |
+| `app/services/case_step_progression_service.py` | Same-case step progression, close/reopen, appeal, draft history |
 | `app/assets/grievance_templates/` | Blank committed grievance form templates (e.g. Local 300 Form 79-1) |
 | `app/api/routes/cases.py` | Case REST API (`/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |
