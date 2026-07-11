@@ -6,6 +6,12 @@ Permanent guidance for AI agents and developers working on GrievanceHub.
 
 GrievanceHub is a production-grade union case management and grievance research platform for USPS/NPMHU stewards. The backend produces structured **GrievanceHub Analysis Reports** from steward questions, case facts, uploaded files, and retrieved official sources.
 
+## Permanent Product Principle
+
+**The application manages the workflow. The steward manages the grievance.**
+
+GrievanceHub is an AI-first case workspace. Case-specific AI chat is always present on active case-work pages. Chat submission automatically persists conversation, refreshes analysis, and advances the current immutable report version. Stewards must not be required to click Save Context, Update Analysis, Reanalyze, or Start Chat. Canonical chat route: `POST /cases/{case_uuid}/interactions`. Generate Grievance remains an explicit optional action.
+
 ## Approved Sources (Strict)
 
 Use **only** these source types in retrieval and analysis:

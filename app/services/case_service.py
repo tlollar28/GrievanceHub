@@ -68,6 +68,7 @@ class CaseService:
             .options(
                 joinedload(GrievanceCase.messages),
                 joinedload(GrievanceCase.report_versions),
+                joinedload(GrievanceCase.assets),
             )
             .filter(GrievanceCase.case_uuid == case_uuid)
             .first()
@@ -76,6 +77,7 @@ class CaseService:
             raise CaseNotFoundError(case_uuid)
         case.messages.sort(key=lambda m: m.created_at)
         case.report_versions.sort(key=lambda v: v.version_number)
+        case.assets.sort(key=lambda a: (a.created_at or datetime.min, a.id))
         return case
 
     @staticmethod
@@ -259,6 +261,12 @@ class CaseService:
                 case.case_uuid,
                 latest.version_number if latest else None,
             ),
+            "assets": CaseService.serialize_case_assets(case),
+            "uploaded_assets": [
+                asset
+                for asset in CaseService.serialize_case_assets(case)
+                if asset.get("asset_category") == "uploaded_document"
+            ],
         }
         return workspace
 
@@ -361,7 +369,70 @@ class CaseService:
         return case
 
     @staticmethod
-    def _collect_upload_metadata(case: GrievanceCase) -> list[dict]:
+    def serialize_case_assets(case: GrievanceCase) -> list[dict]:
+        """Serialize first-class case assets for workspace reopen payloads."""
+        assets: list[dict] = []
+        for row in getattr(case, "assets", None) or []:
+            if row.status and row.status != "active":
+                continue
+            assets.append(
+                {
+                    "asset_uuid": row.asset_uuid,
+                    "case_uuid": row.case_uuid,
+                    "asset_category": row.asset_category,
+                    "original_filename": row.original_filename,
+                    "stored_filename": row.stored_filename,
+                    "stored_path": row.stored_path,
+                    "mime_type": row.mime_type,
+                    "file_size": row.file_size,
+                    "sha256": row.sha256,
+                    "uploaded_by": row.uploaded_by,
+                    "source": row.source,
+                    "version_number": row.version_number,
+                    "parent_asset_uuid": row.parent_asset_uuid,
+                    "report_version_id": row.report_version_id,
+                    "report_version_number": row.report_version_number,
+                    "draft_record_uuid": row.draft_record_uuid,
+                    "status": row.status,
+                    "asset_metadata": row.asset_metadata,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                }
+            )
+        return assets
+
+    @staticmethod
+    def _collect_asset_upload_metadata(case: GrievanceCase) -> list[dict]:
+        """First-class uploaded_document assets (preferred over message metadata)."""
+        uploads: list[dict] = []
+        for row in getattr(case, "assets", None) or []:
+            if row.asset_category != "uploaded_document":
+                continue
+            if row.status and row.status != "active":
+                continue
+            uploads.append(
+                {
+                    "asset_uuid": row.asset_uuid,
+                    "file_id": row.asset_uuid,
+                    "ref": row.asset_uuid,
+                    "filename": row.original_filename,
+                    "original_filename": row.original_filename,
+                    "stored_filename": row.stored_filename,
+                    "stored_path": row.stored_path,
+                    "mime_type": row.mime_type,
+                    "file_size": row.file_size,
+                    "sha256": row.sha256,
+                    "asset_category": row.asset_category,
+                    "source": row.source,
+                    "uploaded_by": row.uploaded_by,
+                    "version_number": row.version_number,
+                    "status": row.status,
+                }
+            )
+        return uploads
+
+    @staticmethod
+    def _collect_legacy_message_upload_metadata(case: GrievanceCase) -> list[dict]:
         uploads: list[dict] = []
         for message in case.messages or []:
             meta = message.message_metadata or {}
@@ -370,6 +441,31 @@ class CaseService:
             elif meta.get("filename") or meta.get("file_id") or meta.get("file"):
                 uploads.append(meta)
         return uploads
+
+    @staticmethod
+    def _collect_upload_metadata(case: GrievanceCase) -> list[dict]:
+        """Merge first-class case assets with legacy message upload metadata.
+
+        Asset UUIDs take precedence: legacy message refs that already point at a
+        known asset_uuid are not duplicated.
+        """
+        asset_uploads = CaseService._collect_asset_upload_metadata(case)
+        known_ids = {
+            item.get("asset_uuid") or item.get("file_id") or item.get("ref")
+            for item in asset_uploads
+            if item.get("asset_uuid") or item.get("file_id") or item.get("ref")
+        }
+        merged = list(asset_uploads)
+        for item in CaseService._collect_legacy_message_upload_metadata(case):
+            if not isinstance(item, dict):
+                continue
+            ref = item.get("asset_uuid") or item.get("file_id") or item.get("ref")
+            if ref and ref in known_ids:
+                continue
+            merged.append(item)
+            if ref:
+                known_ids.add(ref)
+        return merged
 
     @staticmethod
     def build_case_context(case: GrievanceCase) -> dict:
@@ -394,6 +490,7 @@ class CaseService:
                 for message in messages
             ],
             "uploaded_files": CaseService._collect_upload_metadata(case),
+            "case_assets": CaseService.serialize_case_assets(case),
         }
 
     @staticmethod

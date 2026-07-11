@@ -21,3 +21,18 @@ GrievanceHub helps union representatives manage grievance cases, analyze uploade
 This project is not being built as a temporary prototype.
 
 All major implementation decisions should support the long-term production version of GrievanceHub.
+
+## Permanent Product Principle (AI-first workspace)
+
+**The application manages the workflow. The steward manages the grievance.**
+
+GrievanceHub is an AI-first grievance case workspace. Case-specific AI chat is
+always present on active case-work pages. Submitting a chat interaction
+automatically persists conversation, merges safe context, refreshes analysis,
+and advances the current immutable report version. The steward must not be
+required to click Save Context, Update Analysis, Reanalyze, or Start Chat.
+
+- Canonical chat: `POST /cases/{case_uuid}/interactions`
+- Explicit optional action: `POST /cases/{case_uuid}/actions` with `generate_grievance`
+- Each case owns an isolated conversation; context must never bleed across cases
+- Chat does not appear on print/export/login/settings/admin-only pages

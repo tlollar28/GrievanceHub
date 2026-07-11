@@ -95,6 +95,7 @@ class GrievanceCase(Base):
     form_draft_records: Mapped[list["CaseFormDraftRecord"]] = relationship(
         back_populates="case",
     )
+    assets: Mapped[list["CaseAsset"]] = relationship(back_populates="case")
 
 
 class CaseMessage(Base):
@@ -297,3 +298,48 @@ class CaseFormDraftRecord(Base):
 
     case: Mapped["GrievanceCase"] = relationship(back_populates="form_draft_records")
     case_step: Mapped["CaseStep"] = relationship(back_populates="form_draft_records")
+
+
+class CaseAsset(Base):
+    """First-class case-owned artifact (Phase W3 Case Asset foundation).
+
+    Uploaded documents are the only executable category in W3. Other categories
+    (generated reports, grievances, exports, future attachments) share this
+    table so later phases do not redesign the data model.
+    """
+
+    __tablename__ = "case_assets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    asset_uuid: Mapped[str] = mapped_column(
+        String(36), unique=True, nullable=False, index=True
+    )
+    case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
+    case_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    asset_category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    original_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stored_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stored_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mime_type: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sha256: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    uploaded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="api")
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    parent_asset_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    report_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("case_report_versions.id"),
+        nullable=True,
+    )
+    report_version_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    draft_record_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
+    asset_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    case: Mapped["GrievanceCase"] = relationship(back_populates="assets")

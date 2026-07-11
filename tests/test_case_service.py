@@ -96,6 +96,7 @@ def test_build_case_context_collects_uploads_and_messages():
     ctx = CaseService.build_case_context(case)
     assert ctx["case_id"] == "case-123"
     assert ctx["uploaded_files"] == [{"filename": "approval.pdf"}]
+    assert ctx["case_assets"] == []
     assert ctx["messages"][0]["role"] == "user"
 
 
@@ -251,3 +252,5 @@ def test_get_case_workspace_aggregate_shape():
     assert len(workspace["report_versions"]) == 1
     assert workspace["exports"]["pdf_url"] == "/cases/workspace-case/versions/1/export/pdf"
     assert workspace["retrieval_gaps_summary"]["has_gaps"] is True
+    assert workspace["assets"] == []
+    assert workspace["uploaded_assets"] == []
