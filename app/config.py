@@ -22,6 +22,10 @@ GRIEVANCE_TEMPLATE_DIR = PROJECT_ROOT / "app" / "assets" / "grievance_templates"
 GENERATED_FORM_OUTPUT_DIR = DATA_DIR / "generated" / "forms"
 CASE_FORM_OUTPUT_DIR = DATA_DIR / "case_forms"
 
+# Case-owned assets (uploads, future reports/grievances/exports) — local storage only
+CASE_ASSET_DIR = DATA_DIR / "case_assets"
+CASE_ASSET_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
 FORBIDDEN_GENERATED_FORM_PATH_PREFIXES: tuple[Path, ...] = (
     GRIEVANCE_TEMPLATE_DIR,
     PROJECT_ROOT / "app" / "static",

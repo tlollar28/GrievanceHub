@@ -46,6 +46,9 @@ uploads/
 data/case_forms/
 data/generated/forms/
 
+# Case-owned assets (uploads and future generated artifacts — never commit)
+data/case_assets/
+
 # Raw documents and exports
 *.xlsx
 *.pdf

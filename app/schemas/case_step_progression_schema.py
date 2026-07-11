@@ -53,6 +53,8 @@ TimelineEventType = Literal[
     "files_uploaded",
     "concern_added",
     "analysis_report_generated",
+    "context_saved",
+    "analysis_updated",
     "follow_up_added",
     "form_draft_created",
     "missing_fields_updated",

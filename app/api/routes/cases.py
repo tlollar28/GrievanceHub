@@ -1,6 +1,6 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -11,6 +11,12 @@ from app.services.case_service import (
     CaseService,
     ReportVersionNotFoundError,
 )
+from app.services.case_asset_service import (
+    CaseAssetCategoryNotExecutableError,
+    CaseAssetNotFoundError,
+    CaseAssetService,
+    CaseAssetValidationError,
+)
 from app.services.follow_up_chat_service import FollowUpChatService
 from app.services.saved_case_service import SavedCaseService
 from app.schemas.saved_case_schema import (
@@ -18,7 +24,13 @@ from app.schemas.saved_case_schema import (
     ReopenCaseRequest,
     SavedCaseStatusFilter,
 )
+from app.schemas.case_asset_schema import CaseAssetCategory
 from app.schemas.case_step_progression_schema import StepType
+from app.schemas.case_workspace_action_schema import (
+    CaseInteractionRequest,
+    WorkspaceActionRequest,
+)
+from app.services.case_workspace_action_service import CaseWorkspaceActionService
 
 
 router = APIRouter(
@@ -219,6 +231,124 @@ def get_case_workspace(case_uuid: str, db: Session = Depends(get_db)):
     except CaseNotFoundError:
         raise HTTPException(status_code=404, detail="Case not found")
     return workspace
+
+
+@router.get("/{case_uuid}/assets")
+def list_case_assets(
+    case_uuid: str,
+    category: CaseAssetCategory | None = None,
+    db: Session = Depends(get_db),
+):
+    """List first-class case assets (uploads and future generated artifacts)."""
+    service = CaseAssetService(db)
+    try:
+        result = service.list_assets(case_uuid, category=category)
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return result.model_dump(mode="json")
+
+
+@router.post("/{case_uuid}/assets")
+async def upload_case_asset(
+    case_uuid: str,
+    file: UploadFile = File(...),
+    category: CaseAssetCategory = Form("uploaded_document"),
+    uploaded_by: str | None = Form(None),
+    source: str = Form("api"),
+    db: Session = Depends(get_db),
+):
+    """Upload a case asset. Only ``uploaded_document`` is executable in W3."""
+    service = CaseAssetService(db)
+    content = await file.read()
+    try:
+        result = service.create_asset(
+            case_uuid,
+            category=category,
+            filename=file.filename,
+            content=content,
+            mime_type=file.content_type,
+            uploaded_by=uploaded_by,
+            source=source,
+        )
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    except CaseAssetCategoryNotExecutableError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except CaseAssetValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result.model_dump(mode="json")
+
+
+@router.get("/{case_uuid}/assets/{asset_uuid}")
+def get_case_asset(
+    case_uuid: str,
+    asset_uuid: str,
+    db: Session = Depends(get_db),
+):
+    """Return metadata for one case asset (no file body)."""
+    service = CaseAssetService(db)
+    try:
+        asset = service.get_asset(case_uuid, asset_uuid)
+    except CaseNotFoundError:
+        raise HTTPException(status_code=404, detail="Case not found")
+    except CaseAssetNotFoundError:
+        raise HTTPException(status_code=404, detail="Case asset not found")
+    return asset.model_dump(mode="json")
+
+
+@router.post("/{case_uuid}/interactions")
+def submit_case_interaction(
+    case_uuid: str,
+    payload: CaseInteractionRequest,
+    db: Session = Depends(get_db),
+):
+    """Canonical AI-first case chat interaction.
+
+    Permanent principle: the application manages the workflow; the steward
+    manages the grievance. Submitting a chat message automatically persists
+    conversation, merges safe context, refreshes analysis (one new immutable
+    report version), updates the timeline, and returns synchronized workspace
+    state plus Generate Grievance availability.
+
+    Generate Grievance remains a separate explicit action on
+    ``POST /cases/{case_uuid}/actions``.
+
+    Compatibility (not preferred for future UI): ``POST /messages``,
+    ``POST /followups``, ``POST /reports/regenerate``, and
+    ``actions`` ``save_and_update_analysis``.
+    """
+    service = CaseWorkspaceActionService(db)
+    result = service.submit_interaction(case_uuid, payload)
+    if result.status == "case_not_found":
+        raise HTTPException(status_code=404, detail="Case not found")
+    return result.model_dump(mode="json")
+
+
+@router.post("/{case_uuid}/actions")
+def execute_case_workspace_action(
+    case_uuid: str,
+    payload: WorkspaceActionRequest,
+    db: Session = Depends(get_db),
+):
+    """Workspace actions route.
+
+    Steward-facing explicit action:
+
+    - ``generate_grievance`` — Generate Grievance (W5; availability only until then)
+
+    Compatibility / internal (do not render as Update Analysis UI button):
+
+    - ``save_and_update_analysis`` — analysis refresh primitive
+
+    Canonical case chat is ``POST /cases/{case_uuid}/interactions``.
+    Legacy ``POST /messages``, ``POST /followups``, and
+    ``POST /reports/regenerate`` remain temporarily supported.
+    """
+    service = CaseWorkspaceActionService(db)
+    result = service.execute_action(case_uuid, payload)
+    if result.status == "case_not_found":
+        raise HTTPException(status_code=404, detail="Case not found")
+    return result.model_dump(mode="json")
 
 
 @router.post("/{case_uuid}/reports/regenerate")
