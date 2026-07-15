@@ -6,7 +6,9 @@ AI-powered grievance case analysis and workflow platform for USPS/NPMHU stewards
 
 GrievanceHub is a living case workspace — not a basic chatbot. Case-specific AI chat, cumulative facts/evidence, grounded analysis reports, and versioned history stay attached to each saved case.
 
-> **Status:** Active development. Not production-ready for sensitive grievance data. Authentication/RBAC are not implemented.
+> **Status:** Active development. Not production-ready for sensitive grievance data. Authentication/RBAC are not implemented. Do not use real grievance/employee data yet.
+
+No license has been selected for this repository.
 
 ## Current capabilities
 
@@ -86,11 +88,51 @@ Template note: only **Step 2 Local 300 Form 79-1** is currently buildable. Step 
 
 ### Prerequisites
 
+- Git
 - Docker / Docker Compose
-- Python virtual environment
-- OpenAI API key (local `.env`)
+- Python 3.x
+- An OpenAI API key for local analysis/chat (kept only in your private `.env`)
 
-### Database
+### 1. Clone
+
+```bash
+git clone <repository-url>
+cd GrievanceHub
+```
+
+### 2. Create and activate a virtual environment
+
+```bash
+python -m venv venv
+```
+
+Windows (PowerShell / cmd):
+
+```bash
+venv\Scripts\activate
+```
+
+macOS / Linux:
+
+```bash
+source venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+### 4. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set a local `OPENAI_API_KEY=...` placeholder replacement. Never commit `.env`.
+
+### 5. Start PostgreSQL + pgvector
 
 ```bash
 docker compose up -d
@@ -98,24 +140,45 @@ docker compose up -d
 
 This starts PostgreSQL 16 with pgvector using local development credentials from `docker-compose.yml`.
 
-### Environment
-
-```bash
-cp .env.example .env
-# Edit .env and set OPENAI_API_KEY=...
-```
-
-### Migrations and API
+### 6. Run migrations
 
 ```bash
 alembic upgrade head
-uvicorn app.main:app --reload
 ```
 
-Windows example with project venv:
+Windows example with the project venv:
 
 ```bash
 venv\Scripts\python.exe -m alembic upgrade head
+```
+
+### 7. Official source files (local only)
+
+Official CONTRACT / CIM / ELM PDFs and zips are **not** committed (gitignored). The repository tracks:
+
+- `app/sources/manifest.json` — relative `local_path` entries and download metadata
+- `app/sources/source_index.json` — committed text-chunk index used by retrieval
+- `app/sources/source_registry.json`
+
+Blank Local 300 grievance templates under `app/assets/grievance_templates/` **are** tracked.
+
+To download official binaries into the expected local paths:
+
+```bash
+python scripts/download_sources.py
+```
+
+Do not commit downloaded PDFs/zips, uploads, case assets, generated filled forms, or private reports.
+
+### 8. Start the API
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Windows example:
+
+```bash
 venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
@@ -125,14 +188,16 @@ WeasyPrint requires MSYS2 Pango (`mingw-w64-x86_64-pango`). See comments in `req
 
 ## Testing
 
-```bash
-pytest tests/ -v
-```
-
-Non-integration suite:
+Non-integration suite (default for local verification; does not require live OpenAI for most tests):
 
 ```bash
 pytest tests/ -m "not integration" -v
+```
+
+Full suite:
+
+```bash
+pytest tests/ -v
 ```
 
 Optional live regression (calls the analysis pipeline; requires DB + OpenAI):
@@ -142,7 +207,7 @@ set RUN_REGRESSION=1
 pytest tests/test_regression_harness.py::test_regression_live_pipeline_smoke -v -s
 ```
 
-Do not commit runtime outputs under `data/reports/`, `data/case_assets/`, `uploads/`, or generated filled forms.
+Do not commit runtime outputs under `data/reports/`, `data/case_assets/`, `uploads/`, or generated filled forms. Do not commit private grievance or employee data.
 
 ## Project roadmap
 

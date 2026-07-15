@@ -32,16 +32,13 @@ Phase W3). Planned frontend, auth, and agentic systems are roadmap items only.
 
 **Not present in the current repository:** React/Next.js frontend, LangChain,
 PyTorch/TensorFlow/Hugging Face ML stacks, Redis/Celery workers, Kubernetes/
-Terraform production deploy configs with content, or GitHub Actions CI workflows.
-
-Empty `frontend/`, `backend/`, and scaffold `infra/` directories may exist as
-placeholders only.
+Terraform production deploy configs, or GitHub Actions CI workflows.
 
 ## High-Level Shape
 
 ```text
 Steward / API client
-  → FastAPI routes (/cases, /sources, export routes, legacy upload helpers)
+  → FastAPI routes (/cases, /sources, analysis export routes)
     → Case workspace orchestration (interactions, actions, assets, saved cases)
       → Analysis pipeline (RAG + structured report)
       → PostgreSQL + pgvector
@@ -57,6 +54,8 @@ Primary routers (registered in `app/main.py`):
 | Cases | `app/api/routes/cases.py` | Create/list cases, workspace, interactions, actions, assets, saved reopen, follow-ups, versions |
 | Sources | `app/api/routes/sources.py` | Source ingest/search/report helpers |
 | Exports | `app/api/routes/exports.py` | HTML/PDF analysis-report export |
+
+Also registered: `GET /health`.
 
 Canonical steward chat:
 
@@ -106,6 +105,12 @@ types.
 
 Relevance gates live in `app/retrieval_config.py` and must not be bypassed.
 
+Official source PDFs/zips are **not** committed (gitignored). The repository
+tracks `app/sources/manifest.json`, `source_index.json`, and
+`source_registry.json`. Local binaries are obtained via the source-download /
+manifest workflow (`scripts/download_sources.py`). Blank Local 300 templates
+under `app/assets/grievance_templates/` **are** tracked.
+
 ## Case Workspace Model
 
 Core persistence (Alembic migrations through `d5e6f7a8b9c0`):
@@ -152,6 +157,8 @@ case-file RAG ingestion are not implemented.
   public anonymous access must not be allowed in production
 - Runtime outputs (`data/reports/`, `data/case_assets/`, generated forms,
   uploads) are gitignored and must not be committed
+- This repository is under active development and is **not** production-ready
+  for sensitive grievance data
 
 ## Roadmap (Not Current Features)
 
@@ -168,4 +175,4 @@ case-file RAG ingestion are not implemented.
 - `AGENTS.md` — permanent agent/product rules
 - `PROJECT_STATE.md` — phase history and verification record
 - `docs/saved_cases_ui_contract.md` — deferred UI contract for saved cases
-- `README.md` — employer-facing project overview
+- `README.md` — project overview and local setup

@@ -1,0 +1,12 @@
+# Normalize text files to LF and keep UTF-8 for dependency/install docs.
+* text=auto eol=lf
+
+requirements.txt text eol=lf working-tree-encoding=UTF-8
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ini text eol=lf
+*.toml text eol=lf
+*.example text eol=lf

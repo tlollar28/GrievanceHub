@@ -1,26 +1,28 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-15 (documentation and portable source paths)
+Last updated: 2026-07-15 (GitHub publication readiness: setup docs + portable sources)
 
 ## Current status (source of truth)
 
 | Item | State |
 |------|--------|
-| Branch | `phase-W3-case-asset-foundation` |
-| Latest commit | `8442f58` — `feat: add AI-first case interactions and case asset foundation` |
-| W1–W3 | **Complete and committed** (AI-first workspace + case assets) |
+| Branch | `main` |
+| Latest commit | Updated by the GitHub readiness docs/setup commit on `main` (see `git log -1`) |
+| W1–W3 | **Complete** (AI-first workspace + case assets) |
 | W4 | **Not started** (enriched reopen workspace; step progression init on create) |
 | W5 | **Not started** (Generate Grievance execution) |
 | React/Next UI | **Not present** (contract/docs only) |
 | Auth / RBAC | **Not implemented** (required before production) |
 | LMOU / arbitration / supervisor-manual ingestion | **Not implemented** |
 | Agentic / multi-agent / graph RAG | **Future roadmap only** |
+| Production readiness | **Not production-ready** for sensitive grievance data |
+| License | **No license selected** |
 
 **Permanent product principle:** The application manages the workflow. The steward manages the grievance.
 
 GrievanceHub is an AI-powered living grievance case workspace — not a basic chatbot. Canonical chat route: `POST /cases/{case_uuid}/interactions`. The steward-facing Update Analysis button is obsolete. Generate Grievance remains explicit; execution is deferred to W5. Step 2 Local 300 Form 79-1 is the only currently buildable form template.
 
-Official source `local_path` values in `app/sources/manifest.json` are repository-relative (`app/sources/...`) and resolve from `PROJECT_ROOT`.
+Official source `local_path` values in `app/sources/manifest.json` are repository-relative (`app/sources/...`) and resolve from `PROJECT_ROOT`. Official PDFs/zips are not committed; use `scripts/download_sources.py` / the manifest workflow locally. Blank Local 300 templates under `app/assets/grievance_templates/` are tracked.
 
 ## Architecture
 
@@ -103,15 +105,15 @@ The security goal **is** to:
 - Prevent unintended uploads, syncs, deployments, or external transmission of private case artifacts
 - Keep reports, forms, exports, and history inside the authenticated case workspace workflow
 
-**Current state:** Export and case routes are development/local-only with an auth stub (`_authorize_export()`). Production authentication and case access controls are planned for Phase 1.7. Phase 1.4 grievance form generation extends the same containment model to generated forms.
+**Current state:** Export and case routes are development/local-only with an auth stub (`_authorize_export()`). Production authentication and case access controls are planned for Phase 1.7. Phase 1.4 grievance form generation extends the same containment model to generated forms. Do not use real grievance/employee data until auth/RBAC land.
 
-**Planning reference:** `data/reports/phase1_4_official_grievance_templates_plan_2026-07-04.md`
+Local planning/verification markdown under `data/reports/` is gitignored and is **not** part of this repository’s published tree.
 
 ---
 
-## Codebase verification (2026-07-01; git status refreshed 2026-07-15)
+## Codebase verification (2026-07-01; refreshed 2026-07-15)
 
-**Git (2026-07-15):** Local-only repository on branch `phase-W3-case-asset-foundation` at `8442f58`. **No remote configured** — nothing pushed or uploaded. Working tree was clean before the docs/readiness pass.
+**Git (2026-07-15):** Public-clean repository on branch `main`. Product surface through W3 (AI-first interactions + case assets) is present. W4 has not started.
 
 **Confirmed present and aligned with documentation:**
 
@@ -122,7 +124,7 @@ The security goal **is** to:
 | Phase 2 case sessions | `app/services/case_service.py`, `app/api/routes/cases.py`, `app/main.py` (cases router registered), Alembic `a1b2c3d4e5f6_add_grievance_case_tables.py` |
 | Phase 3 HTML/PDF export | `app/services/report_export/`, `app/services/report_export_service.py`, `app/api/routes/exports.py`, Jinja templates + `report.css` |
 | Regression harness | `tests/fixtures/regression_questions.json` (8 questions), `tests/test_regression_harness.py`, `scripts/regression_report.py`, `scripts/diagnose_regression.py` |
-| Live scorecard artifact | `data/reports/regression_scorecard.json` — **8 PASS / 0 PARTIAL / 0 FAIL** (`phase0_iteration2_verification`, 2026-07-01) |
+| Phase 0 live scorecard (historical) | Local developer verification recorded **8 PASS / 0 PARTIAL / 0 FAIL** (`phase0_iteration2_verification`, 2026-07-01); scorecard JSON is gitignored runtime output, not a committed artifact |
 | Phase 0.1 Iteration A | `tests/test_phase0_1_iteration_a.py`, topic-mismatch filters, honest gap disclosure — **verified 2026-07-01** |
 
 ---
@@ -178,7 +180,7 @@ The eight-question benchmark harness (`tests/fixtures/regression_questions.json`
 | Non-integration (`pytest tests/ -m "not integration"`) | **68 passed, 1 deselected** |
 | Live original 8-question regression | **8 PASS / 0 PARTIAL / 0 FAIL** |
 
-Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_a_results_2026-07-01.md`, `data/reports/phase0_1_iteration_a_final_verification_2026-07-01.md`, `data/reports/phase0_1_local_merge_2026-07-01.md`.
+Verification artifacts were generated locally during Phase 0.1 work and are gitignored under `data/reports/` (not available in this published tree).
 
 ### Phase 1 and Phase 2 — confirmed intact
 
@@ -230,10 +232,7 @@ Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_
 
 ### Steward review artifacts (local)
 
-- `data/reports/phase1_1_live_synthetic_report_2026-07-02.html`
-- `data/reports/phase1_1_live_synthetic_report_2026-07-02.pdf`
-- `data/reports/phase1_1_source_coverage_results_2026-07-02.json`
-- `data/reports/phase1_1_source_coverage_results_2026-07-02.md`
+Local HTML/PDF/JSON review outputs were generated under gitignored `data/reports/` during Phase 1.1 verification and are **not** part of this published tree.
 
 **Dale's feedback (2026-07-03):** Report looked pretty good after wording/stability repairs.
 
@@ -308,7 +307,7 @@ When the steward introduces material new facts, follow-up may set `requires_repo
 
 All LLM-dependent tests use injected `llm_callable` mocks or patched service calls — **no live OpenAI calls** during tests or pre-commit review.
 
-Verification artifacts (local, not committed): `data/reports/phase1_3_followup_qa_implementation_2026-07-04.md`, `data/reports/phase1_3_followup_qa_precommit_review_2026-07-04.md`.
+Verification notes from Phase 1.3 were local gitignored developer artifacts under `data/reports/` (not in this published tree).
 
 ### Recommended next phase (historical note)
 
@@ -318,7 +317,7 @@ Phase 1.4 template/progression foundations and later W1–W3 AI-first workspace 
 
 ## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation
 
-**Status:** Foundations 1.4A–1.4F are **committed** in the ancestry of `phase-W3-case-asset-foundation` (including `bcc852c`, `50019c9`, `6f84479`, `1a0b657`, `fecde2e`, `b2de509`, `16f70f4`). Full steward editing UI, approve/export, and filled-form PDF/DOCX generation remain deferred. Generate Grievance execution is planned for **W5**.
+**Status:** Foundations 1.4A–1.4F are **present on `main`** (template registry, blank assets, draft builder, step progression, saved-cases reopen API, and saved-cases UI client foundation). Full steward editing UI, approve/export, and filled-form PDF/DOCX generation remain deferred. Generate Grievance execution is planned for **W5**.
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
@@ -393,7 +392,7 @@ Phase 1.4 template/progression foundations and later W1–W3 AI-first workspace 
 
 **Sensitive-data alignment:** Generated forms follow the **app-wide sensitive-data policy** (see above). Forms may contain names, EINs, facts, remedies, and citations — that is expected for official filing. Security controls target unauthorized access, accidental commits, public/static exposure, and raw logging — not removal of sensitive content from authorized outputs.
 
-**Planning artifact:** `data/reports/phase1_4_official_grievance_templates_plan_2026-07-04.md`
+Phase 1.4 planning notes were local developer artifacts (gitignored under `data/reports/`) and are not part of this published tree.
 
 **Deferred after Phase 1.4 / current stack:** Sensitive RAG Security Gate (Phase 1.7+), arbitration/settlement ingestion (Phase 1.6+), LMOU indexing, supervisor-manual ingestion, W4 progression init, W5 Generate Grievance execution, React/Next UI, production auth/RBAC.
 
@@ -401,7 +400,7 @@ Phase 1.4 template/progression foundations and later W1–W3 AI-first workspace 
 
 ## Phase W1 — Case Workspace Action Contract Foundation
 
-**Status:** Implemented and committed on branch `phase-W3-case-asset-foundation` (includes AI-first correction).
+**Status:** Implemented on `main` (includes AI-first correction).
 
 **Goal:** Canonical steward action contract for the living case workspace. Contract/foundation only for Generate Grievance; chat uses `/interactions`.
 
@@ -473,7 +472,7 @@ Analysis uses existing `CaseService.build_analysis_question` / `build_case_conte
 
 ## Phase W3 — Case Asset Foundation
 
-**Status:** Implemented and committed on branch `phase-W3-case-asset-foundation` (includes W1 + W2 + AI-first correction).
+**Status:** Implemented on `main` (includes W1 + W2 + AI-first correction).
 
 **Goal:** Permanent Case Asset architecture so every durable case artifact belongs to exactly one case — not “uploads only.”
 
@@ -521,8 +520,6 @@ Analysis uses existing `CaseService.build_analysis_question` / `build_case_conte
 
 **Why:** Cleanest steward-facing contract for one case-scoped AI turn that automatically refreshes analysis. Keeps Generate Grievance as the only explicit primary action on `/actions`. Reuses W2 `generate_report_version` + timeline primitives and `FollowUpChatService` without duplicating RAG/report builders.
 
-**Report:** `data/reports/phase_W1_W2_W3_ai_first_chat_workspace_correction_2026-07-10.md` (gitignored)
-
 ---
 
 ## Phase 3 — HTML/PDF Report Export
@@ -559,7 +556,7 @@ Analysis uses existing `CaseService.build_analysis_question` / `build_case_conte
 | PDF tests skipped | **0** |
 | Non-integration (`pytest tests/ -m "not integration"`) | **144 passed, 1 deselected** |
 
-Verification artifacts (local, not committed): `data/reports/phase3_live_synthetic_report_final_2026-07-01.html`, `data/reports/phase3_live_synthetic_report_final_2026-07-01.pdf`, `data/reports/phase3_final_visual_qa_2026-07-02.md`, `data/reports/phase3_final_micro_cleanup_2026-07-02.md`.
+Phase 3 visual/export verification used local gitignored outputs under `data/reports/` (not in this published tree).
 
 ### Recommended next phase
 
@@ -592,7 +589,7 @@ Verification artifacts (local, not committed): `data/reports/phase3_live_synthet
 | Q7 | Probationary termination + denied information | 4 | Passed |
 | Q8 | Steward records / interview access denied | 3 | Passed |
 
-**Verification method:** Live pipeline via FastAPI `TestClient` (in-process, no Uvicorn). Scorecard artifact: `data/reports/regression_scorecard.json` (`generated_at`: 2026-07-01T14:35:37Z, `finished_at`: 2026-07-01T14:50:13Z).
+**Verification method:** Live pipeline via FastAPI `TestClient` (in-process, no Uvicorn). Scorecard JSON was written locally under gitignored `data/reports/` (`generated_at`: 2026-07-01T14:35:37Z, `finished_at`: 2026-07-01T14:50:13Z) and is not a committed repository artifact.
 
 **Baseline before repair:** Q1–Q4 PARTIAL, Q5–Q6 FAIL, Q7–Q8 PARTIAL.
 
@@ -624,8 +621,7 @@ Verification artifacts (local, not committed): `data/reports/phase3_live_synthet
 | `tests/test_retrieval_gaps.py` | Retrieval gap logic tests |
 | `tests/test_authority_ranker_filters.py` | Coverage-floor unit tests (Iteration 2) |
 | `pytest.ini` | Registers `integration` mark |
-| `data/reports/regression_diagnosis.json` | Diagnostic output (generated) |
-| `data/reports/regression_scorecard.json` | Scorecard output (generated) |
+| Local `data/reports/*.json` scorecard/diagnosis outputs | Generated during live verification (gitignored; not published) |
 
 **Modified:**
 
