@@ -41,6 +41,7 @@ data/backups/
 data/indexes/
 data/logs/
 uploads/
+docs/report_reference/
 
 # Generated grievance forms (filled exports — never commit)
 data/case_forms/
