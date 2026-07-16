@@ -1,10 +1,6 @@
 # GrievanceHub
 
-AI-powered grievance case analysis and workflow platform for USPS/NPMHU stewards, built from prior union-steward and USPS operations experience.
-
-**Product principle:** The application manages the workflow. The steward manages the grievance.
-
-GrievanceHub is a living case workspace — not a basic chatbot. Case-specific AI chat, cumulative facts/evidence, grounded analysis reports, and versioned history stay attached to each saved case.
+AI-powered grievance case analysis and workflow platform for USPS/NPMHU stewards.
 
 > **Development status:** This repository represents an active portfolio and product-development project. GrievanceHub is not currently production-ready. Authentication, authorization, security hardening, and additional safeguards are still under development. Sensitive grievance or employee information must not be used with the application at this stage.
 
@@ -20,9 +16,19 @@ Except where required by law, no permission is granted to copy, modify, distribu
 
 Official USPS and NPMHU contractual source documents included or referenced within this project remain the property of their respective owners and are used as publicly available reference materials for grievance analysis.
 
-## Current capabilities
+## Product Vision
 
-Implemented backend capabilities:
+**The application manages the workflow. The steward manages the grievance.**
+
+GrievanceHub is a persistent case workspace, not a basic chatbot. Conversations, evidence, grounded analysis, and versioned history stay attached to each saved case. The application handles persistence, analysis refresh, and workflow structure; the steward remains responsible for judgment and filing decisions.
+
+## Why GrievanceHub?
+
+Traditional grievance work often relies on manual document review, fragmented notes, repetitive drafting, and maintaining context across multiple grievance steps.
+
+GrievanceHub centralizes case evidence, grounded AI analysis, versioned reports, persistent case interaction, and structured grievance workflows into a single workspace. The project is informed by prior USPS operations and union steward experience.
+
+## Current Backend Capabilities
 
 - FastAPI REST API
 - PostgreSQL, SQLAlchemy, and Alembic
@@ -38,38 +44,39 @@ Implemented backend capabilities:
 - HTML and PDF analysis-report export
 - Broad automated pytest coverage
 
-## Architecture (brief)
-
-| Layer | Role |
-|-------|------|
-| API | FastAPI routes for cases, sources, exports |
-| Services | Case workspace orchestration, RAG pipeline, drafts/assets |
-| Data | PostgreSQL + pgvector |
-| RAG | Issue analysis → retrieval → authority ranking → grounded report |
-| Case workspace | Conversations, facts, versions, timeline, reopen |
-| Case assets | Case-owned uploaded documents (local storage) |
-| Templates / drafts | Registry + Step 2 draft builder foundation |
-
-Canonical chat route:
+Canonical case chat route:
 
 ```http
 POST /cases/{case_uuid}/interactions
 ```
 
-See `docs/ARCHITECTURE.md` and `AGENTS.md` for details.
+Stewards are not required to click Save Context, Update Analysis, Reanalyze, or Start Chat. Generate Grievance remains an explicit optional action; execution is planned for Grievance Draft Generation.
 
-## Current workflow
+## Architecture
+
+| Layer | Role |
+|-------|------|
+| API | FastAPI routes for cases, sources, and exports |
+| Services | Case workspace orchestration, RAG pipeline, drafts, and assets |
+| Data | PostgreSQL + pgvector |
+| RAG | Issue analysis → retrieval → authority ranking → grounded report |
+| Case workspace | Conversations, facts, versions, timeline, and reopen |
+| Case assets | Case-owned uploaded documents (local storage) |
+| Templates / drafts | Registry + Step 2 draft builder foundation |
 
 ```text
 Create / Open Case
-  → Chat with case-specific AI
-  → Add context / evidence
-  → Analysis automatically refreshes and versions
-  → Continue interacting
-  → Generate Grievance later when available
+        ↓
+Persistent Case Interaction
+        ↓
+Grounded RAG Analysis
+        ↓
+Immutable Analysis Versions
+        ↓
+Generate Grievance (planned)
 ```
 
-Stewards are not required to click Save Context, Update Analysis, Reanalyze, or Start Chat. Generate Grievance remains an explicit optional action.
+See `docs/ARCHITECTURE.md` and `AGENTS.md` for details.
 
 ## Development Environment
 
@@ -94,7 +101,7 @@ Environment variables are documented in `.env.example` (placeholders only). A re
 
 On Windows, WeasyPrint PDF export requires MSYS2 Pango (`mingw-w64-x86_64-pango`); see comments in `requirements.txt`.
 
-## Development status
+## Development Status
 
 | Area | Status |
 |------|--------|
@@ -111,7 +118,7 @@ On Windows, WeasyPrint PDF export requires MSYS2 Pango (`mingw-w64-x86_64-pango`
 
 Template note: only **Step 2 Local 300 Form 79-1** is currently buildable. Step 1 and Step 3 templates are not yet available. Step progression services and tables exist; initialization on case creation is part of Case Lifecycle and Workspace Restoration.
 
-## Project roadmap
+## Project Roadmap
 
 ### Next
 
@@ -151,6 +158,6 @@ These long-term tracks are roadmap language only and are **not** implemented.
 | `docs/ARCHITECTURE.md` | Current architecture |
 | `docs/saved_cases_ui_contract.md` | Deferred saved-cases UI contract |
 
-## Safety notice
+## Safety Notice
 
 This repository is under active development and is **not** currently production-ready for sensitive grievance data. Do not use real grievance or employee information until authentication, authorization, and related safeguards are in place.
