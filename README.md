@@ -18,8 +18,6 @@ Official USPS and NPMHU contractual source documents included or referenced with
 
 ## Product Vision
 
-**The application manages the workflow. The steward manages the grievance.**
-
 GrievanceHub is a persistent case workspace, not a basic chatbot. Conversations, evidence, grounded analysis, and versioned history stay attached to each saved case. The application handles persistence, analysis refresh, and workflow structure; the steward remains responsible for judgment and filing decisions.
 
 ## Why GrievanceHub?
@@ -49,8 +47,6 @@ Canonical case chat route:
 ```http
 POST /cases/{case_uuid}/interactions
 ```
-
-Stewards are not required to click Save Context, Update Analysis, Reanalyze, or Start Chat. Generate Grievance remains an explicit optional action; execution is planned for Grievance Draft Generation.
 
 ## Architecture
 
@@ -97,9 +93,6 @@ Maintainer workflow (technical evidence of the environment; not an invitation to
 - Run the API with Uvicorn (`uvicorn app.main:app`)
 - Verify behavior with pytest
 
-Environment variables are documented in `.env.example` (placeholders only). A real `.env` with secrets is never committed. Official CONTRACT / CIM / ELM binaries are not committed; the repository tracks source manifests and a committed text-chunk index. Blank Local 300 templates under `app/assets/grievance_templates/` are tracked.
-
-On Windows, WeasyPrint PDF export requires MSYS2 Pango (`mingw-w64-x86_64-pango`); see comments in `requirements.txt`.
 
 ## Development Status
 
@@ -116,7 +109,6 @@ On Windows, WeasyPrint PDF export requires MSYS2 Pango (`mingw-w64-x86_64-pango`
 | Protected Source Corpus Expansion | Planned |
 | Controlled Agentic Workflow Orchestration | Long-term roadmap only |
 
-Template note: only **Step 2 Local 300 Form 79-1** is currently buildable. Step 1 and Step 3 templates are not yet available. Step progression services and tables exist; initialization on case creation is part of Case Lifecycle and Workspace Restoration.
 
 ## Project Roadmap
 
@@ -126,7 +118,7 @@ Template note: only **Step 2 Local 300 Form 79-1** is currently buildable. Step 
 
 ### Following
 
-- **Grievance Draft Generation** — explicit Generate Grievance action; current analysis and case-state assembly; Step 2 Local 300 draft generation; snapshot/provenance integration
+- **Grievance Draft Generation** — explicit Generate Grievance action; current analysis and case-state assembly; snapshot/provenance integration
 
 ### Later
 
