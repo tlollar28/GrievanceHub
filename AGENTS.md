@@ -6,11 +6,61 @@ Permanent guidance for AI agents and developers working on GrievanceHub.
 
 GrievanceHub is a production-grade union case management and grievance research platform for USPS/NPMHU stewards. The backend produces structured **GrievanceHub Analysis Reports** from steward questions, case facts, uploaded files, and retrieved official sources.
 
+## Ownership and Publication
+
+GrievanceHub is Tristan Lollar’s project. This repository may be publicly visible for portfolio review, professional evaluation, and educational demonstration.
+
+- **No software license has been granted.** Do not call the project open source.
+- **Never add a LICENSE file** (MIT, Apache-2.0, GPL, BSD, Creative Commons, or any other) without explicit user approval.
+- Do not add clone/deploy/contributing instructions that imply public reuse, redistribution, or permission to fork, modify, or deploy the code.
+- Public visibility does not grant reuse rights. See README **Copyright & Use Notice**.
+- Official USPS/NPMHU contractual reference documents remain the property of their respective owners; distinguish them from Tristan’s application code.
+- Preserve the public/private data boundary: never commit employee information, uploads, case assets, generated forms, arbitrations, settlements, private union documents, secrets, or real `.env` files.
+- Before significant work, read current `AGENTS.md`, `PROJECT_STATE.md`, `README.md`, and relevant docs under `docs/`.
+
 ## Permanent Product Principle
 
 **The application manages the workflow. The steward manages the grievance.**
 
 GrievanceHub is an AI-first case workspace. Case-specific AI chat is always present on active case-work pages. Chat submission automatically persists conversation, refreshes analysis, and advances the current immutable report version. Stewards must not be required to click Save Context, Update Analysis, Reanalyze, or Start Chat. Canonical chat route: `POST /cases/{case_uuid}/interactions`. Generate Grievance remains an explicit optional action.
+
+## Canonical Phase Names
+
+Use these descriptive phase names in project status, roadmaps, and future prompts. **Do not reintroduce W-number shorthand** (W1, W2, W3, …) as primary phase names.
+
+### Completed foundations
+
+1. **Case Interaction Contract** — canonical interaction/action schemas and service boundaries
+2. **AI Case Interaction Orchestration** — persistent case chat, AI response, automatic analysis refresh, immutable analysis versions
+3. **Case Evidence and Asset Management** — first-class case assets, uploads, metadata, safe local storage, analysis-context references
+
+### Next
+
+4. **Case Lifecycle and Workspace Restoration** — automatic step-progression initialization; enriched reopen workspace
+
+### Following
+
+5. **Grievance Draft Generation** — explicit Generate Grievance; Step 2 Local 300 draft generation; snapshot/provenance
+
+### Later
+
+6. **Grievance Draft Persistence and Versioning**
+7. **Grievance Revision Workflow**
+8. **Grievance Review, Approval, and Export**
+9. **Interaction API Consolidation**
+10. **Client Integration Layer**
+11. **Legacy API Retirement**
+
+### Long-term feature tracks (descriptive names only)
+
+- Authentication and Role-Based Access Control
+- Steward Workspace User Interface
+- Protected Source Corpus Expansion
+- Case Evidence Retrieval and RAG
+- Production Deployment and Infrastructure
+- Controlled Agentic Workflow Orchestration
+- Multi-Agent Case Analysis
+- Graph-Enhanced Retrieval
 
 ## Approved Sources (Strict)
 
@@ -22,6 +72,8 @@ Use **only** these source types in retrieval and analysis:
 - `LMOU` — Local Memorandum of Understanding
 
 **Do not add** MRS, JCAM, Step 4 settlements, arbitration awards, union bylaws, or handbooks as searchable source types. CIM text may reference Step 4 grievances as citations within approved sources; do not ingest Step 4 as a separate source.
+
+Public contractual source language (CONTRACT, CIM, ELM, blank Local 300 templates) is distinct from private case data. Never treat private grievance facts, employee data, or unauthorized private documents as publishable content.
 
 ## Analysis Pipeline
 
@@ -67,13 +119,13 @@ Brand as **GrievanceHub only** — never CREA.
 
 Structured schema: `app/schemas/report_schema.py`
 
-## Case Workspace (Implemented through W3)
+## Case Workspace
 
 GrievanceHub is an AI-powered living grievance case workspace — not a basic chatbot. Each steward question creates a saved **GrievanceCase**. Case-specific AI chat, facts, uploads/assets, report versions, timeline, and draft foundations stay attached to that case.
 
 **Permanent product principle:** The application manages the workflow. The steward manages the grievance.
 
-### Implemented (W1–W3 committed)
+### Implemented (completed foundations)
 
 - Case API routes (`/cases/*`), saved-case list/open/reopen, workspace payload, timeline
 - Persistent case-specific AI conversation via canonical `POST /cases/{case_uuid}/interactions`
@@ -81,7 +133,7 @@ GrievanceHub is an AI-powered living grievance case workspace — not a basic ch
 - Follow-up chat service (`FollowUpChatService`) used by interactions and compatibility routes
 - First-class Case Assets (`case_assets` + local `data/case_assets/`)
 - Grievance template registry and Step 2 draft-builder foundation (Local 300 Form 79-1 only)
-- Case step progression services/tables (initialization on case create deferred to W4)
+- Case step progression services/tables (initialization on case create deferred to Case Lifecycle and Workspace Restoration)
 - HTML preview/download and PDF export of analysis reports
 
 ### Compatibility / non-steward UI surfaces
@@ -91,13 +143,13 @@ GrievanceHub is an AI-powered living grievance case workspace — not a basic ch
 
 ### Not yet implemented / deferred
 
-- W4 — enriched reopen workspace; step progression initialization on case creation
-- W5 — Generate Grievance execution (route/contract exists; execution deferred)
+- Case Lifecycle and Workspace Restoration — enriched reopen workspace; step progression initialization on case creation
+- Grievance Draft Generation — Generate Grievance execution (route/contract exists; execution deferred)
 - Full draft persistence/edit/print of filled forms
-- React/Next steward UI (no frontend app in repo)
-- Production authentication / RBAC (required before production use)
-- LMOU, arbitration, and supervisor-manual ingestion
-- Agentic / multi-agent / graph-RAG workflows (future roadmap only)
+- Steward Workspace User Interface (no React/Next frontend app in repo)
+- Authentication and Role-Based Access Control (required before production use)
+- Protected Source Corpus Expansion (LMOU, arbitration, and supervisor-manual ingestion)
+- Controlled Agentic Workflow Orchestration / Multi-Agent Case Analysis / Graph-Enhanced Retrieval (long-term roadmap only)
 
 ### Template availability
 
@@ -113,6 +165,9 @@ GrievanceHub is an AI-powered living grievance case workspace — not a basic ch
 4. Preserve `management_limiting` authorities in their dedicated report section.
 5. Update tests when changing relevance behavior.
 6. Update `PROJECT_STATE.md` after significant work.
+7. Use canonical descriptive phase names only — do not reintroduce W-number shorthand.
+8. Never add a LICENSE without explicit user approval; never imply open-source reuse permission.
+9. Never commit secrets, real `.env` files, employee/case data, uploads, case assets, generated forms, or private union documents.
 
 ## Commands
 
@@ -136,3 +191,5 @@ pytest tests/ -v
 - [ ] No new disallowed source types
 - [ ] Report branding remains GrievanceHub
 - [ ] `PROJECT_STATE.md` updated
+- [ ] Phase names remain descriptive (no W-number shorthand)
+- [ ] No LICENSE added without explicit approval

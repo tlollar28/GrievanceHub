@@ -6,9 +6,19 @@ AI-powered grievance case analysis and workflow platform for USPS/NPMHU stewards
 
 GrievanceHub is a living case workspace — not a basic chatbot. Case-specific AI chat, cumulative facts/evidence, grounded analysis reports, and versioned history stay attached to each saved case.
 
-> **Status:** Active development. Not production-ready for sensitive grievance data. Authentication/RBAC are not implemented. Do not use real grievance/employee data yet.
+> **Development status:** This repository represents an active portfolio and product-development project. GrievanceHub is not currently production-ready. Authentication, authorization, security hardening, and additional safeguards are still under development. Sensitive grievance or employee information must not be used with the application at this stage.
 
-No license has been selected for this repository.
+## Copyright & Use Notice
+
+© 2026 Tristan Lollar. All Rights Reserved.
+
+This repository is made publicly available for portfolio, educational, and professional evaluation purposes only.
+
+No license has been granted for this source code.
+
+Except where required by law, no permission is granted to copy, modify, distribute, sublicense, deploy, create derivative works from, or commercially use any portion of this repository without prior written permission from the copyright holder.
+
+Official USPS and NPMHU contractual source documents included or referenced within this project remain the property of their respective owners and are used as publicly available reference materials for grievance analysis.
 
 ## Current capabilities
 
@@ -56,168 +66,81 @@ Create / Open Case
   → Add context / evidence
   → Analysis automatically refreshes and versions
   → Continue interacting
-  → Generate Grievance later when available (W5)
+  → Generate Grievance later when available
 ```
 
-Stewards are not required to click Save Context, Update Analysis, Reanalyze, or Start Chat.
+Stewards are not required to click Save Context, Update Analysis, Reanalyze, or Start Chat. Generate Grievance remains an explicit optional action.
 
-## Technology stack
+## Development Environment
 
-- Python 3.x, FastAPI, Uvicorn
-- SQLAlchemy, Alembic
-- PostgreSQL 16 + pgvector (Docker Compose)
-- OpenAI embeddings and chat models
-- Jinja2 + WeasyPrint (HTML/PDF export)
-- pytest
+This project is developed and verified in a reproducible engineering environment using:
+
+- **Python** with **FastAPI**, **Uvicorn**, and **Pydantic**
+- **SQLAlchemy** and **Alembic** for ORM and migrations
+- **PostgreSQL 16** with **pgvector** via **Docker Compose**
+- **OpenAI API** for embeddings and chat-backed analysis
+- **pytest** for automated tests
+- **Swagger / OpenAPI** (FastAPI interactive docs) for API inspection
+- **Jinja2** and **WeasyPrint** for HTML/PDF analysis-report export
+
+Maintainer workflow (technical evidence of the environment; not an invitation to reuse or redistribute this project):
+
+- Start local database services with Docker Compose
+- Apply schema migrations with Alembic (`alembic upgrade head`)
+- Run the API with Uvicorn (`uvicorn app.main:app`)
+- Verify behavior with pytest
+
+Environment variables are documented in `.env.example` (placeholders only). A real `.env` with secrets is never committed. Official CONTRACT / CIM / ELM binaries are not committed; the repository tracks source manifests and a committed text-chunk index. Blank Local 300 templates under `app/assets/grievance_templates/` are tracked.
+
+On Windows, WeasyPrint PDF export requires MSYS2 Pango (`mingw-w64-x86_64-pango`); see comments in `requirements.txt`.
 
 ## Development status
 
 | Area | Status |
 |------|--------|
-| W1–W3 AI-first workspace + Case Assets | Implemented |
-| Generate Grievance execution | Planned **W5** |
-| Full draft persistence / edit / print | Planned |
-| React / Next steward UI | Planned (not in repo) |
-| Auth / RBAC | Required before production use |
-| LMOU / arbitration / supervisor-manual ingestion | Planned |
-| Agentic / multi-agent architecture | Future roadmap |
+| Case Interaction Contract | Complete |
+| AI Case Interaction Orchestration | Complete |
+| Case Evidence and Asset Management | Complete |
+| Case Lifecycle and Workspace Restoration | Next |
+| Grievance Draft Generation | Following |
+| Grievance draft persistence / revision / export | Later |
+| Steward Workspace User Interface (React / Next) | Planned (not in repo) |
+| Authentication and Role-Based Access Control | Required before production use |
+| Protected Source Corpus Expansion | Planned |
+| Controlled Agentic Workflow Orchestration | Long-term roadmap only |
 
-Template note: only **Step 2 Local 300 Form 79-1** is currently buildable. Step 1 and Step 3 templates are not yet available. Step progression services/tables exist; initialization on case creation is deferred to **W4**.
-
-## Local setup
-
-### Prerequisites
-
-- Git
-- Docker / Docker Compose
-- Python 3.x
-- An OpenAI API key for local analysis/chat (kept only in your private `.env`)
-
-### 1. Clone
-
-```bash
-git clone <repository-url>
-cd GrievanceHub
-```
-
-### 2. Create and activate a virtual environment
-
-```bash
-python -m venv venv
-```
-
-Windows (PowerShell / cmd):
-
-```bash
-venv\Scripts\activate
-```
-
-macOS / Linux:
-
-```bash
-source venv/bin/activate
-```
-
-### 3. Install dependencies
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-### 4. Configure environment
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and set a local `OPENAI_API_KEY=...` placeholder replacement. Never commit `.env`.
-
-### 5. Start PostgreSQL + pgvector
-
-```bash
-docker compose up -d
-```
-
-This starts PostgreSQL 16 with pgvector using local development credentials from `docker-compose.yml`.
-
-### 6. Run migrations
-
-```bash
-alembic upgrade head
-```
-
-Windows example with the project venv:
-
-```bash
-venv\Scripts\python.exe -m alembic upgrade head
-```
-
-### 7. Official source files (local only)
-
-Official CONTRACT / CIM / ELM PDFs and zips are **not** committed (gitignored). The repository tracks:
-
-- `app/sources/manifest.json` — relative `local_path` entries and download metadata
-- `app/sources/source_index.json` — committed text-chunk index used by retrieval
-- `app/sources/source_registry.json`
-
-Blank Local 300 grievance templates under `app/assets/grievance_templates/` **are** tracked.
-
-To download official binaries into the expected local paths:
-
-```bash
-python scripts/download_sources.py
-```
-
-Do not commit downloaded PDFs/zips, uploads, case assets, generated filled forms, or private reports.
-
-### 8. Start the API
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Windows example:
-
-```bash
-venv\Scripts\python.exe -m uvicorn app.main:app --reload
-```
-
-### PDF export on Windows
-
-WeasyPrint requires MSYS2 Pango (`mingw-w64-x86_64-pango`). See comments in `requirements.txt`.
-
-## Testing
-
-Non-integration suite (default for local verification; does not require live OpenAI for most tests):
-
-```bash
-pytest tests/ -m "not integration" -v
-```
-
-Full suite:
-
-```bash
-pytest tests/ -v
-```
-
-Optional live regression (calls the analysis pipeline; requires DB + OpenAI):
-
-```bash
-set RUN_REGRESSION=1
-pytest tests/test_regression_harness.py::test_regression_live_pipeline_smoke -v -s
-```
-
-Do not commit runtime outputs under `data/reports/`, `data/case_assets/`, `uploads/`, or generated filled forms. Do not commit private grievance or employee data.
+Template note: only **Step 2 Local 300 Form 79-1** is currently buildable. Step 1 and Step 3 templates are not yet available. Step progression services and tables exist; initialization on case creation is part of Case Lifecycle and Workspace Restoration.
 
 ## Project roadmap
 
-1. **W4** — enriched reopen workspace; step progression init on case create
-2. **W5** — Generate Grievance execution
-3. Draft persistence / edit / print
-4. Auth / RBAC
-5. Steward UI (React/Next)
-6. Expanded source corpus (LMOU and controlled additions)
-7. Controlled future agentic workflows
+### Next
+
+- **Case Lifecycle and Workspace Restoration** — automatic step-progression initialization; enriched reopen workspace with full conversation, analysis, assets, timeline, step state, outcomes, drafts, and available actions
+
+### Following
+
+- **Grievance Draft Generation** — explicit Generate Grievance action; current analysis and case-state assembly; Step 2 Local 300 draft generation; snapshot/provenance integration
+
+### Later
+
+- **Grievance Draft Persistence and Versioning**
+- **Grievance Revision Workflow**
+- **Grievance Review, Approval, and Export** (printable grievance PDF/DOCX; distinct from analysis-report export)
+- **Interaction API Consolidation** and **Legacy API Retirement**
+- **Client Integration Layer**
+- **Authentication and Role-Based Access Control**
+- **Steward Workspace User Interface**
+- **Protected Source Corpus Expansion**
+- **Case Evidence Retrieval and RAG**
+- **Production Deployment and Infrastructure**
+
+### Long-term
+
+- **Controlled Agentic Workflow Orchestration**
+- **Multi-Agent Case Analysis**
+- **Graph-Enhanced Retrieval**
+
+These long-term tracks are roadmap language only and are **not** implemented.
 
 ## Documentation
 
@@ -230,4 +153,4 @@ Do not commit runtime outputs under `data/reports/`, `data/case_assets/`, `uploa
 
 ## Safety notice
 
-This repository is under active development and is **not** currently production-ready for sensitive grievance data. Do not deploy without authentication, access control, and a reviewed data-handling posture.
+This repository is under active development and is **not** currently production-ready for sensitive grievance data. Do not use real grievance or employee information until authentication, authorization, and related safeguards are in place.

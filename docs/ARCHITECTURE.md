@@ -4,8 +4,10 @@ GrievanceHub is an AI-powered living grievance case workspace for USPS/NPMHU
 stewards. The application manages workflow automation; the steward manages the
 grievance.
 
-This document describes the **current implemented architecture** (through
-Phase W3). Planned frontend, auth, and agentic systems are roadmap items only.
+This document describes the **current implemented architecture** through
+Case Interaction Contract, AI Case Interaction Orchestration, and Case Evidence
+and Asset Management. Planned frontend, auth, and agentic systems are roadmap
+items only.
 
 ## Permanent Product Principle
 
@@ -17,7 +19,8 @@ Phase W3). Planned frontend, auth, and agentic systems are roadmap items only.
 - Stewards must not be required to click Save Context, Update Analysis,
   Reanalyze, or Start Chat
 - Generate Grievance remains an explicit optional action
-  (`POST /cases/{case_uuid}/actions`, execution planned for W5)
+  (`POST /cases/{case_uuid}/actions`, execution planned for Grievance Draft
+  Generation)
 
 ## Current Stack (Implemented)
 
@@ -68,7 +71,7 @@ Other important surfaces:
 - `GET /cases/{case_uuid}/workspace` — workspace aggregate (messages, versions, assets)
 - `GET/POST /cases/saved...` — saved-case list, open, reopen, timeline
 - `GET/POST /cases/{case_uuid}/assets` — Case Assets
-- `POST /cases/{case_uuid}/actions` — Generate Grievance (W5) + compatibility actions
+- `POST /cases/{case_uuid}/actions` — Generate Grievance (Grievance Draft Generation) + compatibility actions
 - Export preview/download HTML/PDF under `/cases/{case_uuid}/export/...`
 
 ## Services / Orchestration
@@ -129,12 +132,13 @@ Create / Open Case
   → Add context / evidence (facts, assets, upload refs)
   → Analysis automatically refreshes and versions
   → Continue interacting
-  → Generate Grievance later when W5 execution is available
+  → Generate Grievance later when Grievance Draft Generation is available
 ```
 
 ## Case Assets
 
-Categories reserved in schema; W3 executable category is `uploaded_document`.
+Categories reserved in schema; the executable category under Case Evidence and
+Asset Management is `uploaded_document`.
 
 Local storage: `data/case_assets/{case_uuid}/` (gitignored). Cloud storage and
 case-file RAG ingestion are not implemented.
@@ -147,7 +151,7 @@ case-file RAG ingestion are not implemented.
 - Draft builder produces structured draft models; filled-form export/print is
   not complete
 - Step progression tables/services exist; **initialization on case create is
-  deferred to W4**
+  deferred to Case Lifecycle and Workspace Restoration**
 
 ## Security / Auth (Current Reality)
 
@@ -162,17 +166,36 @@ case-file RAG ingestion are not implemented.
 
 ## Roadmap (Not Current Features)
 
-- W4 — enriched reopen workspace; progression init on case create
-- W5 — Generate Grievance execution
-- Draft persistence / edit / print
-- Auth / RBAC
-- React/Next steward UI
-- Expanded source corpus (LMOU, controlled future sources)
-- Controlled future agentic / multi-agent workflows (not current architecture)
+### Next
+
+- Case Lifecycle and Workspace Restoration — enriched reopen workspace; progression init on case create
+
+### Following
+
+- Grievance Draft Generation — Generate Grievance execution
+
+### Later
+
+- Grievance Draft Persistence and Versioning
+- Grievance Revision Workflow
+- Grievance Review, Approval, and Export
+- Authentication and Role-Based Access Control
+- Steward Workspace User Interface
+- Protected Source Corpus Expansion
+- Case Evidence Retrieval and RAG
+- Production Deployment and Infrastructure
+
+### Long-term
+
+- Controlled Agentic Workflow Orchestration
+- Multi-Agent Case Analysis
+- Graph-Enhanced Retrieval
+
+Long-term agentic / multi-agent / graph-RAG tracks are **not** current architecture.
 
 ## Related Docs
 
 - `AGENTS.md` — permanent agent/product rules
 - `PROJECT_STATE.md` — phase history and verification record
 - `docs/saved_cases_ui_contract.md` — deferred UI contract for saved cases
-- `README.md` — project overview and local setup
+- `README.md` — project overview, copyright notice, and development environment

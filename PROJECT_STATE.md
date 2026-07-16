@@ -1,26 +1,58 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-15 (GitHub publication readiness: setup docs + portable sources)
+Last updated: 2026-07-15 (copyright notice, development disclaimer, and professional phase naming)
+
+## Ownership and license
+
+© 2026 Tristan Lollar. All Rights Reserved. This repository may be publicly visible for portfolio, educational, and professional evaluation. **No license has been granted.** Do not add a LICENSE file or imply open-source reuse permission without explicit owner approval. See README **Copyright & Use Notice**.
+
+## Canonical phase names
+
+Use these names in status, roadmaps, and future prompts. Do not use W-number shorthand as primary names.
+
+| Canonical name | Status |
+|----------------|--------|
+| Case Interaction Contract | **Complete** |
+| AI Case Interaction Orchestration | **Complete** |
+| Case Evidence and Asset Management | **Complete** |
+| Case Lifecycle and Workspace Restoration | **Next** (not started) |
+| Grievance Draft Generation | **Following** (not started) |
+| Grievance Draft Persistence and Versioning | Later |
+| Grievance Revision Workflow | Later |
+| Grievance Review, Approval, and Export | Later |
+| Interaction API Consolidation | Later |
+| Client Integration Layer | Later |
+| Legacy API Retirement | Later |
+| Authentication and Role-Based Access Control | Later / required before production |
+| Steward Workspace User Interface | Later (not in repo) |
+| Protected Source Corpus Expansion | Later |
+| Case Evidence Retrieval and RAG | Later |
+| Production Deployment and Infrastructure | Later |
+| Controlled Agentic Workflow Orchestration | Long-term only |
+| Multi-Agent Case Analysis | Long-term only |
+| Graph-Enhanced Retrieval | Long-term only |
 
 ## Current status (source of truth)
 
 | Item | State |
 |------|--------|
 | Branch | `main` |
-| Latest commit | Updated by the GitHub readiness docs/setup commit on `main` (see `git log -1`) |
-| W1–W3 | **Complete** (AI-first workspace + case assets) |
-| W4 | **Not started** (enriched reopen workspace; step progression init on create) |
-| W5 | **Not started** (Generate Grievance execution) |
-| React/Next UI | **Not present** (contract/docs only) |
-| Auth / RBAC | **Not implemented** (required before production) |
-| LMOU / arbitration / supervisor-manual ingestion | **Not implemented** |
-| Agentic / multi-agent / graph RAG | **Future roadmap only** |
+| Latest commit | See `git log -1` |
+| Case Interaction Contract | **Complete** |
+| AI Case Interaction Orchestration | **Complete** |
+| Case Evidence and Asset Management | **Complete** |
+| Case Lifecycle and Workspace Restoration | **Not started** |
+| Grievance Draft Generation | **Not started** |
+| Steward Workspace User Interface | **Not present** (contract/docs only) |
+| Authentication and Role-Based Access Control | **Not implemented** (required before production) |
+| Protected Source Corpus Expansion | **Not implemented** (LMOU / arbitration / supervisor manuals) |
+| Controlled Agentic / Multi-Agent / Graph RAG | **Long-term roadmap only** |
 | Production readiness | **Not production-ready** for sensitive grievance data |
-| License | **No license selected** |
+| License | **No license granted** — do not add a LICENSE file without explicit approval |
 
 **Permanent product principle:** The application manages the workflow. The steward manages the grievance.
 
-GrievanceHub is an AI-powered living grievance case workspace — not a basic chatbot. Canonical chat route: `POST /cases/{case_uuid}/interactions`. The steward-facing Update Analysis button is obsolete. Generate Grievance remains explicit; execution is deferred to W5. Step 2 Local 300 Form 79-1 is the only currently buildable form template.
+GrievanceHub is an AI-powered living grievance case workspace — not a basic chatbot. Canonical chat route: `POST /cases/{case_uuid}/interactions`. The steward-facing Update Analysis button is obsolete. Generate Grievance remains explicit; execution is deferred to Grievance Draft Generation. Step 2 Local 300 Form 79-1 is the only currently buildable form template. Sensitive case data must not be used until auth/RBAC land.
 
 Official source `local_path` values in `app/sources/manifest.json` are repository-relative (`app/sources/...`) and resolve from `PROJECT_ROOT`. Official PDFs/zips are not committed; use `scripts/download_sources.py` / the manifest workflow locally. Blank Local 300 templates under `app/assets/grievance_templates/` are tracked.
 
@@ -62,7 +94,7 @@ flowchart TD
 
 **Permanent product principle:** The application manages the workflow. The steward manages the grievance.
 
-**AI-first workspace:** Canonical case chat is `POST /cases/{case_uuid}/interactions` (persist conversation + automatic analysis refresh). Generate Grievance remains `POST /cases/{case_uuid}/actions` with `generate_grievance` (W5). Compatibility: `/messages`, `/followups`, `/reports/regenerate`, and `save_and_update_analysis` — not steward UI buttons.
+**AI-first workspace:** Canonical case chat is `POST /cases/{case_uuid}/interactions` (persist conversation + automatic analysis refresh). Generate Grievance remains `POST /cases/{case_uuid}/actions` with `generate_grievance` (Grievance Draft Generation). Compatibility: `/messages`, `/followups`, `/reports/regenerate`, and `save_and_update_analysis` — not steward UI buttons.
 
 **Stack:** Python 3.14, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16 + pgvector (Docker), OpenAI embeddings (`text-embedding-3-small`), OpenAI chat (`gpt-4o-mini`).
 
@@ -113,7 +145,7 @@ Local planning/verification markdown under `data/reports/` is gitignored and is 
 
 ## Codebase verification (2026-07-01; refreshed 2026-07-15)
 
-**Git (2026-07-15):** Public-clean repository on branch `main`. Product surface through W3 (AI-first interactions + case assets) is present. W4 has not started.
+**Git (2026-07-15):** Repository on branch `main`. Product surface through Case Interaction Contract, AI Case Interaction Orchestration, and Case Evidence and Asset Management is present. Case Lifecycle and Workspace Restoration has not started.
 
 **Confirmed present and aligned with documentation:**
 
@@ -197,7 +229,7 @@ Verification artifacts were generated locally during Phase 0.1 work and are giti
 
 ## Phase 1.1 — Source Coverage, Remedy Grounding, and Retrieval Stability
 
-**Status:** Complete and committed (history includes `07d38c8` and subsequent stacked phases through W3). Pre-commit steward spot-check passed 2026-07-03.
+**Status:** Complete and committed (history includes `07d38c8` and subsequent stacked phases through Case Evidence and Asset Management). Pre-commit steward spot-check passed 2026-07-03.
 
 ### Scope delivered
 
@@ -238,7 +270,7 @@ Local HTML/PDF/JSON review outputs were generated under gitignored `data/reports
 
 ### Recommended next phase (historical note)
 
-At the time Phase 1.1 closed, the next work was case workspace history, follow-up Q&A, and template foundations. Those are now implemented through W3; current next phases are **W4** then **W5**.
+At the time Phase 1.1 closed, the next work was case workspace history, follow-up Q&A, and template foundations. Those are now implemented through Case Evidence and Asset Management; current next phases are **Case Lifecycle and Workspace Restoration** then **Grievance Draft Generation**.
 
 ---
 
@@ -311,13 +343,13 @@ Verification notes from Phase 1.3 were local gitignored developer artifacts unde
 
 ### Recommended next phase (historical note)
 
-Phase 1.4 template/progression foundations and later W1–W3 AI-first workspace work followed this phase and are now committed.
+Phase 1.4 template/progression foundations and later AI-first workspace foundations (Case Interaction Contract through Case Evidence and Asset Management) followed this phase and are now committed.
 
 ---
 
 ## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation
 
-**Status:** Foundations 1.4A–1.4F are **present on `main`** (template registry, blank assets, draft builder, step progression, saved-cases reopen API, and saved-cases UI client foundation). Full steward editing UI, approve/export, and filled-form PDF/DOCX generation remain deferred. Generate Grievance execution is planned for **W5**.
+**Status:** Foundations 1.4A–1.4F are **present on `main`** (template registry, blank assets, draft builder, step progression, saved-cases reopen API, and saved-cases UI client foundation). Full steward editing UI, approve/export, and filled-form PDF/DOCX generation remain deferred. Generate Grievance execution is planned for **Grievance Draft Generation**.
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
@@ -394,11 +426,11 @@ Phase 1.4 template/progression foundations and later W1–W3 AI-first workspace 
 
 Phase 1.4 planning notes were local developer artifacts (gitignored under `data/reports/`) and are not part of this published tree.
 
-**Deferred after Phase 1.4 / current stack:** Sensitive RAG Security Gate (Phase 1.7+), arbitration/settlement ingestion (Phase 1.6+), LMOU indexing, supervisor-manual ingestion, W4 progression init, W5 Generate Grievance execution, React/Next UI, production auth/RBAC.
+**Deferred after Phase 1.4 / current stack:** Sensitive RAG Security Gate / Case Evidence Retrieval and RAG, Protected Source Corpus Expansion (arbitration/settlement/LMOU/supervisor manuals), Case Lifecycle and Workspace Restoration (progression init), Grievance Draft Generation, Steward Workspace User Interface, Authentication and Role-Based Access Control.
 
 ---
 
-## Phase W1 — Case Workspace Action Contract Foundation
+## Case Interaction Contract
 
 **Status:** Implemented on `main` (includes AI-first correction).
 
@@ -408,32 +440,32 @@ Phase 1.4 planning notes were local developer artifacts (gitignored under `data/
 
 | Surface | Role | Execution |
 |---------|------|-----------|
-| `POST /cases/{uuid}/interactions` | **Canonical case chat** + automatic analysis refresh | Corrected W1–W3 |
-| `generate_grievance` on `/actions` | Explicit optional Generate Grievance | **W5** |
-| `save_and_update_analysis` on `/actions` | Internal/compatibility analysis refresh (`steward_visible: false`) | W2 primitive |
+| `POST /cases/{uuid}/interactions` | **Canonical case chat** + automatic analysis refresh | Completed foundations |
+| `generate_grievance` on `/actions` | Explicit optional Generate Grievance | **Grievance Draft Generation** |
+| `save_and_update_analysis` on `/actions` | Internal/compatibility analysis refresh (`steward_visible: false`) | AI Case Interaction Orchestration primitive |
 
-### Delivered in W1
+### Delivered
 
 - **Schemas:** `app/schemas/case_workspace_action_schema.py` — interaction request/response, action types, prerequisites, availability (`steward_visible`), analysis/grievance result contracts, `CaseGenerationSnapshotMetadata`
 - **Orchestration:** `app/services/case_workspace_action_service.py`
-- **Snapshot contract:** immutable provenance metadata — **not persisted until W5**
-- **Action availability:** `save_and_update_analysis` internal for open/reopened cases; `generate_grievance` requires current analysis, initialized step progression, and buildable template (Step 2 Local 300 only; Step 1 unavailable; Step 3 deferred). Progression init deferred to W4
+- **Snapshot contract:** immutable provenance metadata — **not persisted until Grievance Draft Generation**
+- **Action availability:** `save_and_update_analysis` internal for open/reopened cases; `generate_grievance` requires current analysis, initialized step progression, and buildable template (Step 2 Local 300 only; Step 1 unavailable; Step 3 deferred). Progression init deferred to Case Lifecycle and Workspace Restoration
 - **Backward compatibility:** `POST /messages`, `POST /followups`, `POST /reports/regenerate` unchanged and temporarily supported
 - **Tests:** `tests/test_case_workspace_action_contract.py`, `tests/test_case_workspace_action_api.py`
 
-### Explicitly not in W1
+### Explicitly not in this phase
 
-- No OpenAI / analysis pipeline execution in the original W1 stub (execution added in W2 / interactions correction)
+- No OpenAI / analysis pipeline execution in the original contract stub (execution added in AI Case Interaction Orchestration)
 - No grievance drafts / snapshots / exports
 - No migration (contract only)
 
-**Next:** W5 Generate Grievance; W4 progression init on create.
+**Next:** Case Lifecycle and Workspace Restoration; then Grievance Draft Generation.
 
 ---
 
-## Phase W2 — Analysis refresh primitive (compatibility + interactions)
+## AI Case Interaction Orchestration
 
-**Status:** Implemented and committed (AI-first corrected) — includes W1 contract foundation.
+**Status:** Implemented and committed (AI-first corrected) — includes Case Interaction Contract foundation.
 
 **Steward-facing workflow:** Case chat via `POST /cases/{case_uuid}/interactions` (no Update Analysis button).  
 **Internal/API compatibility action:** `save_and_update_analysis` on `/actions` (`steward_visible: false`).
@@ -457,29 +489,29 @@ Phase 1.4 planning notes were local developer artifacts (gitignored under `data/
 
 Analysis uses existing `CaseService.build_analysis_question` / `build_case_context` over the full saved case: initial concern, known facts, all messages, and assets/upload refs.
 
-### Explicitly not in W2
+### Explicitly not in this phase
 
-- Generate Grievance (W5)
+- Generate Grievance (Grievance Draft Generation)
 - Case generation snapshots
 - Grievance PDF/DOCX export
 - Legacy route removal
 
 **Tests:** `tests/test_case_workspace_action_w2.py`, `tests/test_case_ai_first_chat_workspace.py`
 
-**Next:** W5 Generate Grievance; W4 progression init on create.
+**Next:** Case Lifecycle and Workspace Restoration; then Grievance Draft Generation.
 
 ---
 
-## Phase W3 — Case Asset Foundation
+## Case Evidence and Asset Management
 
-**Status:** Implemented on `main` (includes W1 + W2 + AI-first correction).
+**Status:** Implemented on `main` (includes prior interaction contract + orchestration + AI-first correction).
 
 **Goal:** Permanent Case Asset architecture so every durable case artifact belongs to exactly one case — not “uploads only.”
 
 ### Asset categories
 
-| Category | W3 status |
-|----------|-----------|
+| Category | Status |
+|----------|--------|
 | `uploaded_document` | **Executable** — metadata + local file persistence |
 | `generated_report` | Placeholder (schema/model reserved) |
 | `generated_grievance` | Placeholder |
@@ -497,7 +529,7 @@ Analysis uses existing `CaseService.build_analysis_question` / `build_case_conte
 - **Interactions / analysis context:** `upload_refs` resolve to CaseAsset metadata when UUIDs match; `CaseService.build_case_context` merges first-class assets with legacy message upload metadata
 - **Config / gitignore:** `CASE_ASSET_DIR`, `CASE_ASSET_MAX_UPLOAD_BYTES`; `data/case_assets/` ignored
 
-### Explicitly not in W3
+### Explicitly not in this phase
 
 - Cloud storage
 - Case-file RAG ingestion
@@ -507,18 +539,18 @@ Analysis uses existing `CaseService.build_analysis_question` / `build_case_conte
 
 **Tests:** `tests/test_case_asset_foundation.py`
 
-**Next:** W4 progression init + enriched reopen workspace; W5 Generate Grievance.
+**Next:** Case Lifecycle and Workspace Restoration; then Grievance Draft Generation.
 
 ---
 
 
 ## AI-first chat workspace correction (2026-07-10)
 
-**Status:** Applied and committed with stacked W1–W3.
+**Status:** Applied and committed with Case Interaction Contract, AI Case Interaction Orchestration, and Case Evidence and Asset Management.
 
 **Canonical route selected:** `POST /cases/{case_uuid}/interactions`
 
-**Why:** Cleanest steward-facing contract for one case-scoped AI turn that automatically refreshes analysis. Keeps Generate Grievance as the only explicit primary action on `/actions`. Reuses W2 `generate_report_version` + timeline primitives and `FollowUpChatService` without duplicating RAG/report builders.
+**Why:** Cleanest steward-facing contract for one case-scoped AI turn that automatically refreshes analysis. Keeps Generate Grievance as the only explicit primary action on `/actions`. Reuses analysis-refresh `generate_report_version` + timeline primitives and `FollowUpChatService` without duplicating RAG/report builders.
 
 ---
 
@@ -740,8 +772,8 @@ venv\Scripts\python.exe scripts/regression_report.py
 | `docs/saved_cases_ui_contract.md` | Deferred saved-cases UI route/component contract |
 | `app/schemas/case_workspace_action_schema.py` | AI-first interaction + workspace action contracts, snapshot, prerequisites |
 | `app/services/case_workspace_action_service.py` | Canonical `/interactions` orchestration + `/actions` compatibility/Generate Grievance |
-| `app/schemas/case_asset_schema.py` | Case asset categories and metadata API models (W3) |
-| `app/services/case_asset_service.py` | Case asset persistence + local upload storage (W3) |
+| `app/schemas/case_asset_schema.py` | Case asset categories and metadata API models |
+| `app/services/case_asset_service.py` | Case asset persistence + local upload storage |
 | `app/assets/grievance_templates/` | Blank committed grievance form templates (e.g. Local 300 Form 79-1) |
 | `app/api/routes/cases.py` | Case REST API (`/actions`, `/assets`, `/followups`, workspace, regenerate) |
 | `app/api/routes/sources.py` | Sources, search, `/sources/report` |

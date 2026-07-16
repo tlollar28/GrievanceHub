@@ -1,12 +1,14 @@
-# Saved Cases UI Contract (Phase 1.4F + AI-first workspace correction)
+# Saved Cases UI Contract
 
-Frontend for saved cases is **deferred** until the steward UI phase. No React/Next.js
-app exists in this repository yet. This document defines the route/component
-contract so a future screen can plug into the existing backend without inventing
-a parallel workflow.
+Frontend for saved cases is **deferred** until Steward Workspace User Interface.
+No React/Next.js app exists in this repository yet. This document defines the
+route/component contract so a future screen can plug into the existing backend
+without inventing a parallel workflow.
 
-**Docs sync:** 2026-07-15 — aligned with committed W1–W3 AI-first workspace.
-W4 (enriched reopen workspace / progression init) has not started.
+**Docs sync:** 2026-07-15 — aligned with completed Case Interaction Contract,
+AI Case Interaction Orchestration, and Case Evidence and Asset Management.
+Case Lifecycle and Workspace Restoration (enriched reopen workspace /
+progression init) has not started.
 
 ## Permanent product principle
 
@@ -73,7 +75,7 @@ The chat submission **is** the workflow. No separate Update Analysis action.
 | Method | Route | Purpose | Status |
 |--------|-------|---------|--------|
 | `POST` | `/cases/{case_uuid}/interactions` | **Canonical** case chat + automatic analysis refresh | Preferred |
-| `POST` | `/cases/{case_uuid}/actions` | Explicit actions (`generate_grievance`; compatibility `save_and_update_analysis`) | Generate Grievance = W5 |
+| `POST` | `/cases/{case_uuid}/actions` | Explicit actions (`generate_grievance`; compatibility `save_and_update_analysis`) | Generate Grievance = Grievance Draft Generation |
 | `GET` | `/cases/saved` | List saved cases | Current |
 | `GET` | `/cases/saved/{case_uuid}` | Saved case summary/detail | Current |
 | `POST` | `/cases/saved/{case_uuid}/open` | Open an active case workspace | Current |
@@ -100,9 +102,9 @@ Manual click reopen and future AI-command reopen **must** call
 After open/reopen succeeds, navigate to the case workspace:
 `GET /cases/{case_uuid}/workspace`. Chat is active immediately with prior
 history loaded. Workspace responses include first-class `assets` /
-`uploaded_assets` (Phase W3).
+`uploaded_assets` (Case Evidence and Asset Management).
 
-## Case assets (Phase W3)
+## Case assets
 
 | Method | Route | Purpose |
 |--------|-------|---------|
@@ -110,7 +112,7 @@ history loaded. Workspace responses include first-class `assets` /
 | `POST` | `/cases/{case_uuid}/assets` | Upload `uploaded_document` (multipart) |
 | `GET` | `/cases/{case_uuid}/assets/{asset_uuid}` | Asset metadata |
 
-Only `uploaded_document` is executable in W3. Other categories
+Only `uploaded_document` is currently executable. Other categories
 (`generated_report`, `generated_grievance`, `future_export`,
 `future_attachment`) are reserved for later phases.
 
@@ -121,8 +123,9 @@ become part of cumulative case context.
 
 `app/clients/saved_case_client.py` — `SavedCaseApiClient` wraps saved-case
 endpoints. Use `resolve_case_click_action()` and `activate_case()` for row-click
-behavior. Future client work should add an interactions helper that calls
-`POST /cases/{uuid}/interactions` (not a separate Update Analysis button).
+behavior. Future Client Integration Layer work should add an interactions helper
+that calls `POST /cases/{uuid}/interactions` (not a separate Update Analysis
+button).
 
 ## Screen: Saved Cases
 
@@ -193,7 +196,7 @@ When steward selects Timeline:
 | Steward experience | API |
 |--------------------|-----|
 | Persistent case chat (always present) | `POST /cases/{case_uuid}/interactions` |
-| Generate Grievance (optional explicit) | `POST /cases/{case_uuid}/actions` `{ "action": "generate_grievance" }` (W5) |
+| Generate Grievance (optional explicit) | `POST /cases/{case_uuid}/actions` `{ "action": "generate_grievance" }` (Grievance Draft Generation) |
 
 After each successful interaction, UI may show system status such as:
 
@@ -212,10 +215,10 @@ Those are confirmations — not buttons the steward must manage.
 ## Out of scope (this contract phase)
 
 - Frontend implementation
-- Generate Grievance execution (W5)
+- Generate Grievance execution (Grievance Draft Generation)
 - Grievance print/export
 - Source ingestion
-- Production authentication (Phase 1.7)
+- Production authentication (Authentication and Role-Based Access Control)
 
 ## TypeScript types (future)
 
