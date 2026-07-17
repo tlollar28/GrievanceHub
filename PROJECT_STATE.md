@@ -1,6 +1,27 @@
 ﻿# GrievanceHub Project State
 
-Last updated: 2026-07-10 (AI-first chat workspace correction on stacked W1–W3)
+Last updated: 2026-07-16 (final Cross-Craft retirement cleanup)
+
+## Current status (source of truth)
+
+| Item | State |
+|------|--------|
+| Branch | `phase-W3-case-asset-foundation` |
+| Latest committed tip | `32ef00b` — `Remove private report reference images` (working tree has uncommitted cleanup) |
+| W1–W3 | **Complete and committed** (AI-first workspace + case assets) |
+| W4 | **Not started** (enriched reopen workspace; step progression init on create) |
+| W5 | **Not started** (Generate Grievance execution) |
+| Legacy Cross-Craft / SPBS surface | **Fully removed from working tree** (routes, parsers, Excel report service, Pydantic models, Excel/pdfplumber deps) |
+| React/Next UI | **Not present** (contract/docs only) |
+| Auth / RBAC | **Not implemented** (required before production) |
+| LMOU / arbitration / supervisor-manual ingestion | **Not implemented** |
+| Agentic / multi-agent / graph RAG | **Future roadmap only** |
+
+**Permanent product principle:** The application manages the workflow. The steward manages the grievance.
+
+GrievanceHub is an AI-powered living grievance case workspace — not a basic chatbot and not a Cross-Craft/SPBS runtime analyzer. Canonical chat route: `POST /cases/{case_uuid}/interactions`. The steward-facing Update Analysis button is obsolete. Generate Grievance remains explicit; execution is deferred to W5. Step 2 Local 300 Form 79-1 is the only currently buildable form template.
+
+Official source `local_path` values in `app/sources/manifest.json` are repository-relative (`app/sources/...`) and resolve from `PROJECT_ROOT`.
 
 ## Architecture
 
@@ -44,9 +65,7 @@ flowchart TD
 
 **Stack:** Python 3.14, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16 + pgvector (Docker), OpenAI embeddings (`text-embedding-3-small`), OpenAI chat (`gpt-4o-mini`).
 
-**Indexed approved sources (live DB):** CONTRACT (National Agreement), CIM, ELM — **7 documents, ~1369 embedded chunks**.
-
-**LMOU:** Approved in `AGENTS.md` but **not currently indexed** in the database. Retrieval and gap logic must **not** treat LMOU as available until documents are ingested and embedded.
+**Indexed approved sources:** CONTRACT (National Agreement) and CIM are present in the committed `app/sources/source_index.json` artifact (**1707** text chunks: 789 CONTRACT + 918 CIM). ELM is registered for sync/processing and may be present in a local DB depending on environment; do not assume ELM coverage without verifying the live index. LMOU is approved in `AGENTS.md` but **not ingested**. Retrieval and gap logic must **not** treat LMOU (or other unindexed sources) as available until documents are ingested and embedded.
 
 **Authoritative specs:** Report section requirements in `AGENTS.md` and `app/schemas/report_schema.py` (`REPORT_SECTIONS`, `GrievanceHubReport`). Implementation phases tracked in this document.
 
@@ -91,9 +110,9 @@ The security goal **is** to:
 
 ---
 
-## Codebase verification (2026-07-01)
+## Codebase verification (2026-07-01; git status refreshed 2026-07-15)
 
-**Git:** Local-only repository on branch `master` (Phase 3 merged locally 2026-07-02). **No remote configured** — nothing pushed or uploaded.
+**Git (2026-07-15):** Local-only repository on branch `phase-W3-case-asset-foundation` at `8442f58`. **No remote configured** — nothing pushed or uploaded. Working tree was clean before the docs/readiness pass.
 
 **Confirmed present and aligned with documentation:**
 
@@ -177,7 +196,7 @@ Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_
 
 ## Phase 1.1 — Source Coverage, Remedy Grounding, and Retrieval Stability
 
-**Status:** Complete on branch `phase1-1-source-coverage-remedy` (uncommitted, local-only). Pre-commit steward spot-check passed 2026-07-03. **Not yet committed.**
+**Status:** Complete and committed (history includes `07d38c8` and subsequent stacked phases through W3). Pre-commit steward spot-check passed 2026-07-03.
 
 ### Scope delivered
 
@@ -219,9 +238,9 @@ Verification artifacts (local, not committed): `data/reports/phase0_1_iteration_
 
 **Dale's feedback (2026-07-03):** Report looked pretty good after wording/stability repairs.
 
-### Recommended next phase
+### Recommended next phase (historical note)
 
-**Phase 2+ roadmap (not started):** Add arbitrations, LMOU indexing, supervisor manuals, follow-up Q&A on saved cases, and Step 1/2/3 grievance form generation — after Phase 1.1 is committed.
+At the time Phase 1.1 closed, the next work was case workspace history, follow-up Q&A, and template foundations. Those are now implemented through W3; current next phases are **W4** then **W5**.
 
 ---
 
@@ -292,15 +311,15 @@ All LLM-dependent tests use injected `llm_callable` mocks or patched service cal
 
 Verification artifacts (local, not committed): `data/reports/phase1_3_followup_qa_implementation_2026-07-04.md`, `data/reports/phase1_3_followup_qa_precommit_review_2026-07-04.md`.
 
-### Recommended next phase
+### Recommended next phase (historical note)
 
-**Phase 1.4 — Official Step 1/2/3 grievance template generation** (planned, not started). See planning report below.
+Phase 1.4 template/progression foundations and later W1–W3 AI-first workspace work followed this phase and are now committed.
 
 ---
 
-## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation (planned)
+## Phase 1.4 — Official Step 1/2/3 Grievance Template Generation
 
-**Status:** Phase 1.4A (template registry foundation) committed locally (`bcc852c`); template assets refactored to `app/assets/grievance_templates/` (`50019c9`); Phase 1.4B (draft form builder foundation) committed locally (`6f84479`); Phase 1.4C (case step progression foundation) committed locally (`1a0b657`); Phase 1.4D (case step timeline / draft history database persistence) on branch `phase1-4D-persist-case-step-timeline` — **not committed** (awaiting review); Phase 1.4E (saved cases API / reopen workflow foundation) implemented on branch `phase1-4E-saved-cases-reopen-api` — **not committed** (awaiting review); Phase 1.4F (saved cases UI / clickable reopen workflow foundation) implemented on branch `phase1-4F-saved-cases-ui-foundation` — **not committed** (awaiting review).
+**Status:** Foundations 1.4A–1.4F are **committed** in the ancestry of `phase-W3-case-asset-foundation` (including `bcc852c`, `50019c9`, `6f84479`, `1a0b657`, `fecde2e`, `b2de509`, `16f70f4`). Full steward editing UI, approve/export, and filled-form PDF/DOCX generation remain deferred. Generate Grievance execution is planned for **W5**.
 
 **Product decision:** Official grievance form generation is scheduled **before** the Sensitive RAG Security Gate because it is core steward workflow functionality.
 
@@ -377,7 +396,7 @@ Verification artifacts (local, not committed): `data/reports/phase1_3_followup_q
 
 **Planning artifact:** `data/reports/phase1_4_official_grievance_templates_plan_2026-07-04.md`
 
-**Deferred after Phase 1.4:** Sensitive RAG Security Gate (Phase 1.7+), arbitration/settlement ingestion (Phase 1.6+), LMOU indexing, supervisor-manual ingestion, follow-up `POST /messages` default change (Phase 1.3 slice 2).
+**Deferred after Phase 1.4 / current stack:** Sensitive RAG Security Gate (Phase 1.7+), arbitration/settlement ingestion (Phase 1.6+), LMOU indexing, supervisor-manual ingestion, W4 progression init, W5 Generate Grievance execution, React/Next UI, production auth/RBAC.
 
 ---
 
@@ -491,6 +510,35 @@ Analysis uses existing `CaseService.build_analysis_question` / `build_case_conte
 **Tests:** `tests/test_case_asset_foundation.py`
 
 **Next:** W4 progression init + enriched reopen workspace; W5 Generate Grievance.
+
+---
+
+## Legacy Cross-Craft Analyzer removal (2026-07-15 / finalized 2026-07-16)
+
+**Status:** Final retirement cleanup in working tree (not yet committed). Product focus is grievance/RAG only.
+
+### Removed from current tree
+
+- Legacy routes on `app/main.py`: `/upload-clock-rings`, `/upload-runtime-report`, `/generate-report`, `/download-report`, `/test-mail-handler-parser`
+- `app/services/report_service.py` (cross-craft Excel findings)
+- Entire `parsers/` package (`runtime_parser`, `employee_assignment_parser`)
+- `app/models.py` (obsolete CrossCraft Pydantic models)
+- `INCOMING_DIR` config constant (cross-craft upload staging)
+- CrossCraft-only dependencies from `requirements.txt`: `openpyxl`, `et_xmlfile`, `pdfplumber`
+
+### Retained
+
+- Grievance/RAG routes, services, exports, case assets, templates/drafts
+- Official source corpus (CONTRACT/CIM/ELM) and `source_index.json`
+- Privacy-protective `.gitignore` entries including `data/incoming/` and `uploads/`
+- Embedding/PDF stack deps still required: `numpy` (via pgvector), `pypdf`, `pgvector`, `Pillow`, `weasyprint`
+- Empty `app/database/__init__.py` kept as package marker
+
+### Path portability
+
+`app/sources/manifest.json` now uses repository-relative `local_path` values under `app/sources/…`. `source_parser.resolve_manifest_local_path()` resolves them from `PROJECT_ROOT`.
+
+**Next:** Commit this cleanup; then private GitHub publication readiness. W4 still not started.
 
 ---
 

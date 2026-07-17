@@ -1,26 +1,41 @@
-from pathlib import Path
-import json
-import PyPDF2
+from __future__ import annotations
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-SOURCE_DIR = BASE_DIR / "sources"
+import json
+from pathlib import Path
+
+from pypdf import PdfReader
+
+from app.config import PROJECT_ROOT
+
+SOURCE_DIR = PROJECT_ROOT / "app" / "sources"
 MANIFEST_PATH = SOURCE_DIR / "manifest.json"
 INDEX_PATH = SOURCE_DIR / "source_index.json"
 
 
-def load_manifest():
+def load_manifest() -> dict:
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def resolve_manifest_local_path(local_path: str | Path) -> Path:
+    """Resolve a manifest local_path against the repository project root.
+
+    Relative paths are always joined to PROJECT_ROOT so rebuilds work
+    regardless of the current working directory. Absolute paths are returned
+    as-is for compatibility, but committed manifests must use relative paths.
+    """
+    path = Path(local_path)
+    if path.is_absolute():
+        return path
+    return (PROJECT_ROOT / path).resolve()
 
 
 def extract_pdf_text(pdf_path: Path) -> str:
     text_parts = []
+    reader = PdfReader(str(pdf_path))
 
-    with pdf_path.open("rb") as file:
-        reader = PyPDF2.PdfReader(file)
-
-        for page_number, page in enumerate(reader.pages, start=1):
-            page_text = page.extract_text() or ""
-            text_parts.append(f"\n\n--- PAGE {page_number} ---\n\n{page_text}")
+    for page_number, page in enumerate(reader.pages, start=1):
+        page_text = page.extract_text() or ""
+        text_parts.append(f"\n\n--- PAGE {page_number} ---\n\n{page_text}")
 
     return "\n".join(text_parts)
 
@@ -46,7 +61,7 @@ def build_source_index():
     indexed_chunks = []
 
     for source_id, source in manifest["sources"].items():
-        local_path = Path(source["local_path"])
+        local_path = resolve_manifest_local_path(source["local_path"])
 
         if local_path.suffix.lower() != ".pdf":
             print(f"Skipping non-PDF: {local_path}")

@@ -6,6 +6,8 @@ Permanent guidance for AI agents and developers working on GrievanceHub.
 
 GrievanceHub is a production-grade union case management and grievance research platform for USPS/NPMHU stewards. The backend produces structured **GrievanceHub Analysis Reports** from steward questions, case facts, uploaded files, and retrieved official sources.
 
+GrievanceHub is **not** a Cross-Craft Analyzer / SPBS machine-staffing tool. Obsolete cross-craft upload, runtime-parser, and Excel-report routes have been removed from the active product surface.
+
 ## Permanent Product Principle
 
 **The application manages the workflow. The steward manages the grievance.**
@@ -67,19 +69,43 @@ Brand as **GrievanceHub only** — never CREA.
 
 Structured schema: `app/schemas/report_schema.py`
 
-## Case Sessions and Follow-Up (Roadmap)
+## Case Workspace (Implemented through W3)
 
-Each initial question creates a saved **GrievanceCase**. Follow-up questions retain original facts, report, sources, citations, and conversation context. Report versions are preserved (not silently overwritten).
+GrievanceHub is an AI-powered living grievance case workspace — not a basic chatbot. Each steward question creates a saved **GrievanceCase**. Case-specific AI chat, facts, uploads/assets, report versions, timeline, and draft foundations stay attached to that case.
 
-Database models (Alembic migration `a1b2c3d4e5f6`):
+**Permanent product principle:** The application manages the workflow. The steward manages the grievance.
 
-- `GrievanceCase` — saved research session
-- `CaseMessage` — conversation history
-- `CaseReportVersion` — versioned structured report JSON
+### Implemented (W1–W3 committed)
 
-**Implemented:** case API routes (`/cases/*`), versioned report storage, HTML preview/download, PDF export.
+- Case API routes (`/cases/*`), saved-case list/open/reopen, workspace payload, timeline
+- Persistent case-specific AI conversation via canonical `POST /cases/{case_uuid}/interactions`
+- Automatic analysis refresh after each interaction (new immutable `CaseReportVersion`; older versions retained)
+- Follow-up chat service (`FollowUpChatService`) used by interactions and compatibility routes
+- First-class Case Assets (`case_assets` + local `data/case_assets/`)
+- Grievance template registry and Step 2 draft-builder foundation (Local 300 Form 79-1 only)
+- Case step progression services/tables (initialization on case create deferred to W4)
+- HTML preview/download and PDF export of analysis reports
 
-**Not yet implemented:** follow-up chat service, grievance template storage, production authentication for export routes.
+### Compatibility / non-steward UI surfaces
+
+- `POST /messages`, `POST /followups`, `POST /reports/regenerate`, and `save_and_update_analysis` remain for API compatibility
+- The steward-facing **Update Analysis** button is obsolete — analysis refreshes from chat interactions
+
+### Not yet implemented / deferred
+
+- W4 — enriched reopen workspace; step progression initialization on case creation
+- W5 — Generate Grievance execution (route/contract exists; execution deferred)
+- Full draft persistence/edit/print of filled forms
+- React/Next steward UI (no frontend app in repo)
+- Production authentication / RBAC (required before production use)
+- LMOU, arbitration, and supervisor-manual ingestion
+- Agentic / multi-agent / graph-RAG workflows (future roadmap only)
+
+### Template availability
+
+- Step 2 Local 300 Form 79-1 — only currently buildable form template
+- Step 1 — not available (`unconfirmed_pending_steward_confirmation`)
+- Step 3 — deferred (`deferred_separate_form_required`)
 
 ## Development Rules
 

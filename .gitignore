@@ -66,6 +66,9 @@ _gen_state.ps1
 _iter2_patch.py
 _patch.txt
 
+# Temporary Cursor review / verification reports
+tmp/cursor_reviews/
+
 # Node / frontend
 node_modules/
 .next/

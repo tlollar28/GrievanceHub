@@ -1,8 +1,12 @@
 # Saved Cases UI Contract (Phase 1.4F + AI-first workspace correction)
 
-Frontend for saved cases is **deferred** until Phase 4 steward UI. This document
-defines the route/component contract so a future React/Next.js screen can plug
-into the existing backend without inventing a parallel workflow.
+Frontend for saved cases is **deferred** until the steward UI phase. No React/Next.js
+app exists in this repository yet. This document defines the route/component
+contract so a future screen can plug into the existing backend without inventing
+a parallel workflow.
+
+**Docs sync:** 2026-07-15 — aligned with committed W1–W3 AI-first workspace.
+W4 (enriched reopen workspace / progression init) has not started.
 
 ## Permanent product principle
 

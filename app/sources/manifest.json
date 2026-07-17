@@ -7,7 +7,7 @@
       "official_page": "https://about.usps.com/manuals/elm/elm.htm",
       "download_url": "https://about.usps.com/manuals/elm/elm55.zip",
       "final_url": "https://about.usps.com/manuals/elm/elm55.zip",
-      "local_path": "C:\\Users\\tloll\\Documents\\cross-craft-analyzer\\app\\sources\\elm\\elm55.zip",
+      "local_path": "app/sources/elm/elm55.zip",
       "sha256": "2ffdc4ca936353aca44f41d3fcdd68f206d6e089ae57bf18f0bf10775bc9def3",
       "content_type": "application/zip"
     },
@@ -18,7 +18,7 @@
       "official_page": "https://m.npmhu.org/resources/2022-national-agreement",
       "download_url": "https://m.npmhu.org/resources/body/2022-2025-NPMHU-National-Agreement.pdf",
       "final_url": "https://m.npmhu.org/resources/body/2022-2025-NPMHU-National-Agreement.pdf",
-      "local_path": "C:\\Users\\tloll\\Documents\\cross-craft-analyzer\\app\\sources\\contract\\2022-2025-NPMHU-National-Agreement.pdf",
+      "local_path": "app/sources/contract/2022-2025-NPMHU-National-Agreement.pdf",
       "sha256": "df5876c48ba0d419ecdc35b6fc61eaa373db71c90297c5c34cbdd85737cf0071",
       "content_type": "application/pdf"
     },
@@ -29,7 +29,7 @@
       "official_page": "https://www.npmhu.org/resources/contract-interpretation-manual-v-6",
       "download_url": "https://www.npmhu.org/resources/body/CIM-V.6-FINAL-NPMHU.pdf",
       "final_url": "https://www.npmhu.org/resources/body/CIM-V.6-FINAL-NPMHU.pdf",
-      "local_path": "C:\\Users\\tloll\\Documents\\cross-craft-analyzer\\app\\sources\\cim\\CIM-V6.pdf",
+      "local_path": "app/sources/cim/CIM-V6.pdf",
       "sha256": "83b03bde8e27be283e2677899017bf077f61baae645cf9f1586e623b4f729473",
       "content_type": "application/pdf"
     }

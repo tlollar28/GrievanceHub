@@ -6,7 +6,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Runtime data
 DATA_DIR = PROJECT_ROOT / "data"
 
-INCOMING_DIR = DATA_DIR / "incoming"
+# Official source files for index rebuilds (CONTRACT / CIM / ELM PDFs and zips)
+APP_SOURCES_DIR = PROJECT_ROOT / "app" / "sources"
+
 PROCESSED_DIR = DATA_DIR / "processed"
 INDEX_DIR = DATA_DIR / "indexes"
 LOG_DIR = DATA_DIR / "logs"
