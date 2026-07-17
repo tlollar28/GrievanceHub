@@ -18,7 +18,7 @@ Official USPS and NPMHU contractual source documents included or referenced with
 
 ## Product Vision
 
-GrievanceHub is a persistent case workspace, not a basic chatbot. Conversations, evidence, grounded analysis, and versioned history stay attached to each saved case. The application handles persistence, analysis refresh, and workflow structure; the steward remains responsible for judgment and filing decisions.
+GrievanceHub is a persistent case workspace. Conversations, evidence, grounded analysis, and versioned history stay attached to each saved case. The application handles persistence, analysis refresh, and workflow structure; the steward remains responsible for judgment and filing decisions.
 
 ## Why GrievanceHub?
 
