@@ -2,7 +2,7 @@
 
 AI-powered grievance case analysis and workflow platform for USPS/NPMHU stewards.
 
-> **Development status:** This repository represents an active portfolio and product-development project. GrievanceHub is not currently production-ready. Authentication, authorization, security hardening, and additional safeguards are still under development. Sensitive grievance or employee information must not be used with the application at this stage.
+> **Development status:** This repository represents an active portfolio and product-development project. GrievanceHub is not currently production-ready. Authentication, authorization, security hardening, and additional safeguards are under active development.
 
 ## Copyright & Use Notice
 
