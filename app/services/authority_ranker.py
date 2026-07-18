@@ -776,6 +776,7 @@ Rules:
                 {
                     "ref_id": ref_id,
                     "chunk": chunk,
+                    "source_id": getattr(source, "source_id", None),
                     "document_name": source.name,
                     "document_type": source.source_type,
                     "page": chunk.page_number,
@@ -788,6 +789,7 @@ Rules:
                     "direct_quote": item.get("direct_quote", ""),
                     "why_it_matters": item.get("why_it_matters", ""),
                     "retrieval_metadata": metadata,
+                    "retrieval_relationship": "embedding_retrieval",
                 }
             )
 

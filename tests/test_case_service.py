@@ -227,6 +227,7 @@ def test_get_case_workspace_aggregate_shape():
         },
     )
     case = SimpleNamespace(
+        id=1,
         case_uuid="workspace-case",
         title="Leave issue",
         user_name="Steward",
@@ -238,10 +239,77 @@ def test_get_case_workspace_aggregate_shape():
         updated_at=created,
         messages=[_message("user", "Initial question")],
         report_versions=[version],
+        assets=[],
     )
     db = MagicMock()
 
-    with patch.object(CaseService, "get_case", return_value=case):
+    with (
+        patch.object(CaseService, "get_case", return_value=case),
+        patch.object(CaseService, "get_case_for_workspace", return_value=case),
+        patch.object(CaseService, "count_case_messages", return_value=1),
+        patch.object(
+            CaseService,
+            "fetch_recent_case_messages",
+            return_value=case.messages,
+        ),
+        patch.object(
+            CaseService,
+            "fetch_durable_conversation_signals",
+            return_value=[],
+        ),
+        patch(
+            "app.services.case_step_progression_persistence_service."
+            "CaseStepProgressionPersistenceService.get_progression",
+            side_effect=__import__(
+                "app.services.case_step_progression_service",
+                fromlist=["CaseStepProgressionNotFoundError"],
+            ).CaseStepProgressionNotFoundError("workspace-case"),
+        ),
+        patch(
+            "app.services.case_workspace_action_service.CaseWorkspaceActionService."
+            "evaluate_action_availability",
+            return_value=[],
+        ),
+        patch(
+            "app.services.case_workspace_action_service.CaseWorkspaceActionService."
+            "build_inspection_from_loaded",
+            return_value=SimpleNamespace(
+                case=case,
+                has_analysis_report=True,
+                latest_report_version_id=1,
+                latest_report_version_number=1,
+                has_step_progression=False,
+                current_step_type=None,
+                template_id=None,
+                template_availability_status=None,
+                template_available=False,
+                case_status="open",
+            ),
+        ),
+        patch(
+            "app.services.case_saved_artifact_service.CaseSavedArtifactService."
+            "continuity_artifacts",
+            return_value=[],
+        ),
+        patch(
+            "app.services.case_saved_artifact_service.CaseSavedArtifactService."
+            "list_steward_case_history",
+            return_value=SimpleNamespace(
+                model_dump=lambda mode="json": {
+                    "case_uuid": "workspace-case",
+                    "events": [],
+                    "count": 0,
+                    "label": "Official Case Record",
+                    "order": "oldest_first",
+                }
+            ),
+        ),
+        patch(
+            "app.services.case_saved_artifact_service.CaseSavedArtifactService."
+            "list_artifacts",
+            return_value=SimpleNamespace(artifacts=[]),
+        ),
+    ):
         workspace = CaseService.get_case_workspace(db, "workspace-case")
 
     assert workspace["case_uuid"] == "workspace-case"
@@ -250,7 +318,23 @@ def test_get_case_workspace_aggregate_shape():
     assert workspace["retrieval_gaps"]["missing_source_types"] == ["ELM"]
     assert workspace["source_coverage_audit"] == [{"source_type": "CONTRACT"}]
     assert len(workspace["report_versions"]) == 1
-    assert workspace["exports"]["pdf_url"] == "/cases/workspace-case/versions/1/export/pdf"
+    assert workspace["exports"]["pdf_url"] == (
+        "/cases/workspace-case/versions/1/export/pdf?working_draft=true"
+    )
+    assert workspace["exports"]["official_print_requires_save"] is True
     assert workspace["retrieval_gaps_summary"]["has_gaps"] is True
     assert workspace["assets"] == []
     assert workspace["uploaded_assets"] == []
+    assert workspace["messages"] == []
+    assert workspace["message_count"] == 1
+    assert workspace["conversation_history"]["embedded_in_workspace"] is False
+    assert workspace["step_progression"]["has_step_progression"] is False
+    assert workspace["outcomes"] == []
+    assert workspace["form_draft_history"] == []
+    assert workspace["timeline"] == []
+    assert "ai_continuity_context" in workspace
+    assert workspace["ai_continuity_context"]["initial_question"] == "Question?"
+    assert workspace["ai_continuity_context"]["message_count_total"] == 1
+    assert workspace["workspace_summary"]["has_step_progression"] is False
+    assert workspace["current_analysis"]["version_number"] == 1
+    assert workspace["analysis_history"] == workspace["report_versions"]

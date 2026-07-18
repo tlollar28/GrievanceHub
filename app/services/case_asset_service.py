@@ -16,7 +16,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from app.config import CASE_ASSET_DIR, CASE_ASSET_MAX_UPLOAD_BYTES, PROJECT_ROOT
-from app.database.models import CaseAsset, GrievanceCase
+from app.database.models import CaseAsset, CaseTimelineEventRecord, GrievanceCase
 from app.schemas.case_asset_schema import (
     EXECUTABLE_ASSET_CATEGORIES,
     PLACEHOLDER_ASSET_CATEGORIES,
@@ -170,7 +170,7 @@ class CaseAssetService:
         source: CaseAssetSource | str = "api",
         asset_metadata: dict | None = None,
     ) -> CaseAssetUploadResponse:
-        """Create an asset. Only uploaded_document accepts file bodies in W3."""
+        """Create an asset. Only uploaded_document accepts file bodies via public create."""
         if category in PLACEHOLDER_ASSET_CATEGORIES:
             raise CaseAssetCategoryNotExecutableError(category)
         if category != "uploaded_document":
@@ -187,12 +187,81 @@ class CaseAssetService:
             asset_metadata=asset_metadata,
         )
 
+    def store_system_generated_file(
+        self,
+        case_uuid: str,
+        *,
+        category: CaseAssetCategory,
+        filename: str,
+        content: bytes,
+        mime_type: str = "application/pdf",
+        uploaded_by: str | None = None,
+        source: CaseAssetSource | str = "export",
+        asset_metadata: dict | None = None,
+        report_version_id: int | None = None,
+        report_version_number: int | None = None,
+        draft_record_uuid: str | None = None,
+        commit: bool = True,
+    ) -> CaseAsset:
+        """Persist generated_report / generated_grievance PDF bytes (Save and Print)."""
+        if category not in {"generated_report", "generated_grievance", "future_export"}:
+            raise CaseAssetValidationError(
+                f"store_system_generated_file does not support category={category}"
+            )
+        if not content:
+            raise CaseAssetValidationError("Generated file content is empty.")
+        case = self._require_case(case_uuid)
+        asset_uuid = str(uuid4())
+        safe_original = self._safe_filename(filename)
+        stored_filename = f"{asset_uuid}_{safe_original}"
+        case_dir = CASE_ASSET_DIR / case_uuid
+        case_dir.mkdir(parents=True, exist_ok=True)
+        absolute_path = (case_dir / stored_filename).resolve()
+        self._assert_path_inside_asset_root(absolute_path)
+        absolute_path.write_bytes(content)
+        digest = hashlib.sha256(content).hexdigest()
+        relative_path = self._relative_storage_path(absolute_path)
+        now = datetime.utcnow()
+        row = CaseAsset(
+            asset_uuid=asset_uuid,
+            case_id=case.id,
+            case_uuid=case_uuid,
+            asset_category=category,
+            original_filename=safe_original,
+            stored_filename=stored_filename,
+            stored_path=relative_path,
+            mime_type=mime_type,
+            file_size=len(content),
+            sha256=digest,
+            uploaded_by=uploaded_by or case.user_name,
+            source=source,
+            version_number=1,
+            report_version_id=report_version_id,
+            report_version_number=report_version_number,
+            draft_record_uuid=draft_record_uuid,
+            status="active",
+            asset_metadata=asset_metadata,
+            created_at=now,
+            updated_at=now,
+        )
+        self.db.add(row)
+        case.updated_at = now
+        if commit:
+            self.db.commit()
+            self.db.refresh(row)
+        else:
+            self.db.flush()
+        return row
+
     def resolve_upload_refs_for_context(
         self,
         case_uuid: str,
         upload_refs: list[str] | None,
     ) -> list[dict]:
-        """Resolve upload_refs (asset UUIDs or legacy refs) into context dicts."""
+        """Resolve upload_refs (asset UUIDs or legacy refs) into context dicts.
+
+        Assets belonging to another case are rejected and never loaded.
+        """
         if not upload_refs:
             return []
         resolved: list[dict] = []
@@ -209,8 +278,25 @@ class CaseAssetService:
             )
             if row is not None:
                 resolved.append(self.to_context_dict(row))
-            else:
-                resolved.append({"file_id": ref, "ref": ref, "asset_uuid": None})
+                continue
+            # Only ownership-check UUID-shaped refs; legacy string refs stay legacy.
+            if CaseAssetService._looks_like_asset_uuid(ref):
+                foreign = (
+                    self.db.query(CaseAsset)
+                    .filter(CaseAsset.asset_uuid == ref)
+                    .first()
+                )
+                if foreign is not None and foreign.case_uuid != case_uuid:
+                    resolved.append(
+                        {
+                            "ref": ref,
+                            "asset_uuid": None,
+                            "rejected": True,
+                            "reason": "asset_not_on_case",
+                        }
+                    )
+                    continue
+            resolved.append({"file_id": ref, "ref": ref, "asset_uuid": None})
         return resolved
 
     def assets_for_case_context(self, case_uuid: str) -> list[dict]:
@@ -281,6 +367,16 @@ class CaseAssetService:
     # Internal
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _looks_like_asset_uuid(value: str) -> bool:
+        text = str(value or "").strip()
+        if len(text) != 36:
+            return False
+        parts = text.split("-")
+        if len(parts) != 5:
+            return False
+        return all(part and all(ch in "0123456789abcdefABCDEF" for ch in part) for part in parts)
+
     def _require_case(self, case_uuid: str) -> GrievanceCase:
         case = (
             self.db.query(GrievanceCase)
@@ -345,6 +441,48 @@ class CaseAssetService:
         )
         self.db.add(row)
         case.updated_at = now
+        meta = asset_metadata if isinstance(asset_metadata, dict) else {}
+        is_management_response = bool(
+            meta.get("management_response")
+            or meta.get("document_role") == "management_response"
+            or "management response" in safe_original.lower()
+        )
+        event_type = (
+            "management_response_uploaded"
+            if is_management_response
+            else "files_uploaded"
+        )
+        title = (
+            "Management response uploaded"
+            if is_management_response
+            else "Evidence uploaded"
+        )
+        self.db.add(
+            CaseTimelineEventRecord(
+                event_uuid=str(uuid4()),
+                case_id=case.id,
+                case_uuid=case_uuid,
+                event_type=event_type,
+                event_timestamp=now,
+                title=title,
+                details=safe_original,
+                upload_refs=[asset_uuid],
+                created_at=now,
+            )
+        )
+        try:
+            from app.services.case_memory_service import CaseMemoryService
+
+            CaseMemoryService(self.db).record_evidence(
+                case_uuid,
+                asset_uuid=asset_uuid,
+                filename=safe_original,
+                management_response=is_management_response,
+                summary=safe_original,
+                commit=False,
+            )
+        except Exception:
+            pass
         self.db.commit()
         self.db.refresh(row)
         return CaseAssetUploadResponse(

@@ -95,7 +95,98 @@ class GrievanceCase(Base):
     form_draft_records: Mapped[list["CaseFormDraftRecord"]] = relationship(
         back_populates="case",
     )
+    saved_artifacts: Mapped[list["CaseSavedArtifact"]] = relationship(
+        back_populates="case",
+    )
     assets: Mapped[list["CaseAsset"]] = relationship(back_populates="case")
+    case_memory: Mapped["CaseMemoryRecord | None"] = relationship(
+        back_populates="case",
+        uselist=False,
+    )
+    domain_events: Mapped[list["CaseDomainEvent"]] = relationship(
+        back_populates="case",
+    )
+
+
+class CaseMemoryRecord(Base):
+    """First-class durable Case Memory — permanent structured case understanding.
+
+    Updated by meaningful interactions. Restored before AI continuity assembly.
+    Not reconstructed solely from chat transcripts.
+    """
+
+    __tablename__ = "case_memories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("grievance_cases.id"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+    case_uuid: Mapped[str] = mapped_column(
+        String(36),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+    schema_version: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+        default="case_memory_v1",
+    )
+    memory_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    workflow_state: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    reopen_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+    case: Mapped["GrievanceCase"] = relationship(back_populates="case_memory")
+
+
+class CaseDomainEvent(Base):
+    """Internal case-domain event for event-driven Case Memory updates.
+
+    Not a steward-facing Official Case Record substitute. Steward timeline
+    events remain in case_timeline_events; this table drives memory/workflow
+    projections with idempotent synchronous processing.
+    """
+
+    __tablename__ = "case_domain_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    event_id: Mapped[str] = mapped_column(
+        String(36), unique=True, nullable=False, index=True
+    )
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("grievance_cases.id"), nullable=False, index=True
+    )
+    case_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    actor_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    grievance_step: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    source_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    source_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    metadata_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    schema_version: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="case_domain_event_v1"
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    processing_status: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="pending"
+    )
+    steward_timeline_event_uuid: Mapped[str | None] = mapped_column(
+        String(36), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    case: Mapped["GrievanceCase"] = relationship(back_populates="domain_events")
 
 
 class CaseMessage(Base):
@@ -268,7 +359,7 @@ class CaseTimelineEventRecord(Base):
 
 
 class CaseFormDraftRecord(Base):
-    """Persisted metadata for an editable grievance form draft (Phase 1.4D)."""
+    """Editable working draft and official grievance form versions."""
 
     __tablename__ = "case_form_draft_records"
 
@@ -278,6 +369,7 @@ class CaseFormDraftRecord(Base):
     case_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     case_step_id: Mapped[int] = mapped_column(ForeignKey("case_steps.id"), nullable=False)
     template_id: Mapped[str] = mapped_column(String(150), nullable=False)
+    template_version: Mapped[str | None] = mapped_column(String(80), nullable=True)
     report_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("case_report_versions.id"),
         nullable=True,
@@ -289,6 +381,13 @@ class CaseFormDraftRecord(Base):
     validation_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     missing_required_field_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
     steward_override_field_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    field_values: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    content_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    is_official: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    saved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    printed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    pdf_asset_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
     approval_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     export_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     export_attempted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -298,6 +397,49 @@ class CaseFormDraftRecord(Base):
 
     case: Mapped["GrievanceCase"] = relationship(back_populates="form_draft_records")
     case_step: Mapped["CaseStep"] = relationship(back_populates="form_draft_records")
+
+
+class CaseSavedArtifact(Base):
+    """Official Save-and-Print case artifact (immutable after save).
+
+    Distinguishes steward-approved printed versions from auto-generated analysis
+    drafts and editable working form drafts. Generic across future templates.
+    """
+
+    __tablename__ = "case_saved_artifacts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    artifact_uuid: Mapped[str] = mapped_column(
+        String(36), unique=True, nullable=False, index=True
+    )
+    case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
+    case_uuid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    artifact_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    version_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    grievance_step: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    template_id: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    template_version: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    content_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    key_summary_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    source_report_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("case_report_versions.id"),
+        nullable=True,
+    )
+    source_report_version_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_draft_record_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    pdf_asset_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    pdf_status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
+    printed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_latest_official: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    saved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    saved_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="official")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    case: Mapped["GrievanceCase"] = relationship(back_populates="saved_artifacts")
 
 
 class CaseAsset(Base):

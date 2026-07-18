@@ -258,14 +258,21 @@ class CaseStepProgressionPersistenceService:
     ) -> tuple[str, datetime | None, datetime | None]:
         closed_at: datetime | None = None
         reopened_at: datetime | None = None
+        status = "open"
         for row in sorted(timeline_rows, key=lambda item: item.event_timestamp):
             if row.event_type == "case_closed":
                 closed_at = _to_aware_utc(row.event_timestamp)
+                status = "closed"
+            elif row.event_type == "case_settled":
+                closed_at = _to_aware_utc(row.event_timestamp)
+                status = "settled"
+            elif row.event_type == "case_archived":
+                closed_at = _to_aware_utc(row.event_timestamp)
+                status = "archived"
             elif row.event_type == "case_reopened":
                 reopened_at = _to_aware_utc(row.event_timestamp)
-        if closed_at and (reopened_at is None or closed_at > reopened_at):
-            return "closed", closed_at, reopened_at
-        return "open", closed_at, reopened_at
+                status = "open"
+        return status, closed_at, reopened_at
 
     def _build_progression_state(self, case_uuid: str) -> CaseStepProgressionState:
         case = self._get_case_row(case_uuid)
@@ -277,6 +284,19 @@ class CaseStepProgressionPersistenceService:
         )
         if not steps:
             raise CaseStepProgressionNotFoundError(case_uuid)
+
+        step_ids = [step.id for step in steps]
+        outcome_rows = (
+            self.db.query(CaseStepOutcome)
+            .filter(CaseStepOutcome.case_step_id.in_(step_ids))
+            .order_by(CaseStepOutcome.recorded_at.asc())
+            .all()
+            if step_ids
+            else []
+        )
+        outcomes_by_step: dict[int, list[CaseStepOutcome]] = {}
+        for outcome in outcome_rows:
+            outcomes_by_step.setdefault(outcome.case_step_id, []).append(outcome)
 
         timeline_rows = (
             self.db.query(CaseTimelineEventRecord)
@@ -291,6 +311,9 @@ class CaseStepProgressionPersistenceService:
             .order_by(CaseFormDraftRecord.created_at.asc())
             .all()
         )
+        drafts_by_step: dict[int, list[str]] = {}
+        for draft in draft_rows:
+            drafts_by_step.setdefault(draft.case_step_id, []).append(draft.draft_uuid)
 
         workspace_status, closed_at, reopened_at = self._derive_workspace_status(
             timeline_rows
@@ -305,7 +328,14 @@ class CaseStepProgressionPersistenceService:
             case_uuid=case_uuid,
             workspace_status=workspace_status,  # type: ignore[arg-type]
             current_step_type=current_step_type,
-            steps=[self._step_row_to_schema(step) for step in steps],
+            steps=[
+                self._step_row_to_schema(
+                    step,
+                    outcomes=outcomes_by_step.get(step.id, []),
+                    draft_uuids=drafts_by_step.get(step.id, []),
+                )
+                for step in steps
+            ],
             timeline=[self._timeline_row_to_schema(row) for row in timeline_rows],
             form_draft_history=[self._draft_row_to_schema(row) for row in draft_rows],
             created_at=created_at,
@@ -314,11 +344,28 @@ class CaseStepProgressionPersistenceService:
             reopened_at=reopened_at,
         )
 
+    def ensure_case_progression(
+        self,
+        case_uuid: str,
+        *,
+        event_timestamp: datetime | None = None,
+        commit: bool = True,
+    ) -> CaseStepProgressionState:
+        """Return existing progression or create Step 1 once (idempotent)."""
+        if self._has_progression(case_uuid):
+            return self._build_progression_state(case_uuid)
+        return self.create_case_progression(
+            case_uuid,
+            event_timestamp=event_timestamp,
+            commit=commit,
+        )
+
     def create_case_progression(
         self,
         case_uuid: str,
         *,
         event_timestamp: datetime | None = None,
+        commit: bool = True,
     ) -> CaseStepProgressionState:
         """Initialize persisted progression starting at Step 1 for an existing case."""
         if self._has_progression(case_uuid):
@@ -361,7 +408,10 @@ class CaseStepProgressionPersistenceService:
             case_step_id=step.id,
             event_timestamp=event_timestamp,
         )
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         return self._build_progression_state(case_uuid)
 
     def get_progression(self, case_uuid: str) -> CaseStepProgressionState:
@@ -521,6 +571,58 @@ class CaseStepProgressionPersistenceService:
             self.db.flush()
         return self.get_progression(case_uuid)
 
+    def settle_case(
+        self,
+        case_uuid: str,
+        *,
+        reason: str | None = None,
+        event_timestamp: datetime | None = None,
+        commit: bool = True,
+    ) -> CaseStepProgressionState:
+        """Mark case settled. Never deletes case history or artifacts."""
+        case = self._get_case_row(case_uuid)
+        state = self.get_progression(case_uuid)
+        now = _to_naive_utc(event_timestamp or _now())
+        self._append_timeline_event(
+            case,
+            event_type="case_settled",
+            title="Case settled",
+            step_type=state.current_step_type,
+            details=reason or "Case settled; permanent record retained.",
+            event_timestamp=event_timestamp or _to_aware_utc(now),
+        )
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
+        return self.get_progression(case_uuid)
+
+    def archive_case(
+        self,
+        case_uuid: str,
+        *,
+        reason: str | None = None,
+        event_timestamp: datetime | None = None,
+        commit: bool = True,
+    ) -> CaseStepProgressionState:
+        """Future-ready archive. Never deletes case history or artifacts."""
+        case = self._get_case_row(case_uuid)
+        state = self.get_progression(case_uuid)
+        now = _to_naive_utc(event_timestamp or _now())
+        self._append_timeline_event(
+            case,
+            event_type="case_archived",
+            title="Case archived",
+            step_type=state.current_step_type,
+            details=reason or "Case archived; permanent record retained.",
+            event_timestamp=event_timestamp or _to_aware_utc(now),
+        )
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
+        return self.get_progression(case_uuid)
+
     def reopen_step(
         self,
         case_uuid: str,
@@ -562,7 +664,7 @@ class CaseStepProgressionPersistenceService:
         event_timestamp: datetime | None = None,
     ) -> CaseStepProgressionState:
         state = self.get_progression(case_uuid)
-        if state.workspace_status != "closed":
+        if state.workspace_status not in {"closed", "settled", "archived"}:
             return state
 
         case = self._get_case_row(case_uuid)

@@ -34,12 +34,14 @@ class AnalysisService:
         metadata = getattr(chunk, "retrieval_metadata", {}) or {}
 
         return {
+            "source_id": getattr(source, "source_id", None),
             "document_name": source.name,
             "document_type": source.source_type,
             "page": chunk.page_number,
             "chunk": chunk.chunk_index,
             "text": chunk.text,
             "retrieval_metadata": metadata,
+            "retrieval_relationship": "embedding_retrieval",
         }
 
     @staticmethod
@@ -400,6 +402,7 @@ class AnalysisService:
             "issue_analysis": issue_analysis,
             "ranked_authorities": [
                 {
+                    "source_id": item.get("source_id"),
                     "document_name": item["document_name"],
                     "document_type": item["document_type"],
                     "page": item["page"],
@@ -411,6 +414,13 @@ class AnalysisService:
                     "article_or_section": item["article_or_section"],
                     "direct_quote": item["direct_quote"],
                     "why_it_matters": item["why_it_matters"],
+                    "jurisdiction": item.get("jurisdiction"),
+                    "version_or_effective_date": item.get("version_or_effective_date")
+                    or item.get("effective_date"),
+                    "retrieval_relationship": item.get("retrieval_relationship")
+                    or "embedding_retrieval",
+                    "authority_metadata": item.get("authority_metadata")
+                    or item.get("retrieval_metadata"),
                 }
                 for item in ranked_authorities
             ],
@@ -534,6 +544,7 @@ class AnalysisService:
             "report": validated_report,
             "ranked_authorities": [
                 {
+                    "source_id": item.get("source_id"),
                     "document_name": item["document_name"],
                     "document_type": item["document_type"],
                     "page": item["page"],
@@ -546,6 +557,13 @@ class AnalysisService:
                     "authority_type": item["authority_type"],
                     "direct_quote": item["direct_quote"],
                     "why_it_matters": item["why_it_matters"],
+                    "jurisdiction": item.get("jurisdiction"),
+                    "version_or_effective_date": item.get("version_or_effective_date")
+                    or item.get("effective_date"),
+                    "retrieval_relationship": item.get("retrieval_relationship")
+                    or "embedding_retrieval",
+                    "authority_metadata": item.get("authority_metadata")
+                    or item.get("retrieval_metadata"),
                 }
                 for item in ranked_authorities
             ],

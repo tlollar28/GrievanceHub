@@ -22,6 +22,13 @@ class FollowUpCitation(BaseModel):
     page: int | None = None
     quote: str = ""
     grounded: bool = True
+    grounding_provenance: Literal[
+        "retrieved_passage",
+        "saved_report_authority",
+        "ungrounded",
+    ] = "ungrounded"
+    grounding_passage_index: int | None = None
+    grounding_authority_index: int | None = None
 
 
 class FollowUpMessageSummary(BaseModel):

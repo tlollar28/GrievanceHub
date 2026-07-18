@@ -243,7 +243,8 @@ def test_citation_validation_rejects_ungrounded_quote():
         llm_callable=fake_llm,
     )
 
-    assert answer.citations[0].grounded is False
+    # Ungrounded citations are removed from the steward-facing response.
+    assert answer.citations == []
     assert any("could not be verified" in item for item in answer.disclosures)
 
 
@@ -325,10 +326,26 @@ def test_answer_follow_up_persists_without_report_regeneration():
         message_id=21,
     )
 
-    with patch.object(CaseService, "get_case", return_value=case), patch.object(
+    with patch.object(CaseService, "get_case_for_chat", return_value=case), patch.object(
         CaseService,
         "get_grounding_report_version",
         return_value=case.report_versions[0],
+    ), patch.object(
+        CaseService,
+        "build_restored_interaction_context",
+        return_value={"known_facts": case.known_facts},
+    ), patch.object(
+        FollowUpChatService,
+        "retrieve_indexed_source_passages",
+        return_value={
+            "retrieved_source_passages": [],
+            "indexed_source_types": ["CONTRACT", "CIM"],
+            "retrieval_query": "What evidence am I missing?",
+            "retrieval_performed": True,
+            "retrieval_status": "empty",
+            "retrieval_error": False,
+            "retrieval_error_class": None,
+        },
     ), patch.object(
         CaseService,
         "add_follow_up_exchange",

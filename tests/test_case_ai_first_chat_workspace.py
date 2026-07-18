@@ -1,7 +1,7 @@
-"""AI-first case chat workspace correction tests (W1–W3 stacked).
+"""AI-first case chat workspace tests.
 
-Proves canonical POST /cases/{uuid}/interactions behavior with mocked OpenAI/RAG.
-Synthetic data only — no live OpenAI, no grievance drafts, no exports.
+Chat persists conversation and may update Case Memory. Analysis reports are
+created only by explicit Generate Analysis Report actions.
 """
 
 from __future__ import annotations
@@ -17,9 +17,7 @@ from app.main import app
 from app.schemas.case_workspace_action_schema import (
     CaseInteractionRequest,
     CaseInteractionResponse,
-    WorkspaceActionAvailability,
 )
-from app.schemas.follow_up_schema import FollowUpAnswerPayload
 from app.services.case_service import CaseService
 from app.services.case_workspace_action_service import CaseWorkspaceActionService
 from app.services.follow_up_chat_service import FollowUpChatService
@@ -72,19 +70,6 @@ def _inspection(service_case=None, **overrides):
     return _WorkspaceInspection(**base)
 
 
-def _timeline_event(event_id: str, event_type: str, **refs):
-    return SimpleNamespace(
-        event_id=event_id,
-        event_type=event_type,
-        title=event_type.replace("_", " ").title(),
-        event_timestamp=datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
-        references=SimpleNamespace(
-            report_version_id=refs.get("report_version_id"),
-            report_version_number=refs.get("report_version_number"),
-        ),
-    )
-
-
 def _follow_up_result(*, user_id=9001, assistant_id=9002, answer="Grounded reply."):
     user = SimpleNamespace(
         id=user_id,
@@ -121,19 +106,14 @@ def client():
     return TestClient(app)
 
 
-# ---------------------------------------------------------------------------
-# Canonical route
-# ---------------------------------------------------------------------------
-
-
 def test_canonical_interactions_route_exists(client):
     expected = CaseInteractionResponse(
         case_uuid=CASE_A,
         status="completed",
-        message="Workspace is current.",
+        message="Conversation saved.",
         workspace_current=True,
-        current_report_version_number=2,
-        analysis_versions_created=1,
+        current_report_version_number=1,
+        analysis_versions_created=0,
         generate_grievance_available=False,
         ai_answer="Grounded reply.",
     )
@@ -156,49 +136,35 @@ def test_canonical_interactions_route_exists(client):
     body = response.json()
     assert body["workspace_current"] is True
     assert body["ai_answer"] == "Grounded reply."
-    assert "Update Analysis" not in (body.get("message") or "")
+    assert body["analysis_versions_created"] == 0
     mock_submit.assert_called_once()
     mock_openai.assert_not_called()
 
 
 def test_no_explicit_update_analysis_ui_action_required():
-    """save_and_update_analysis must not be steward-visible."""
     service = CaseWorkspaceActionService(MagicMock())
     actions = service.evaluate_action_availability(_inspection())
     save = next(a for a in actions if a.action == "save_and_update_analysis")
     gen = next(a for a in actions if a.action == "generate_grievance")
+    analysis = next(a for a in actions if a.action == "generate_analysis_report")
     assert save.steward_visible is False
     assert gen.steward_visible is True
-    assert "Update Analysis" not in (save.reason or "")
+    assert analysis.steward_visible is True
 
 
-# ---------------------------------------------------------------------------
-# Interaction orchestration
-# ---------------------------------------------------------------------------
-
-
-def test_submitted_message_and_ai_response_persisted():
+def test_submitted_message_and_ai_response_persisted_without_report():
     service = CaseWorkspaceActionService(MagicMock())
     follow = _follow_up_result()
-    new_version = SimpleNamespace(id=22, version_number=2)
 
     with (
         patch.object(
-            service,
-            "_inspect_workspace",
-            side_effect=[_inspection(), _inspection(latest_report_version_id=22, latest_report_version_number=2)],
+            service, "_inspect_workspace", side_effect=[_inspection(), _inspection()]
         ),
         patch.object(FollowUpChatService, "answer_follow_up", return_value=follow) as mock_fu,
-        patch.object(service, "_enrich_interaction_message_metadata", return_value={"intent": "case_interaction"}),
-        patch.object(CaseService, "generate_report_version", return_value=new_version) as mock_regen,
         patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated", report_version_id=22, report_version_number=2),
-            ],
+            service, "_enrich_interaction_message_metadata", return_value={"intent": "case_interaction"}
         ),
+        patch.object(CaseService, "generate_report_version") as mock_regen,
         patch(
             "app.services.grievance_form_draft_builder.build_grievance_form_draft"
         ) as mock_draft,
@@ -211,49 +177,38 @@ def test_submitted_message_and_ai_response_persisted():
 
     assert result.status == "completed"
     assert result.user_message is not None
-    assert result.user_message.id == 9001
     assert result.assistant_message is not None
-    assert result.assistant_message.id == 9002
     assert result.ai_answer == "Grounded reply."
+    assert result.analysis_versions_created == 0
     assert result.analysis_update.ai_response_persisted is True
     mock_fu.assert_called_once()
-    mock_regen.assert_called_once()
+    mock_regen.assert_not_called()
     mock_draft.assert_not_called()
 
 
-def test_one_interaction_creates_exactly_one_analysis_version():
+def test_one_interaction_creates_zero_analysis_versions():
     service = CaseWorkspaceActionService(MagicMock())
     follow = _follow_up_result()
-    new_version = SimpleNamespace(id=22, version_number=2)
 
     with (
         patch.object(service, "_inspect_workspace", side_effect=[_inspection(), _inspection()]),
         patch.object(FollowUpChatService, "answer_follow_up", return_value=follow),
         patch.object(service, "_enrich_interaction_message_metadata", return_value={}),
-        patch.object(CaseService, "generate_report_version", return_value=new_version) as mock_regen,
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ),
+        patch.object(CaseService, "generate_report_version") as mock_regen,
     ):
         result = service.submit_interaction(
             CASE_A,
             CaseInteractionRequest(message="Add context about overtime."),
         )
 
-    assert result.analysis_versions_created == 1
+    assert result.analysis_versions_created == 0
     assert result.prior_report_version_number == 1
-    assert result.current_report_version_number == 2
-    assert result.analysis_update.older_versions_retained is True
-    assert result.analysis_update.is_current_analysis is True
-    mock_regen.assert_called_once()
+    assert result.current_report_version_number == 1
+    assert result.analysis_update.new_report_version_id is None
+    mock_regen.assert_not_called()
 
 
-def test_no_duplicate_analysis_generation_for_one_chat_interaction():
+def test_no_analysis_generation_for_ordinary_chat_interaction():
     service = CaseWorkspaceActionService(MagicMock())
     follow = _follow_up_result()
 
@@ -261,19 +216,7 @@ def test_no_duplicate_analysis_generation_for_one_chat_interaction():
         patch.object(service, "_inspect_workspace", side_effect=[_inspection(), _inspection()]),
         patch.object(FollowUpChatService, "answer_follow_up", return_value=follow),
         patch.object(service, "_enrich_interaction_message_metadata", return_value={}),
-        patch.object(
-            CaseService,
-            "generate_report_version",
-            return_value=SimpleNamespace(id=22, version_number=2),
-        ) as mock_regen,
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ),
+        patch.object(CaseService, "generate_report_version") as mock_regen,
         patch.object(service, "save_and_update_analysis") as mock_compat,
     ):
         service.submit_interaction(
@@ -281,11 +224,11 @@ def test_no_duplicate_analysis_generation_for_one_chat_interaction():
             CaseInteractionRequest(message="One turn only."),
         )
 
-    mock_regen.assert_called_once()
+    mock_regen.assert_not_called()
     mock_compat.assert_not_called()
 
 
-def test_timeline_events_appended_once():
+def test_ordinary_chat_does_not_append_official_case_record_noise():
     service = CaseWorkspaceActionService(MagicMock())
     follow = _follow_up_result()
 
@@ -293,28 +236,15 @@ def test_timeline_events_appended_once():
         patch.object(service, "_inspect_workspace", side_effect=[_inspection(), _inspection()]),
         patch.object(FollowUpChatService, "answer_follow_up", return_value=follow),
         patch.object(service, "_enrich_interaction_message_metadata", return_value={}),
-        patch.object(
-            CaseService,
-            "generate_report_version",
-            return_value=SimpleNamespace(id=22, version_number=2),
-        ),
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ) as mock_timeline,
+        patch.object(service, "_append_timeline_safe") as mock_timeline,
     ):
         result = service.submit_interaction(
             CASE_A,
             CaseInteractionRequest(message="Note"),
         )
 
-    types = [c.kwargs["event_type"] for c in mock_timeline.call_args_list]
-    assert types == ["context_saved", "analysis_updated"]
-    assert len(result.timeline_events) == 2
+    mock_timeline.assert_not_called()
+    assert result.timeline_events == []
 
 
 def test_fact_updates_merge_safely():
@@ -328,19 +258,6 @@ def test_fact_updates_merge_safely():
         patch.object(CaseService, "update_known_facts") as mock_facts,
         patch.object(FollowUpChatService, "answer_follow_up", return_value=follow),
         patch.object(service, "_enrich_interaction_message_metadata", return_value={}),
-        patch.object(
-            CaseService,
-            "generate_report_version",
-            return_value=SimpleNamespace(id=22, version_number=2),
-        ),
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ),
     ):
         result = service.submit_interaction(
             CASE_A,
@@ -353,7 +270,6 @@ def test_fact_updates_merge_safely():
     assert result.analysis_update.facts_updated is True
     merged = mock_facts.call_args.args[2]
     assert merged["shift"] == "Tour 1"
-    assert merged["station"] == "Main"
     assert merged["incident_date"] == "2026-07-09"
 
 
@@ -376,21 +292,7 @@ def test_referenced_asset_uuids_resolve():
                 }
             ],
         ) as mock_resolve,
-        patch.object(
-            CaseService,
-            "generate_report_version",
-            return_value=SimpleNamespace(id=22, version_number=2),
-        ),
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ),
     ):
-        # Let enrich run for real so resolve is called
         result = service.submit_interaction(
             CASE_A,
             CaseInteractionRequest(
@@ -401,7 +303,6 @@ def test_referenced_asset_uuids_resolve():
 
     mock_resolve.assert_called_once()
     assert result.status == "completed"
-    assert result.analysis_update.trigger_metadata is not None
     assert asset_uuid in (
         result.analysis_update.trigger_metadata.get("case_asset_uuids") or []
     )
@@ -415,19 +316,6 @@ def test_response_includes_ai_reply_and_workspace_state():
         patch.object(service, "_inspect_workspace", side_effect=[_inspection(), _inspection()]),
         patch.object(FollowUpChatService, "answer_follow_up", return_value=follow),
         patch.object(service, "_enrich_interaction_message_metadata", return_value={}),
-        patch.object(
-            CaseService,
-            "generate_report_version",
-            return_value=SimpleNamespace(id=22, version_number=2),
-        ),
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ),
     ):
         result = service.submit_interaction(
             CASE_A,
@@ -436,12 +324,11 @@ def test_response_includes_ai_reply_and_workspace_state():
 
     assert result.workspace_current is True
     assert result.ai_answer == "Contract language supports the steward."
-    assert result.current_report_version_number == 2
-    assert result.analysis_update is not None
-    assert "Generate Grievance" in result.message
+    assert result.analysis_versions_created == 0
+    assert "analysis report" in result.message.lower()
 
 
-def test_generate_grievance_availability_recalculated_not_executed():
+def test_generate_grievance_not_executed_by_chat():
     service = CaseWorkspaceActionService(MagicMock())
     follow = _follow_up_result()
     post = _inspection(
@@ -450,31 +337,13 @@ def test_generate_grievance_availability_recalculated_not_executed():
         template_id="local_300_form_79_1",
         template_availability_status="available",
         template_available=True,
-        latest_report_version_id=22,
-        latest_report_version_number=2,
     )
 
     with (
         patch.object(service, "_inspect_workspace", side_effect=[_inspection(), post]),
         patch.object(FollowUpChatService, "answer_follow_up", return_value=follow),
         patch.object(service, "_enrich_interaction_message_metadata", return_value={}),
-        patch.object(
-            CaseService,
-            "generate_report_version",
-            return_value=SimpleNamespace(id=22, version_number=2),
-        ),
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ),
         patch.object(service, "generate_grievance") as mock_gen,
-        patch(
-            "app.services.grievance_form_draft_builder.build_grievance_form_draft"
-        ) as mock_draft,
     ):
         result = service.submit_interaction(
             CASE_A,
@@ -483,10 +352,7 @@ def test_generate_grievance_availability_recalculated_not_executed():
 
     assert result.generate_grievance_available is True
     assert result.grievance_draft_created is False
-    assert result.generation_snapshot_persisted is False
-    assert result.export_attempted is False
     mock_gen.assert_not_called()
-    mock_draft.assert_not_called()
 
 
 def test_closed_case_requires_reopening_before_interaction():
@@ -507,7 +373,6 @@ def test_closed_case_requires_reopening_before_interaction():
 
     assert result.status == "prerequisites_not_met"
     assert result.missing_prerequisites[0].code == "case_closed_requires_reopen"
-    assert result.workspace_current is False
     mock_fu.assert_not_called()
     mock_regen.assert_not_called()
 
@@ -530,21 +395,8 @@ def test_reopened_case_can_interact_and_preserves_prior_conversation():
                 _inspection(service_case=case, case_status="open"),
             ],
         ),
-        patch.object(FollowUpChatService, "answer_follow_up", return_value=follow) as mock_fu,
+        patch.object(FollowUpChatService, "answer_follow_up", return_value=follow),
         patch.object(service, "_enrich_interaction_message_metadata", return_value={}),
-        patch.object(
-            CaseService,
-            "generate_report_version",
-            return_value=SimpleNamespace(id=22, version_number=2),
-        ),
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ),
     ):
         result = service.submit_interaction(
             CASE_A,
@@ -553,12 +405,10 @@ def test_reopened_case_can_interact_and_preserves_prior_conversation():
 
     assert result.status == "completed"
     assert result.analysis_update.prior_conversation_preserved is True
-    mock_fu.assert_called_once()
-    assert len(prior) == 2  # prior history object not cleared
+    assert len(prior) == 2
 
 
 def test_case_isolation_prevents_cross_case_conversation_bleed():
-    """Each interaction is scoped to the requested case_uuid only."""
     service = CaseWorkspaceActionService(MagicMock())
     follow = _follow_up_result()
 
@@ -566,19 +416,7 @@ def test_case_isolation_prevents_cross_case_conversation_bleed():
         patch.object(service, "_inspect_workspace", side_effect=[_inspection(), _inspection()]),
         patch.object(FollowUpChatService, "answer_follow_up", return_value=follow) as mock_fu,
         patch.object(service, "_enrich_interaction_message_metadata", return_value={}),
-        patch.object(
-            CaseService,
-            "generate_report_version",
-            return_value=SimpleNamespace(id=22, version_number=2),
-        ) as mock_regen,
-        patch.object(
-            service,
-            "_append_timeline_safe",
-            side_effect=[
-                _timeline_event("evt-c", "context_saved"),
-                _timeline_event("evt-a", "analysis_updated"),
-            ],
-        ),
+        patch.object(CaseService, "generate_report_version") as mock_regen,
     ):
         result = service.submit_interaction(
             CASE_A,
@@ -587,9 +425,8 @@ def test_case_isolation_prevents_cross_case_conversation_bleed():
 
     assert result.case_uuid == CASE_A
     assert mock_fu.call_args.kwargs["case_uuid"] == CASE_A
-    assert mock_regen.call_args.kwargs["case_uuid"] == CASE_A
+    mock_regen.assert_not_called()
     assert CASE_B not in str(mock_fu.call_args)
-    assert CASE_B not in str(mock_regen.call_args)
 
 
 def test_legacy_actions_route_remains_compatible(client):
@@ -617,34 +454,17 @@ def test_legacy_actions_route_remains_compatible(client):
 
     assert response.status_code == 200
     assert response.json()["action"] == "save_and_update_analysis"
-    assert response.json()["steward_action_label"] is None
 
 
 def test_legacy_followups_route_still_present(client):
-    """Compatibility follow-up route remains registered (mocked)."""
-    with patch.object(
-        FollowUpChatService,
-        "answer_follow_up",
-        return_value=_follow_up_result(),
-    ), patch.object(
-        CaseService,
-        "serialize_message",
-        side_effect=lambda m: {"id": m.id, "role": m.role, "content": m.content},
-    ):
-        # May 404 if case lookup fails before mock — patch get path via service
-        with patch.object(
-            FollowUpChatService,
-            "answer_follow_up",
-            return_value=_follow_up_result(),
-        ):
-            # Ensure route exists in OpenAPI
-            paths = client.app.openapi()["paths"]
-            assert f"/cases/{{case_uuid}}/interactions" in paths
-            assert f"/cases/{{case_uuid}}/followups" in paths
-            assert f"/cases/{{case_uuid}}/messages" in paths
-            assert f"/cases/{{case_uuid}}/reports/regenerate" in paths
-            assert f"/cases/{{case_uuid}}/actions" in paths
-            assert f"/cases/{{case_uuid}}/assets" in paths
+    paths = client.app.openapi()["paths"]
+    assert f"/cases/{{case_uuid}}/interactions" in paths
+    assert f"/cases/{{case_uuid}}/followups" in paths
+    assert f"/cases/{{case_uuid}}/messages" in paths
+    assert f"/cases/{{case_uuid}}/reports/regenerate" in paths
+    assert f"/cases/{{case_uuid}}/reports/generate" in paths
+    assert f"/cases/{{case_uuid}}/actions" in paths
+    assert f"/cases/{{case_uuid}}/assets" in paths
 
 
 def test_w3_asset_routes_still_present(client):

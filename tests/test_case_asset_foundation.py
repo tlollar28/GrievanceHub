@@ -216,8 +216,13 @@ def test_upload_document_persists_metadata_and_bytes(tmp_path, monkeypatch):
     assert result.asset.file_size == len(content)
     assert result.asset.sha256 == hashlib.sha256(content).hexdigest()
     assert result.asset.uploaded_by == "Steward A"
-    assert len(stored_rows) == 1
-    written = tmp_path / SYNTHETIC_CASE_UUID / stored_rows[0].stored_filename
+    asset_rows = [row for row in stored_rows if isinstance(row, CaseAsset)]
+    assert len(asset_rows) == 1
+    # Steward Official Case Record also records Evidence uploaded.
+    assert any(
+        getattr(row, "event_type", None) == "files_uploaded" for row in stored_rows
+    )
+    written = tmp_path / SYNTHETIC_CASE_UUID / asset_rows[0].stored_filename
     assert written.read_bytes() == content
     db.commit.assert_called_once()
 

@@ -29,6 +29,9 @@ def _case(*, status: str = "open", report_versions: list | None = None):
         id=401,
         case_uuid=SYNTHETIC_CASE_UUID,
         status=status,
+        user_name="Synthetic Steward",
+        initial_question="Synthetic dispute question",
+        known_facts={"grievant_name": "Pat Lee"},
         report_versions=report_versions
         if report_versions is not None
         else [
@@ -168,10 +171,11 @@ def test_generate_grievance_reports_missing_progression_prerequisite():
     codes = {p.code for p in availability.missing_prerequisites}
     assert availability.available is False
     assert "step_progression_required" in codes
-    assert "step_progression_init_deferred_to_w4" in codes
+    assert "step_progression_init_deferred_to_w4" not in codes
 
 
-def test_step_1_template_unavailable():
+def test_step_1_allows_field_value_draft_without_overlay_template():
+    """Step 1 draft Save path does not require a confirmed overlay template."""
     service = CaseWorkspaceActionService(MagicMock())
     inspection = _inspection(
         current_step_type="step_1_initial",
@@ -180,8 +184,10 @@ def test_step_1_template_unavailable():
         template_available=False,
     )
     availability = service._availability_generate_grievance(inspection)
-    assert availability.available is False
-    assert any(p.code == "template_unavailable" for p in availability.missing_prerequisites)
+    assert availability.available is True
+    assert not any(
+        p.code == "template_unavailable" for p in availability.missing_prerequisites
+    )
 
 
 def test_step_2_template_available_when_prerequisites_represented():
@@ -194,7 +200,8 @@ def test_step_2_template_available_when_prerequisites_represented():
     assert availability.missing_prerequisites == []
 
 
-def test_step_3_template_deferred():
+def test_step_3_allows_field_value_draft_without_overlay_template():
+    """Step 3 field-value drafts are allowed; full overlay form remains deferred."""
     service = CaseWorkspaceActionService(MagicMock())
     inspection = _inspection(
         current_step_type="step_3_appeal",
@@ -203,8 +210,10 @@ def test_step_3_template_deferred():
         template_available=False,
     )
     availability = service._availability_generate_grievance(inspection)
-    assert availability.available is False
-    assert any(p.code == "template_deferred" for p in availability.missing_prerequisites)
+    assert availability.available is True
+    assert not any(
+        p.code == "template_deferred" for p in availability.missing_prerequisites
+    )
 
 
 def test_save_and_update_returns_completed_for_open_case():
@@ -292,21 +301,34 @@ def test_save_and_update_returns_completed_for_open_case():
     assert any(a.action == "save_and_update_analysis" and a.available for a in result.available_actions)
 
 
-def test_generate_grievance_returns_not_implemented_when_prereqs_met():
+def test_generate_grievance_returns_editable_draft_without_analysis_report():
     db = MagicMock()
     service = CaseWorkspaceActionService(db)
-    with patch.object(
-        service,
-        "_inspect_workspace",
-        return_value=_inspection(),
+    case = _case(status="open", report_versions=[])
+    with (
+        patch.object(
+            service,
+            "_inspect_workspace",
+            return_value=_inspection(
+                has_analysis_report=False,
+                latest_report_version_id=None,
+                latest_report_version_number=None,
+                current_step_type="step_1_initial",
+                template_id=None,
+                template_availability_status="unconfirmed_pending_steward_confirmation",
+                template_available=False,
+            ),
+        ),
+        patch.object(CaseService, "_get_case_row", return_value=case),
     ):
         result = service.generate_grievance(SYNTHETIC_CASE_UUID, None)
 
-    assert result.status == "not_implemented_in_w1"
+    assert result.status == "completed"
+    assert result.grievance_draft_created is True
     assert result.grievance_generation is not None
-    assert result.grievance_generation.draft_created is False
-    assert result.grievance_generation.export_attempted is False
-    assert result.grievance_generation.snapshot is None
+    assert result.grievance_generation.editable is True
+    assert result.grievance_generation.official_artifact_created is False
+    assert result.grievance_generation.field_values
 
 
 def test_generate_grievance_prerequisites_not_met_status():
@@ -330,7 +352,7 @@ def test_generate_grievance_prerequisites_not_met_status():
 
     assert result.status == "prerequisites_not_met"
     codes = {p.code for p in result.missing_prerequisites}
-    assert "analysis_report_required" in codes
+    assert "analysis_report_required" not in codes
     assert "step_progression_required" in codes
 
 

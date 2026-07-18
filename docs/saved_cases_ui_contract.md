@@ -1,224 +1,183 @@
-# Saved Cases UI Contract (Phase 1.4F + AI-first workspace correction)
+# Saved Cases UI Contract
 
-Frontend for saved cases is **deferred** until the steward UI phase. No React/Next.js
-app exists in this repository yet. This document defines the route/component
-contract so a future screen can plug into the existing backend without inventing
-a parallel workflow.
+Frontend for a production saved-cases screen is deferred. No React/Next.js app
+exists in this repository. A FastAPI HTML verification shell at `/ui` implements
+the current interaction model for local verification.
 
-**Docs sync:** 2026-07-15 — aligned with committed W1–W3 AI-first workspace.
-W4 (enriched reopen workspace / progression init) has not started.
+This document defines the route and component contract so a future production
+screen can use the existing backend without inventing a parallel workflow.
 
-## Permanent product principle
+**Docs sync:** 2026-07-18 — W4 steward-controlled artifacts; chat retrieves from
+the indexed corpus; W5 = Local 300 Form 79-1 overlay PDF assembly.
+
+## Product principle
 
 **The application manages the workflow. The steward manages the grievance.**
 
-The steward must never be required to click separate controls for:
+The UI should not require separate steward controls for Save Context, Update
+Analysis, Reanalyze, Refresh Report, or Start Chat. Continuous chat persists
+conversation, retrieves indexed sources, and may update Case Memory. Analysis
+reports and grievances are created only when the steward chooses **Generate
+Analysis Report** or **Generate Grievance**.
 
-- Save Context
-- Update Analysis
-- Reanalyze
-- Refresh Report
-- Start Chat
+## Case workspace expectations
 
-Those are system responsibilities. The steward explains what happened, asks
-questions, adds or corrects context, uploads evidence, reviews analysis, and
-optionally chooses **Generate Grievance**.
+When a steward creates, opens, or reopens a case, the workspace presents an
+active case-specific AI conversation. Each case owns its own conversation;
+context is not shared across cases.
 
-## AI-first case workspace
+### Where chat belongs
 
-GrievanceHub is an AI-first grievance case workspace — not an app with a chatbot
-attached. Whenever a steward creates, opens, or reopens a case, the workspace
-contains an **active case-specific AI conversation**, ready immediately.
-
-Each case owns its own conversation. Context from one case must never bleed into
-another case.
-
-### Where chat appears
-
-Persistent AI chat belongs on active case-work pages, for example:
+Include persistent AI chat on active case-work pages such as:
 
 - New Case
 - Existing Case / Case Workspace
 - Reopened Case
 - Evidence Review
 - Analysis Review
-- Grievance Workspace (before final print/finalization)
+- Grievance Workspace (before final print)
 
-Chat must **not** appear on non-interactive or administrative/output pages:
+Omit chat from non-interactive or administrative/output pages such as print
+preview, login, settings, and source-management screens.
 
-- Print Preview / PDF Viewer / Final Print/Export
-- Login / Settings
-- Administrative configuration
-- Source-management pages (unless later designed for an admin assistant)
+### Chat submission behavior
 
-### Automatic chat submission behavior
+On each successful `POST /cases/{case_uuid}/interactions` the backend:
 
-Every submitted steward chat interaction must automatically:
+1. Loads Case Memory and bounded conversation/workflow context
+2. Retrieves relevant passages from the configured indexed source corpus
+3. Returns a conversational answer with citations when sources are found
+4. Persists steward and assistant messages
+5. Updates Case Memory when durable meaning is present
+6. Returns refreshed action availability
 
-1. Persist the steward message and AI response
-2. Preserve prior conversation
-3. Merge safe fact updates and associate referenced Case Assets
-4. Build cumulative case context
-5. Run the full grievance analysis pipeline once
-6. Create one new immutable analysis report version (prior versions retained)
-7. Advance Current Analysis via latest-version semantics
-8. Append timeline events
-9. Return the AI reply plus refreshed workspace state
-10. Return whether Generate Grievance is available
+Chat does not:
 
-The chat submission **is** the workflow. No separate Update Analysis action.
+- Run the full analysis-report construction pipeline
+- Create a `CaseReportVersion`
+- Create a saved artifact
+- Append ordinary chat noise to the Official Case Record
 
-## Backend endpoints (do not duplicate)
+Analysis reports use Generate → temporary preview → Save / Save and Print /
+Cancel. Grievances use Generate → temporary editable draft → Save / Save and
+Print / Cancel.
+
+## Backend endpoints
 
 | Method | Route | Purpose | Status |
 |--------|-------|---------|--------|
-| `POST` | `/cases/{case_uuid}/interactions` | **Canonical** case chat + automatic analysis refresh | Preferred |
-| `POST` | `/cases/{case_uuid}/actions` | Explicit actions (`generate_grievance`; compatibility `save_and_update_analysis`) | Generate Grievance = W5 |
+| `POST` | `/cases/{case_uuid}/interactions` | Canonical case chat + retrieval | Preferred |
+| `POST` | `/cases/{case_uuid}/reports/generate` | Generate Analysis Report (temporary preview) | Current |
+| `POST` | `/cases/{case_uuid}/reports/save-and-print` | Save / Save and Print analysis | Current |
+| `POST` | `/cases/{case_uuid}/actions` | `generate_analysis_report`, `generate_grievance`; compatibility `save_and_update_analysis` | Current / overlay deferred |
+| `POST` | `/cases/{case_uuid}/grievances/save-and-print` | Save / Save and Print grievance | Current |
+| `GET` | `/cases/{case_uuid}/artifacts` | Artifact library (+ groups) | Current |
 | `GET` | `/cases/saved` | List saved cases | Current |
 | `GET` | `/cases/saved/{case_uuid}` | Saved case summary/detail | Current |
-| `POST` | `/cases/saved/{case_uuid}/open` | Open an active case workspace | Current |
-| `POST` | `/cases/saved/{case_uuid}/reopen` | Reopen a closed case | Current |
-| `GET` | `/cases/saved/{case_uuid}/timeline` | Case step/timeline history | Current |
-| `GET` | `/cases/{case_uuid}/workspace` | Full workspace payload (includes assets) | Current |
+| `POST` | `/cases/saved/{case_uuid}/open` | Open active case (returns restored `workspace`) | Current |
+| `POST` | `/cases/saved/{case_uuid}/reopen` | Reopen closed case (returns restored `workspace`) | Current |
+| `GET` | `/cases/saved/{case_uuid}/timeline` | Case timeline history | Current |
+| `GET` | `/cases/{case_uuid}/workspace` | Restored workspace | Current |
 
-### Compatibility routes (do not present as alternate UI chat paths)
+### Compatibility routes
 
 | Method | Route | Note |
 |--------|-------|------|
-| `POST` | `/cases/{uuid}/messages` | Legacy message + regen |
-| `POST` | `/cases/{uuid}/followups` | Legacy grounded Q&A without unified workspace refresh |
-| `POST` | `/cases/{uuid}/reports/regenerate` | Legacy explicit regen |
-| `POST` | `/cases/{uuid}/actions` + `save_and_update_analysis` | Internal/compatibility analysis refresh — **`steward_visible: false`** |
+| `POST` | `/cases/{uuid}/messages` | Legacy message path |
+| `POST` | `/cases/{uuid}/followups` | Legacy grounded Q&A |
+| `POST` | `/cases/{uuid}/reports/regenerate` | Legacy regen |
+| `POST` | `/cases/{uuid}/actions` + `save_and_update_analysis` | Internal compatibility (`steward_visible: false`) |
 
-Future UI must not present multiple confusing ways to chat or update analysis.
-One submitted `/interactions` call must not double-generate analysis versions.
+Future UI should use one primary chat path (`/interactions`). Open/reopen should
+call the saved-case routes with `source` set to `manual_ui` or `ai_command`.
 
-Manual click reopen and future AI-command reopen **must** call
-`POST /cases/saved/{case_uuid}/reopen` with `source` set to `manual_ui` or
-`ai_command`. There is no separate UI reopen service.
+After open/reopen, use the restored `workspace` payload (or
+`GET /cases/{case_uuid}/workspace`). Chat is available immediately. Case Memory
+and bounded `ai_continuity_context` support continuity without replaying the
+full transcript into every request.
 
-After open/reopen succeeds, navigate to the case workspace:
-`GET /cases/{case_uuid}/workspace`. Chat is active immediately with prior
-history loaded. Workspace responses include first-class `assets` /
-`uploaded_assets` (Phase W3).
-
-## Case assets (Phase W3)
+## Case assets
 
 | Method | Route | Purpose |
 |--------|-------|---------|
-| `GET` | `/cases/{case_uuid}/assets` | List case assets (optional `category`) |
-| `POST` | `/cases/{case_uuid}/assets` | Upload `uploaded_document` (multipart) |
+| `GET` | `/cases/{case_uuid}/assets` | List case assets |
+| `POST` | `/cases/{case_uuid}/assets` | Upload `uploaded_document` |
 | `GET` | `/cases/{case_uuid}/assets/{asset_uuid}` | Asset metadata |
 
-Only `uploaded_document` is executable in W3. Other categories
-(`generated_report`, `generated_grievance`, `future_export`,
-`future_attachment`) are reserved for later phases.
-
-Chat interactions may reference asset UUIDs via `upload_refs`; those assets
-become part of cumulative case context.
+Chat may reference asset UUIDs via `upload_refs`.
 
 ## Python client helper
 
-`app/clients/saved_case_client.py` — `SavedCaseApiClient` wraps saved-case
-endpoints. Use `resolve_case_click_action()` and `activate_case()` for row-click
-behavior. Future client work should add an interactions helper that calls
-`POST /cases/{uuid}/interactions` (not a separate Update Analysis button).
+`app/clients/saved_case_client.py` wraps saved-case endpoints. Use
+`resolve_case_click_action()` and `activate_case()` for row-click open/reopen
+behavior. Future helpers can wrap `/interactions`, `/reports/generate`, and
+`generate_grievance`.
 
 ## Screen: Saved Cases
 
-**Route (proposed):** `/cases/saved` or `/saved-cases`
-
+**Proposed production route:** `/cases/saved` or `/saved-cases`  
+**Current verification shell:** `GET /ui`  
 **Data source:** `GET /cases/saved?order=newest_first`
 
-### List row / card fields
-
-Display when available (never invent missing values):
+### List fields
 
 | Field | Schema key |
 |-------|------------|
 | Case number | `case_number` |
-| Case UUID (secondary) | `case_uuid` |
+| Case UUID | `case_uuid` |
 | Title | `title` |
 | Issue summary | `issue_summary` |
 | Current step | `current_step_type` |
 | Step status | `current_step_status` |
 | Workspace status | `workspace_status` |
 | Last activity | `last_activity_at` |
-| Created | `created_at` |
-| Closed | `closed_at` (when closed) |
-| Reopened | `reopened_at` (when reopened) |
+| Created / closed / reopened | `created_at`, `closed_at`, `reopened_at` |
 | Latest outcome | `latest_outcome_summary` / `latest_outcome_type` |
 | Available actions | `available_actions` |
 
 ### Row click behavior
 
-1. **Closed case** (`workspace_status === "closed"`): call
-   `POST /cases/saved/{case_uuid}/reopen` with `{ "source": "manual_ui" }`.
-2. **Open / reopened / appealed case**: call
-   `POST /cases/saved/{case_uuid}/open` with `{ "source": "manual_ui" }`.
-3. On success, route steward to case workspace for `case_uuid` with chat ready.
-
-Client equivalent: `SavedCaseApiClient.activate_case(summary)`.
+1. Closed case → `POST /cases/saved/{case_uuid}/reopen` with `{ "source": "manual_ui" }`
+2. Open / reopened / appealed → `POST /cases/saved/{case_uuid}/open` with `{ "source": "manual_ui" }`
+3. On success, navigate to the case workspace with chat ready
 
 ### Explicit action buttons
 
 Render from `available_actions` where `steward_visible !== false`:
 
-| Action | When shown | API call |
-|--------|------------|----------|
-| Open | `open_case` in `available_actions` | `POST .../open` |
-| Reopen | `reopen_case` in `available_actions` | `POST .../reopen` |
-| Timeline | `view_timeline` in `available_actions` | `GET .../timeline` |
-| Generate Grievance | workspace `generate_grievance` available | `POST /cases/{uuid}/actions` |
+| Action | API |
+|--------|-----|
+| Open | `POST .../open` |
+| Reopen | `POST .../reopen` |
+| Timeline | `GET .../timeline` |
+| Generate Analysis Report | `POST /cases/{uuid}/reports/generate` |
+| Generate Grievance | `POST /cases/{uuid}/actions` |
 
-Do **not** render Update Analysis / Save Context / Reanalyze buttons.
+The production workspace exposes Generate Analysis Report and Generate Grievance
+as the steward artifact actions. Save Context / Update Analysis / Reanalyze are
+not separate steward controls.
 
-### Timeline panel (optional v1)
+### Review modals
 
-When steward selects Timeline:
+- Analysis: read-only temporary preview with Save / Save and Print / Cancel
+- Grievance: editable temporary draft with Save / Save and Print / Cancel
+- Cancel discards the temporary payload with no version, artifact, or Official Case Record event
 
-- Request `GET /cases/saved/{case_uuid}/timeline?order=oldest_first`
-- Render `events[]` with `event_type`, `title`, `event_timestamp`
-- Default sort: oldest first (chronological history)
-
-## Filters (optional v1)
+## Filters (optional)
 
 - Status: `all` | `open` | `closed` | `reopened` | `appealed`
 - Step: `step_1_initial` | `step_2_appeal` | `step_3_arbitration`
 - Search: uuid, title, or numeric case id
 - Order: `newest_first` (default) | `oldest_first`
 
-## Canonical workspace contract (AI-first)
+## Out of scope for this contract
 
-| Steward experience | API |
-|--------------------|-----|
-| Persistent case chat (always present) | `POST /cases/{case_uuid}/interactions` |
-| Generate Grievance (optional explicit) | `POST /cases/{case_uuid}/actions` `{ "action": "generate_grievance" }` (W5) |
-
-After each successful interaction, UI may show system status such as:
-
-- Analysis updated
-- Current Analysis: Version N
-- Generate Grievance available/unavailable
-
-Those are confirmations — not buttons the steward must manage.
-
-### Generate Grievance template rules (unchanged)
-
-- Step 1 template unavailable
-- Step 2 Local 300 Form 79-1 available when progression prerequisites are met
-- Step 3 template deferred
-
-## Out of scope (this contract phase)
-
-- Frontend implementation
-- Generate Grievance execution (W5)
-- Grievance print/export
-- Source ingestion
-- Production authentication (Phase 1.7)
+- Production React implementation
+- Full Local 300 overlay PDF assembly (next phase)
+- Source ingestion tooling
+- Production authentication
 
 ## TypeScript types (future)
 
 Mirror `app/schemas/saved_case_schema.py` and
-`app/schemas/case_workspace_action_schema.py` (`CaseInteractionRequest` /
-`CaseInteractionResponse`) when the frontend is implemented.
+`app/schemas/case_workspace_action_schema.py` when the frontend is implemented.

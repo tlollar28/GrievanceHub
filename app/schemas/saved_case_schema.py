@@ -13,9 +13,24 @@ from app.schemas.case_step_progression_schema import (
     StepType,
 )
 
-SavedCaseWorkspaceStatus = Literal["open", "closed", "reopened", "appealed"]
+SavedCaseWorkspaceStatus = Literal[
+    "open",
+    "closed",
+    "reopened",
+    "appealed",
+    "settled",
+    "archived",
+]
 
-SavedCaseStatusFilter = Literal["open", "closed", "reopened", "appealed", "all"]
+SavedCaseStatusFilter = Literal[
+    "open",
+    "closed",
+    "reopened",
+    "appealed",
+    "settled",
+    "archived",
+    "all",
+]
 
 SavedCaseAction = Literal[
     "open_case",
@@ -23,6 +38,8 @@ SavedCaseAction = Literal[
     "continue_to_next_step",
     "view_timeline",
     "create_form_draft",
+    "settle_case",
+    "archive_case",
 ]
 
 ReopenSource = Literal["manual_ui", "ai_command", "system"]
@@ -68,11 +85,16 @@ class SavedCaseSummary(BaseModel):
 
 class SavedCaseListResponse(BaseModel):
     count: int
+    total: int | None = None
+    limit: int | None = None
+    offset: int | None = None
+    has_more: bool = False
     order: Literal["newest_first", "oldest_first"]
     status_filter: SavedCaseStatusFilter
     step_filter: StepType | None = None
     search: str | None = None
     cases: list[SavedCaseSummary]
+    payload_mode: Literal["summary_only"] = "summary_only"
 
 
 class OpenCaseRequest(BaseModel):
@@ -84,6 +106,7 @@ class ReopenCaseRequest(BaseModel):
         default=None,
         description="Optional steward or AI-supplied reopen reason; never invented.",
     )
+    reopened_by: str | None = None
     source: ReopenSource = "manual_ui"
 
 
@@ -91,6 +114,10 @@ class OpenCaseResponse(BaseModel):
     case: SavedCaseSummary
     action_taken: Literal["already_open", "opened", "closed_requires_reopen"]
     message: str
+    workspace: dict | None = Field(
+        default=None,
+        description="Restored case workspace payload when open succeeds; null when reopen required.",
+    )
 
 
 class ReopenCaseResponse(BaseModel):
@@ -98,6 +125,10 @@ class ReopenCaseResponse(BaseModel):
     action_taken: Literal["reopened", "already_open"]
     message: str
     source: ReopenSource
+    workspace: dict | None = Field(
+        default=None,
+        description="Restored case workspace payload after reopen/already-open.",
+    )
 
 
 class SavedCaseTimelineResponse(BaseModel):

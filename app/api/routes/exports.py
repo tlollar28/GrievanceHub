@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.services.case_saved_artifact_service import (
+    CaseSavedArtifactService,
+    CaseSavedArtifactValidationError,
+)
 from app.services.case_service import CaseNotFoundError, ReportVersionNotFoundError
 from app.services.report_export.normalizer import InvalidReportDataError
 from app.services.report_export.pdf_generator import PdfGenerationError
@@ -28,12 +32,61 @@ def _html_headers(*, inline: bool, filename: str) -> dict[str, str]:
     }
 
 
-def _pdf_headers(filename: str) -> dict[str, str]:
+def _pdf_headers(filename: str, *, print_mode: str) -> dict[str, str]:
     return {
         "Content-Disposition": f'attachment; filename="{filename}"',
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
+        "X-GrievanceHub-Print-Mode": print_mode,
     }
+
+
+def _serve_official_or_require_save(
+    db: Session,
+    case_uuid: str,
+    *,
+    version_number: int | None,
+    working_draft: bool,
+):
+    """Official PDF print requires prior Save and Print persistence."""
+    if working_draft:
+        pdf_bytes, filename = ReportExportService.export_case_pdf(
+            db,
+            case_uuid,
+            version_number=version_number,
+        )
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers=_pdf_headers(filename, print_mode="working_draft_preview"),
+        )
+
+    artifact = CaseSavedArtifactService(db).find_official_pdf_for_report_version(
+        case_uuid,
+        version_number,
+    )
+    if artifact is None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Official print requires Save and Print first. "
+                f"POST /cases/{case_uuid}/reports/save-and-print, then download "
+                "the persisted artifact PDF. "
+                "Pass working_draft=true only for non-official preview."
+            ),
+        )
+    try:
+        pdf_bytes, filename = CaseSavedArtifactService(db).get_artifact_pdf_bytes(
+            case_uuid,
+            artifact.artifact_uuid,
+        )
+    except CaseSavedArtifactValidationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers=_pdf_headers(filename, print_mode="official_saved_artifact"),
+    )
 
 
 def _handle_export_errors(exc: Exception) -> HTTPException:
@@ -71,12 +124,25 @@ def download_latest_report_html(case_uuid: str, db: Session = Depends(get_db)):
 
 
 @router.get("/cases/{case_uuid}/export/pdf")
-def download_latest_report_pdf(case_uuid: str, db: Session = Depends(get_db)):
+def download_latest_report_pdf(
+    case_uuid: str,
+    working_draft: bool = Query(
+        False,
+        description="Non-official preview only. Official print requires Save and Print.",
+    ),
+    db: Session = Depends(get_db),
+):
     try:
-        pdf_bytes, filename = ReportExportService.export_case_pdf(db, case_uuid)
+        return _serve_official_or_require_save(
+            db,
+            case_uuid,
+            version_number=None,
+            working_draft=working_draft,
+        )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise _handle_export_errors(exc) from exc
-    return Response(content=pdf_bytes, media_type="application/pdf", headers=_pdf_headers(filename))
 
 
 @router.get("/cases/{case_uuid}/versions/{version_number}/export/preview", response_class=HTMLResponse)
@@ -117,14 +183,20 @@ def download_report_version_html(
 def download_report_version_pdf(
     case_uuid: str,
     version_number: int,
+    working_draft: bool = Query(
+        False,
+        description="Non-official preview only. Official print requires Save and Print.",
+    ),
     db: Session = Depends(get_db),
 ):
     try:
-        pdf_bytes, filename = ReportExportService.export_case_pdf(
+        return _serve_official_or_require_save(
             db,
             case_uuid,
             version_number=version_number,
+            working_draft=working_draft,
         )
+    except HTTPException:
+        raise
     except Exception as exc:
         raise _handle_export_errors(exc) from exc
-    return Response(content=pdf_bytes, media_type="application/pdf", headers=_pdf_headers(filename))

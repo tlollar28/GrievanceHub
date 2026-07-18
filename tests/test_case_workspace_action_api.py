@@ -39,7 +39,13 @@ def _w1_response(
         message=CaseWorkspaceActionService.W1_NOT_IMPLEMENTED_MESSAGE,
         analysis_update=AnalysisUpdateResult() if action == "save_and_update_analysis" else None,
         grievance_generation=(
-            GrievanceGenerationResult() if action == "generate_grievance" else None
+            GrievanceGenerationResult(
+                draft_created=False,
+                editable=True,
+                official_artifact_created=False,
+            )
+            if action == "generate_grievance"
+            else None
         ),
         interaction_accepted_for_later_phases=False,
     )
@@ -149,8 +155,8 @@ def test_route_does_not_call_openai_or_create_report_or_draft(client):
     mock_draft.assert_not_called()
 
 
-def test_legacy_messages_route_unchanged(client):
-    """Existing POST /messages still regenerates via CaseService (compat)."""
+def test_legacy_messages_route_does_not_auto_generate_report(client):
+    """POST /messages persists the message only; no automatic analysis report."""
     created = datetime(2026, 7, 1, tzinfo=timezone.utc)
     message = SimpleNamespace(
         id=1,
@@ -158,19 +164,6 @@ def test_legacy_messages_route_unchanged(client):
         content="legacy message",
         message_metadata=None,
         created_at=created,
-    )
-    version = SimpleNamespace(
-        id=1,
-        version_number=1,
-        trigger_message_id=1,
-        created_at=created,
-        report_data={},
-        ranked_authorities=[],
-        issue_analysis={},
-        evidence_items=[],
-        retrieval_gaps=None,
-        source_coverage_audit=None,
-        report_summary=None,
     )
     case = SimpleNamespace(
         case_uuid=SYNTHETIC_CASE_UUID,
@@ -183,13 +176,11 @@ def test_legacy_messages_route_unchanged(client):
         created_at=created,
         updated_at=created,
         messages=[message],
-        report_versions=[version],
+        report_versions=[],
     )
     with (
         patch.object(CaseService, "add_message", return_value=message) as mock_add,
-        patch.object(
-            CaseService, "generate_report_version", return_value=version
-        ) as mock_regen,
+        patch.object(CaseService, "generate_report_version") as mock_regen,
         patch.object(CaseService, "get_case", return_value=case),
         patch.object(
             CaseService,
@@ -207,8 +198,10 @@ def test_legacy_messages_route_unchanged(client):
         )
 
     assert response.status_code == 200
+    body = response.json()
+    assert body["report_version"] is None
     mock_add.assert_called_once()
-    mock_regen.assert_called_once()
+    mock_regen.assert_not_called()
 
 
 def test_legacy_followups_route_unchanged(client):

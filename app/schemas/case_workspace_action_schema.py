@@ -1,23 +1,4 @@
-"""Canonical case workspace action and AI-first interaction contracts (W1–W3).
-
-Permanent product principle:
-**The application manages the workflow. The steward manages the grievance.**
-
-GrievanceHub is an AI-first case workspace. Case-specific chat is always present
-on active case-work pages. Submitting a chat interaction automatically persists
-conversation, merges safe context, refreshes analysis, and advances the current
-immutable report version. The steward must not click separate Save / Update
-Analysis / Reanalyze controls.
-
-Canonical future chat route:
-``POST /cases/{case_uuid}/interactions``
-
-Explicit optional action (W5):
-``POST /cases/{case_uuid}/actions`` with ``action: "generate_grievance"``
-
-Internal compatibility primitive (not a steward UI button):
-``save_and_update_analysis`` on ``POST /cases/{case_uuid}/actions``
-"""
+"""Typed contracts for case chat and explicit artifact-generation actions."""
 
 from __future__ import annotations
 
@@ -37,6 +18,7 @@ from app.schemas.case_step_progression_schema import (
 
 WorkspaceActionType = Literal[
     "save_and_update_analysis",
+    "generate_analysis_report",
     "generate_grievance",
 ]
 
@@ -52,6 +34,11 @@ WorkspaceActionExecutionStatus = Literal[
     "completed",
 ]
 
+RetrievalStatus = Literal["ok", "empty", "failed", "skipped"]
+CaseMemoryUpdateStatus = Literal[
+    "updated", "projection_failed", "failed", "unknown", "not_applicable"
+]
+
 PrerequisiteCode = Literal[
     "case_not_found",
     "case_closed_requires_reopen",
@@ -59,7 +46,7 @@ PrerequisiteCode = Literal[
     "step_progression_required",
     "template_unavailable",
     "template_deferred",
-    "step_progression_init_deferred_to_w4",
+    "step_progression_init_deferred_to_w4",  # historical; no longer emitted after W4
     "action_not_implemented_in_w1",
     "interaction_content_required",
 ]
@@ -73,8 +60,8 @@ class WorkspaceInteractionPayload(BaseModel):
     """Steward chat/context payload for a case-scoped AI interaction.
 
     On the canonical ``POST /cases/{case_uuid}/interactions`` route, submitting
-    this payload is the workflow: persist messages, refresh analysis, return
-    synchronized workspace state. No separate Update Analysis click is required.
+    this payload persists conversation and may update Case Memory. It does not
+    generate an analysis report or grievance.
     """
 
     message: str | None = Field(
@@ -106,7 +93,7 @@ class WorkspaceInteractionPayload(BaseModel):
         ge=1,
         description=(
             "Optional report version number to pin for historical grounding. "
-            "The interaction still creates a new latest analysis version."
+            "Does not create a new analysis version."
         ),
     )
 
@@ -119,9 +106,8 @@ class WorkspaceInteractionPayload(BaseModel):
 class CaseInteractionRequest(BaseModel):
     """Canonical POST /cases/{case_uuid}/interactions request body.
 
-    One submitted interaction = one complete case-specific AI turn plus
-    automatic analysis refresh. Generate Grievance remains a separate explicit
-    action on POST /cases/{case_uuid}/actions.
+    One submitted interaction = one persisted AI turn (and Case Memory updates).
+    Analysis reports and grievances require separate explicit steward actions.
     """
 
     message: str | None = Field(
@@ -167,9 +153,9 @@ class CaseInteractionMessageSummary(BaseModel):
 class CaseInteractionResponse(BaseModel):
     """Typed envelope for POST /cases/{case_uuid}/interactions.
 
-    After a successful interaction the workspace is synchronized: conversation
-    saved, facts/assets reflected, new immutable analysis version current,
-    timeline updated, and Generate Grievance availability recalculated.
+    A successful interaction persists conversation, reflects case context, reports
+    retrieval and Case Memory status, and recalculates action availability. No
+    analysis report or grievance artifact is created automatically.
     """
 
     case_uuid: str
@@ -183,6 +169,9 @@ class CaseInteractionResponse(BaseModel):
     citations: list[dict[str, Any]] = Field(default_factory=list)
     disclosures: list[str] = Field(default_factory=list)
     facts_needed: list[str] = Field(default_factory=list)
+    retrieval_status: RetrievalStatus | None = None
+    retrieval_error: bool = False
+    case_memory_update_status: CaseMemoryUpdateStatus = "not_applicable"
     prior_report_version_id: int | None = None
     prior_report_version_number: int | None = None
     current_report_version_id: int | None = None
@@ -201,16 +190,7 @@ class CaseInteractionResponse(BaseModel):
         default=0,
         description="Number of new analysis versions created by this interaction (0 or 1).",
     )
-    canonical_route_note: str = Field(
-        default=(
-            "Canonical case chat: POST /cases/{case_uuid}/interactions. "
-            "Generate Grievance: POST /cases/{case_uuid}/actions "
-            "with action generate_grievance. "
-            "Legacy /messages, /followups, /reports/regenerate, and "
-            "actions save_and_update_analysis remain compatibility paths — "
-            "future UI must not present multiple chat/update-analysis buttons."
-        ),
-    )
+
 
 
 # ---------------------------------------------------------------------------
@@ -332,23 +312,17 @@ class WorkspaceTimelineEventSummary(BaseModel):
 
 
 class AnalysisUpdateResult(BaseModel):
-    """Result of automatic analysis refresh after a case interaction.
-
-    Also returned by the compatibility ``save_and_update_analysis`` action.
-    Not a steward-facing button label — analysis refresh is system-managed.
-    """
+    """Conversation or analysis-update details returned by workspace actions."""
 
     steward_action_label: str | None = Field(
         default=None,
-        description=(
-            "Deprecated steward button label. Always None for AI-first UI; "
-            "analysis refresh is automatic on chat submission."
-        ),
+        description="Steward-facing label for an explicit action when applicable.",
     )
     interaction_saved: bool = False
     prior_conversation_preserved: bool = True
     facts_updated: bool = False
     ai_response_persisted: bool = False
+    case_memory_update_status: CaseMemoryUpdateStatus = "not_applicable"
     prior_report_version_id: int | None = None
     prior_report_version_number: int | None = None
     new_report_version_id: int | None = None
@@ -365,24 +339,29 @@ class AnalysisUpdateResult(BaseModel):
         ),
     )
     timeline_events: list[WorkspaceTimelineEventSummary] = Field(default_factory=list)
-    message: str = "Analysis refreshed; workspace is current."
+    message: str = "Workspace action completed."
 
 
 class GrievanceGenerationResult(BaseModel):
-    """Contract for Generate Grievance outcomes (W5+)."""
+    """Contract for Generate Grievance draft preview and Save outcomes."""
 
     context_saved_first: bool = False
     analysis_reflected_latest_context: bool = False
-    draft_created: bool = False
+    draft_created: bool = True
     draft_id: str | None = None
     draft_version: int | None = None
     template_id: str | None = None
     step_type: StepType | None = None
+    draft_status: str | None = "ready_for_steward_review"
+    editable: bool = True
+    field_values: dict[str, Any] = Field(default_factory=dict)
+    official_artifact_created: bool = False
     snapshot: CaseGenerationSnapshotMetadata | None = None
     export_attempted: bool = False
     message: str = (
-        "Grievance generation execution is not implemented yet. "
-        "W5 will orchestrate save-if-needed, latest analysis, and editable draft assembly."
+        "Editable grievance draft ready for steward review. "
+        "Save or Save and Print to create an official artifact. "
+        "Full Local 300 overlay PDF filling remains W5."
     )
 
 
@@ -415,23 +394,22 @@ class WorkspaceActionResponse(BaseModel):
     current_report_version_number: int | None = None
     analysis_update: AnalysisUpdateResult | None = None
     grievance_generation: GrievanceGenerationResult | None = None
+    grievance_draft_created: bool = False
+    analysis_preview_ready: bool = False
+    analysis_editable: bool = False
+    analysis_preview: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Temporary read-only analysis preview. Not persisted until Save. "
+            "Cancel discards this payload client-side; no version/artifact/OCR."
+        ),
+    )
+    official_artifact_created: bool = False
     timeline_events: list[WorkspaceTimelineEventSummary] = Field(default_factory=list)
     interaction_accepted_for_later_phases: bool = Field(
         default=False,
         description=(
             "True when an interaction payload was present on the request. "
-            "Prefer POST /interactions for chat. For generate_grievance, "
-            "W5 will save-first when present."
-        ),
-    )
-    legacy_routes_note: str = Field(
-        default=(
-            "Canonical case chat: POST /cases/{case_uuid}/interactions "
-            "(automatic save + analysis refresh). "
-            "Explicit action: POST /cases/{case_uuid}/actions with "
-            "generate_grievance. "
-            "Compatibility only: actions save_and_update_analysis, "
-            "POST /messages, /followups, /reports/regenerate — "
-            "future UI must not show Update Analysis / Save Context / Reanalyze buttons."
+            "Prefer POST /interactions for chat."
         ),
     )

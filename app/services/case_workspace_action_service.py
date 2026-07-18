@@ -1,29 +1,24 @@
-"""Case workspace orchestration — AI-first chat + compatibility actions (W1–W3).
+"""Case workspace orchestration — chat, Generate actions, and compatibility paths.
 
-Permanent product principle:
+Product principle:
 **The application manages the workflow. The steward manages the grievance.**
 
 Canonical steward chat:
 ``POST /cases/{case_uuid}/interactions`` → ``submit_interaction``
 
-One interaction automatically:
+One chat interaction:
 - persists steward + AI messages
 - merges safe fact updates / asset refs
-- runs the existing full analysis pipeline once
-- creates one new immutable report version
-- appends timeline events
-- returns AI reply + synchronized workspace state + Generate Grievance availability
+- retrieves indexed sources and returns grounded citations when available
+- updates Case Memory when durable meaning is present
+- does not create report versions, saved artifacts, or Official Case Record noise
 
-Internal primitives (no duplicate RAG/report builders):
-- ``FollowUpChatService`` — conversational turn
-- ``CaseService.generate_report_version`` — analysis refresh (W2 primitive)
-- ``CaseAssetService`` — asset resolution (W3)
-- ``CaseStepProgressionPersistenceService`` — timeline
+Explicit steward actions:
+- ``generate_analysis_report`` — temporary read-only preview
+- ``generate_grievance`` — temporary editable field-value draft
 
 Compatibility:
-- ``save_and_update_analysis`` on ``/actions`` — analysis refresh without requiring
-  a steward-facing Update Analysis button
-- ``generate_grievance`` on ``/actions`` — explicit optional action (W5)
+- ``save_and_update_analysis`` on ``/actions`` — internal analysis refresh
 """
 
 from __future__ import annotations
@@ -63,7 +58,10 @@ from app.services.case_step_progression_service import (
     CaseStepProgressionNotFoundError,
     CaseStepProgressionService,
 )
-from app.services.follow_up_chat_service import FollowUpChatService
+from app.services.follow_up_chat_service import (
+    CHAT_RETRIEVAL_LIMIT_PER_SOURCE,
+    FollowUpChatService,
+)
 
 # Internal compatibility markers (not steward UI button labels).
 INTERNAL_SAVE_AND_UPDATE_ACTION = "save_and_update_analysis"
@@ -90,11 +88,12 @@ class _WorkspaceInspection:
 
 
 class CaseWorkspaceActionService:
-    """Orchestration boundary for AI-first case interactions and actions.
+    """Orchestration boundary for case chat and explicit Generate actions.
 
-    - ``submit_interaction``: canonical chat + automatic analysis refresh
+    - ``submit_interaction``: canonical chat + indexed retrieval (no auto-report)
+    - ``generate_analysis_report``: temporary analysis preview
+    - ``generate_grievance``: temporary editable grievance draft
     - ``save_and_update_analysis``: internal/compatibility analysis refresh
-    - ``generate_grievance``: explicit optional action (W5)
     """
 
     W1_NOT_IMPLEMENTED_MESSAGE = (
@@ -119,6 +118,8 @@ class CaseWorkspaceActionService:
         """Validate and dispatch a workspace action (compatibility + Generate Grievance)."""
         if request.action == "save_and_update_analysis":
             return self.save_and_update_analysis(case_uuid, request.interaction)
+        if request.action == "generate_analysis_report":
+            return self.generate_analysis_report(case_uuid, request.interaction)
         if request.action == "generate_grievance":
             return self.generate_grievance(case_uuid, request.interaction)
         return WorkspaceActionResponse(
@@ -140,14 +141,20 @@ class CaseWorkspaceActionService:
         case_uuid: str,
         request: CaseInteractionRequest,
         *,
-        limit_per_source: int = 8,
+        limit_per_source: int | None = None,
         llm_callable: Callable[[str, dict[str, Any]], dict[str, Any]] | None = None,
     ) -> CaseInteractionResponse:
-        """Canonical AI-first case interaction: chat turn + automatic analysis refresh.
+        """Canonical AI-first case interaction: persist chat + Case Memory.
 
-        Creates exactly one new immutable analysis version. Does not generate
-        grievances, snapshots, or exports.
+        Does not automatically generate analysis reports, grievances, or PDFs.
+        Steward must explicitly Generate Analysis Report / Generate Grievance.
+        ``limit_per_source`` is threaded into conversational indexed retrieval.
         """
+        chat_limit = (
+            CHAT_RETRIEVAL_LIMIT_PER_SOURCE
+            if limit_per_source is None
+            else limit_per_source
+        )
         interaction = request.to_interaction_payload()
         try:
             inspection = self._inspect_workspace(case_uuid)
@@ -166,11 +173,14 @@ class CaseWorkspaceActionService:
             )
 
         available_actions = self.evaluate_action_availability(inspection)
-        if inspection.case_status == "closed":
+        if inspection.case_status in {"closed", "settled", "archived"}:
             return CaseInteractionResponse(
                 case_uuid=case_uuid,
                 status="prerequisites_not_met",
-                message="Case is closed. Reopen the case before continuing the conversation.",
+                message=(
+                    f"Case is {inspection.case_status}. "
+                    "Reopen the case before continuing the conversation."
+                ),
                 workspace_current=False,
                 available_actions=available_actions,
                 generate_grievance_available=False,
@@ -178,7 +188,8 @@ class CaseWorkspaceActionService:
                     WorkspaceActionPrerequisite(
                         code="case_closed_requires_reopen",
                         message=(
-                            "Case is closed. Reopen before submitting a case interaction."
+                            f"Case is {inspection.case_status}. "
+                            "Reopen before submitting a case interaction."
                         ),
                     )
                 ],
@@ -186,24 +197,6 @@ class CaseWorkspaceActionService:
                 prior_report_version_number=inspection.latest_report_version_number,
                 current_report_version_id=inspection.latest_report_version_id,
                 current_report_version_number=inspection.latest_report_version_number,
-            )
-
-        if not inspection.has_analysis_report:
-            return CaseInteractionResponse(
-                case_uuid=case_uuid,
-                status="prerequisites_not_met",
-                message="Case interaction requires an existing analysis report version.",
-                workspace_current=False,
-                available_actions=available_actions,
-                generate_grievance_available=False,
-                missing_prerequisites=[
-                    WorkspaceActionPrerequisite(
-                        code="analysis_report_required",
-                        message=(
-                            "Case chat requires a current analysis report to ground replies."
-                        ),
-                    )
-                ],
             )
 
         has_text = bool(
@@ -247,6 +240,9 @@ class CaseWorkspaceActionService:
         user_message: CaseMessage | None = None
         assistant_message: CaseMessage | None = None
         ai_response_persisted = False
+        retrieval_status: str | None = None
+        retrieval_error = False
+        memory_update_status = "not_applicable"
 
         if has_text:
             follow_up = FollowUpChatService.answer_follow_up(
@@ -255,10 +251,16 @@ class CaseWorkspaceActionService:
                 content=content,
                 report_version_number=interaction.pinned_report_version,
                 llm_callable=llm_callable,
+                limit_per_source=chat_limit,
             )
             user_message = follow_up["user_message"]
             assistant_message = follow_up["assistant_message"]
             ai_response_persisted = True
+            retrieval_status = follow_up.get("retrieval_status")
+            retrieval_error = bool(follow_up.get("retrieval_error"))
+            memory_update_status = str(
+                follow_up.get("case_memory_update_status") or "unknown"
+            )
             trigger_metadata = self._enrich_interaction_message_metadata(
                 case_uuid,
                 user_message,
@@ -266,71 +268,14 @@ class CaseWorkspaceActionService:
                 facts_updated=facts_updated,
             )
         else:
-            # Context-only interaction (facts/assets): persist one steward note,
-            # then refresh analysis — still one report version, no chatbot-only path.
+            # Context-only interaction (facts/assets): persist a steward note.
+            # Does not generate analysis reports or Official Case Record events.
             user_message, trigger_metadata = self._persist_context_only_message(
                 case_uuid, interaction, facts_updated=facts_updated
             )
 
+        # Ordinary chat must not create Official Case Record noise or reports.
         timeline_summaries: list[WorkspaceTimelineEventSummary] = []
-        context_event = self._append_timeline_safe(
-            case_uuid,
-            event_type="context_saved",
-            title="Context saved",
-            step_type=inspection.current_step_type,
-            details="Steward interaction persisted; conversation and context preserved.",
-            references=CaseTimelineEventReferences(
-                follow_up_message_ids=(
-                    [user_message.id] if user_message is not None else []
-                ),
-                upload_refs=list(interaction.upload_refs),
-            ),
-        )
-        if context_event is not None:
-            timeline_summaries.append(
-                self._timeline_summary(
-                    context_event,
-                    report_version_id=None,
-                    report_version_number=None,
-                )
-            )
-
-        # Exactly one analysis regeneration for this interaction (W2 primitive).
-        new_version = CaseService.generate_report_version(
-            db=self.db,
-            case_uuid=case_uuid,
-            limit_per_source=limit_per_source,
-            trigger_message_id=(
-                user_message.id if user_message is not None else None
-            ),
-        )
-
-        analysis_event = self._append_timeline_safe(
-            case_uuid,
-            event_type="analysis_updated",
-            title="Analysis updated",
-            step_type=inspection.current_step_type,
-            details=(
-                f"New immutable analysis report version {new_version.version_number} "
-                f"created automatically after case interaction."
-            ),
-            references=CaseTimelineEventReferences(
-                report_version_id=new_version.id,
-                report_version_number=new_version.version_number,
-                follow_up_message_ids=(
-                    [user_message.id] if user_message is not None else []
-                ),
-                upload_refs=list(interaction.upload_refs),
-            ),
-        )
-        if analysis_event is not None:
-            timeline_summaries.append(
-                self._timeline_summary(
-                    analysis_event,
-                    report_version_id=new_version.id,
-                    report_version_number=new_version.version_number,
-                )
-            )
 
         post_inspection = self._inspect_workspace(case_uuid)
         available_actions = self.evaluate_action_availability(post_inspection)
@@ -342,11 +287,12 @@ class CaseWorkspaceActionService:
             prior_conversation_preserved=True,
             facts_updated=facts_updated,
             ai_response_persisted=ai_response_persisted,
+            case_memory_update_status=memory_update_status,
             prior_report_version_id=prior_version_id,
             prior_report_version_number=prior_version_number,
-            new_report_version_id=new_version.id,
-            new_report_version_number=new_version.version_number,
-            is_current_analysis=True,
+            new_report_version_id=None,
+            new_report_version_number=None,
+            is_current_analysis=False,
             older_versions_retained=True,
             trigger_message_id=(
                 user_message.id if user_message is not None else None
@@ -354,10 +300,15 @@ class CaseWorkspaceActionService:
             trigger_metadata=trigger_metadata,
             timeline_events=timeline_summaries,
             message=(
-                f"Workspace is current. Analysis version {new_version.version_number} "
-                f"is Current Analysis; prior versions retained. "
-                f"Generate Grievance "
-                f"{'available' if generate_available else 'unavailable'}."
+                "Conversation saved. "
+                + (
+                    "Case Memory updated. "
+                    if memory_update_status == "updated"
+                    else "Case Memory update did not complete. "
+                    if memory_update_status in {"projection_failed", "failed"}
+                    else ""
+                )
+                + "No analysis report was generated."
             ),
         )
 
@@ -385,10 +336,13 @@ class CaseWorkspaceActionService:
             citations=citations,
             disclosures=disclosures,
             facts_needed=facts_needed,
+            retrieval_status=retrieval_status,
+            retrieval_error=retrieval_error,
+            case_memory_update_status=memory_update_status,
             prior_report_version_id=prior_version_id,
             prior_report_version_number=prior_version_number,
-            current_report_version_id=new_version.id,
-            current_report_version_number=new_version.version_number,
+            current_report_version_id=post_inspection.latest_report_version_id,
+            current_report_version_number=post_inspection.latest_report_version_number,
             analysis_update=analysis_update,
             available_actions=available_actions,
             generate_grievance_available=generate_available,
@@ -396,7 +350,97 @@ class CaseWorkspaceActionService:
             grievance_draft_created=False,
             generation_snapshot_persisted=False,
             export_attempted=False,
-            analysis_versions_created=1,
+            analysis_versions_created=0,
+        )
+
+    def generate_analysis_report(
+        self,
+        case_uuid: str,
+        interaction: WorkspaceInteractionPayload | None = None,
+        *,
+        limit_per_source: int = 8,
+    ) -> WorkspaceActionResponse:
+        """Explicit Generate Analysis Report — temporary read-only preview only.
+
+        Does not create CaseReportVersion, CaseSavedArtifact, Official Case
+        Record events, or allocate a permanent version number. Persistence and
+        versioning begin only when the steward Saves (or Save and Print).
+        Cancel discards the preview with no side effects.
+        """
+        try:
+            inspection = self._inspect_workspace(case_uuid)
+        except CaseNotFoundError:
+            return self._case_not_found_response(
+                case_uuid, "generate_analysis_report", interaction
+            )
+
+        available_actions = self.evaluate_action_availability(inspection)
+        if inspection.case_status in {"closed", "settled", "archived"}:
+            return WorkspaceActionResponse(
+                case_uuid=case_uuid,
+                action="generate_analysis_report",
+                status="prerequisites_not_met",
+                message=(
+                    f"Case is {inspection.case_status}. "
+                    "Reopen before generating an analysis report."
+                ),
+                steward_action_label="Generate Analysis Report",
+                available_actions=available_actions,
+                missing_prerequisites=[
+                    WorkspaceActionPrerequisite(
+                        code="case_closed_requires_reopen",
+                        message=f"Case is {inspection.case_status}.",
+                    )
+                ],
+                prior_report_version_id=inspection.latest_report_version_id,
+                prior_report_version_number=inspection.latest_report_version_number,
+                current_report_version_id=inspection.latest_report_version_id,
+                current_report_version_number=inspection.latest_report_version_number,
+            )
+
+        prior_version_id = inspection.latest_report_version_id
+        prior_version_number = inspection.latest_report_version_number
+        preview = CaseService.build_analysis_report_preview(
+            self.db,
+            case_uuid,
+            limit_per_source=limit_per_source,
+        )
+        analysis_update = AnalysisUpdateResult(
+            steward_action_label="Generate Analysis Report",
+            interaction_saved=False,
+            prior_conversation_preserved=True,
+            facts_updated=False,
+            ai_response_persisted=False,
+            prior_report_version_id=prior_version_id,
+            prior_report_version_number=prior_version_number,
+            new_report_version_id=None,
+            new_report_version_number=None,
+            is_current_analysis=False,
+            older_versions_retained=True,
+            message=(
+                "Temporary analysis preview ready for read-only review. "
+                "Save creates the next Analysis Report version and artifact. "
+                "Cancel discards this preview with no version, artifact, or "
+                "Official Case Record event."
+            ),
+        )
+        return WorkspaceActionResponse(
+            case_uuid=case_uuid,
+            action="generate_analysis_report",
+            status="completed",
+            message=analysis_update.message,
+            steward_action_label="Generate Analysis Report",
+            available_actions=available_actions,
+            prior_report_version_id=prior_version_id,
+            prior_report_version_number=prior_version_number,
+            current_report_version_id=prior_version_id,
+            current_report_version_number=prior_version_number,
+            analysis_update=analysis_update,
+            analysis_preview_ready=True,
+            analysis_editable=False,
+            analysis_preview=preview,
+            official_artifact_created=False,
+            interaction_accepted_for_later_phases=interaction is not None,
         )
 
     def save_and_update_analysis(
@@ -408,7 +452,7 @@ class CaseWorkspaceActionService:
     ) -> WorkspaceActionResponse:
         """Compatibility analysis refresh (internal; not a steward UI button).
 
-        Prefer ``submit_interaction`` / POST /interactions for steward chat.
+        Prefer explicit ``generate_analysis_report`` / POST /reports/generate.
         Reuses the same ``generate_report_version`` primitive — no duplicate pipeline.
         """
         try:
@@ -559,7 +603,12 @@ class CaseWorkspaceActionService:
         case_uuid: str,
         interaction: WorkspaceInteractionPayload | None = None,
     ) -> WorkspaceActionResponse:
-        """Generate Grievance — contract + prerequisite inspection only until W5."""
+        """Generate an editable grievance draft preview from current case context.
+
+        Does not create an official artifact until the steward Saves.
+        Full Local 300 PDF overlay filling remains W5; this returns field values
+        suitable for review/edit and Save / Save and Print.
+        """
         try:
             inspection = self._inspect_workspace(case_uuid)
         except CaseNotFoundError:
@@ -571,7 +620,6 @@ class CaseWorkspaceActionService:
         gen_availability = next(
             a for a in available_actions if a.action == "generate_grievance"
         )
-
         if not gen_availability.available:
             return WorkspaceActionResponse(
                 case_uuid=case_uuid,
@@ -589,34 +637,69 @@ class CaseWorkspaceActionService:
                 grievance_generation=GrievanceGenerationResult(
                     step_type=inspection.current_step_type,
                     template_id=inspection.template_id,
+                    draft_created=False,
+                    editable=True,
+                    official_artifact_created=False,
+                    message=gen_availability.reason
+                    or "Generate Grievance prerequisites not met.",
                 ),
-                interaction_accepted_for_later_phases=interaction is not None,
             )
 
+        case = CaseService._get_case_row(self.db, case_uuid)
+        if case is None:
+            return self._case_not_found_response(
+                case_uuid, "generate_grievance", interaction
+            )
+        facts = dict(case.known_facts or {})
+        step_type = inspection.current_step_type or "step_1_initial"
+        template_id = inspection.template_id or "local_300_form_79_1"
+        field_values = {
+            "grievant_name": facts.get("grievant_name")
+            or facts.get("employee_name")
+            or case.user_name
+            or "",
+            "grievant_name_or_class": facts.get("grievant_name_or_class")
+            or facts.get("grievant_name")
+            or "",
+            "facts_what_happened": facts.get("facts_what_happened")
+            or case.initial_question
+            or "",
+            "facts_date_time_location": facts.get("facts_date_time_location") or "",
+            "violation_articles_citations": facts.get("violation_articles_citations")
+            or "",
+            "corrective_action_requested": facts.get("corrective_action_requested")
+            or facts.get("remedy")
+            or "Make the grievant whole.",
+        }
         return WorkspaceActionResponse(
             case_uuid=case_uuid,
             action="generate_grievance",
-            status="not_implemented_in_w1",
+            status="completed",
             message=(
-                "Generate Grievance execution is deferred to Phase W5. "
-                "Case chat continues via POST /cases/{case_uuid}/interactions."
+                "Temporary editable grievance draft ready for review. "
+                "Save creates the first grievance artifact/version. "
+                "Cancel discards this draft with no artifact, version, or "
+                "Official Case Record event. "
+                "Full Local 300 overlay PDF filling remains W5."
             ),
             steward_action_label="Generate Grievance",
             available_actions=available_actions,
-            missing_prerequisites=[
-                WorkspaceActionPrerequisite(
-                    code="action_not_implemented_in_w1",
-                    message="generate_grievance execution is deferred to Phase W5.",
-                    resolved_in_phase="W5",
-                )
-            ],
             prior_report_version_id=inspection.latest_report_version_id,
             prior_report_version_number=inspection.latest_report_version_number,
             current_report_version_id=inspection.latest_report_version_id,
             current_report_version_number=inspection.latest_report_version_number,
+            grievance_draft_created=True,
             grievance_generation=GrievanceGenerationResult(
-                step_type=inspection.current_step_type,
-                template_id=inspection.template_id,
+                step_type=step_type,  # type: ignore[arg-type]
+                template_id=template_id,
+                draft_status="ready_for_steward_review",
+                editable=True,
+                field_values=field_values,
+                official_artifact_created=False,
+                draft_created=True,
+                message=(
+                    "Temporary editable draft only — not persisted until Save."
+                ),
             ),
             interaction_accepted_for_later_phases=interaction is not None,
         )
@@ -628,8 +711,40 @@ class CaseWorkspaceActionService:
         """Compute availability for workspace actions from case state."""
         return [
             self._availability_save_and_update(inspection),
+            self._availability_generate_analysis(inspection),
             self._availability_generate_grievance(inspection),
         ]
+
+    @staticmethod
+    def _availability_generate_analysis(
+        inspection: _WorkspaceInspection,
+    ) -> WorkspaceActionAvailability:
+        missing: list[WorkspaceActionPrerequisite] = []
+        if inspection.case_status in {"closed", "settled", "archived"}:
+            missing.append(
+                WorkspaceActionPrerequisite(
+                    code="case_closed_requires_reopen",
+                    message=(
+                        f"Case is {inspection.case_status}. "
+                        "Reopen before generating an analysis report."
+                    ),
+                )
+            )
+        available = len(missing) == 0
+        return WorkspaceActionAvailability(
+            action="generate_analysis_report",
+            available=available,
+            steward_visible=True,
+            reason=(
+                "Generate Analysis Report is available from current case context."
+                if available
+                else "Case must be open or reopened."
+            ),
+            missing_prerequisites=missing,
+            current_step_type=inspection.current_step_type,
+            template_id=inspection.template_id,
+            template_availability=inspection.template_availability_status,  # type: ignore[arg-type]
+        )
 
     # ------------------------------------------------------------------
     # Interaction helpers
@@ -675,7 +790,7 @@ class CaseWorkspaceActionService:
                 "trigger": CASE_INTERACTION_TRIGGER,
                 "workflow": "ai_first_case_interaction",
                 "source": interaction.source,
-                "analysis_auto_refreshed": True,
+                "analysis_auto_refreshed": False,
             }
         )
         if interaction.clarification and interaction.clarification.strip():
@@ -721,7 +836,7 @@ class CaseWorkspaceActionService:
             "trigger": CASE_INTERACTION_TRIGGER,
             "workflow": "ai_first_case_interaction",
             "source": interaction.source,
-            "analysis_auto_refreshed": True,
+            "analysis_auto_refreshed": False,
         }
         if interaction.upload_refs:
             trigger_metadata["upload_refs"] = list(interaction.upload_refs)
@@ -904,13 +1019,13 @@ class CaseWorkspaceActionService:
     ) -> WorkspaceActionAvailability:
         """Internal compatibility analysis refresh — not steward-visible."""
         missing: list[WorkspaceActionPrerequisite] = []
-        if inspection.case_status == "closed":
+        if inspection.case_status in {"closed", "settled", "archived"}:
             missing.append(
                 WorkspaceActionPrerequisite(
                     code="case_closed_requires_reopen",
                     message=(
-                        "Case is closed. Reopen the case before continuing "
-                        "case interactions."
+                        f"Case is {inspection.case_status}. Reopen the case before "
+                        "continuing case interactions."
                     ),
                 )
             )
@@ -918,7 +1033,7 @@ class CaseWorkspaceActionService:
                 action="save_and_update_analysis",
                 available=False,
                 steward_visible=False,
-                reason="Case is closed; reopen required.",
+                reason=f"Case is {inspection.case_status}; reopen required.",
                 missing_prerequisites=missing,
                 current_step_type=inspection.current_step_type,
                 template_id=inspection.template_id,
@@ -943,23 +1058,16 @@ class CaseWorkspaceActionService:
     def _availability_generate_grievance(
         inspection: _WorkspaceInspection,
     ) -> WorkspaceActionAvailability:
-        """generate_grievance prerequisites: analysis, progression, buildable template."""
+        """Generate Grievance: independent of analysis report; Step 1-first drafts OK."""
         missing: list[WorkspaceActionPrerequisite] = []
 
-        if inspection.case_status == "closed":
+        if inspection.case_status in {"closed", "settled", "archived"}:
             missing.append(
                 WorkspaceActionPrerequisite(
                     code="case_closed_requires_reopen",
-                    message="Case is closed. Reopen before generating a grievance.",
-                )
-            )
-
-        if not inspection.has_analysis_report:
-            missing.append(
-                WorkspaceActionPrerequisite(
-                    code="analysis_report_required",
                     message=(
-                        "Generate Grievance requires a current analysis report version."
+                        f"Case is {inspection.case_status}. "
+                        "Reopen before generating a grievance."
                     ),
                 )
             )
@@ -969,19 +1077,7 @@ class CaseWorkspaceActionService:
                 WorkspaceActionPrerequisite(
                     code="step_progression_required",
                     message=(
-                        "Generate Grievance requires initialized step progression. "
-                        "Progression init is deferred to Phase W4."
-                    ),
-                    resolved_in_phase="W4",
-                    details={"note": "step_progression_init_deferred_to_w4"},
-                )
-            )
-            missing.append(
-                WorkspaceActionPrerequisite(
-                    code="step_progression_init_deferred_to_w4",
-                    message=(
-                        "Step progression initialization on case create is deferred "
-                        "to Phase W4."
+                        "Generate Grievance requires initialized step progression."
                     ),
                     resolved_in_phase="W4",
                 )
@@ -989,51 +1085,36 @@ class CaseWorkspaceActionService:
 
         step_type = inspection.current_step_type
         template_status = inspection.template_availability_status
-        template_id = inspection.template_id
+        template_id = inspection.template_id or "local_300_form_79_1"
 
-        if inspection.has_step_progression and step_type is not None:
-            if step_type == "step_1_initial":
-                missing.append(
-                    WorkspaceActionPrerequisite(
-                        code="template_unavailable",
-                        message=(
-                            "Step 1 initial filing template is not available "
-                            "(unconfirmed_pending_steward_confirmation)."
-                        ),
-                        details={"step_type": step_type},
-                    )
+        # Step 1 / Step 3 may still use field-value draft Save and Print without
+        # a confirmed overlay template. Do not require analysis report first.
+        if (
+            inspection.has_step_progression
+            and step_type is not None
+            and step_type == "step_2_appeal"
+            and not inspection.template_available
+        ):
+            missing.append(
+                WorkspaceActionPrerequisite(
+                    code="template_unavailable",
+                    message=(
+                        f"No buildable official template for current step "
+                        f"{step_type}."
+                    ),
+                    details={
+                        "step_type": step_type,
+                        "availability_status": template_status,
+                    },
                 )
-            elif step_type == "step_3_appeal":
-                missing.append(
-                    WorkspaceActionPrerequisite(
-                        code="template_deferred",
-                        message=(
-                            "Step 3 appeal template is deferred "
-                            "(deferred_separate_form_required)."
-                        ),
-                        details={"step_type": step_type},
-                    )
-                )
-            elif not inspection.template_available:
-                missing.append(
-                    WorkspaceActionPrerequisite(
-                        code="template_unavailable",
-                        message=(
-                            f"No buildable official template for current step "
-                            f"{step_type}."
-                        ),
-                        details={
-                            "step_type": step_type,
-                            "availability_status": template_status,
-                        },
-                    )
-                )
+            )
 
         available = len(missing) == 0
         if available:
             reason = (
-                "Prerequisites represented as met for Generate Grievance "
-                "(Step 2 template available). Execution deferred to W5."
+                "Generate Grievance is available from current case context "
+                "(analysis report not required). Editable draft review is supported; "
+                "full Local 300 overlay PDF filling remains W5."
             )
         else:
             reason = "One or more Generate Grievance prerequisites are missing."
@@ -1053,29 +1134,33 @@ class CaseWorkspaceActionService:
     # Inspection
     # ------------------------------------------------------------------
 
-    def _inspect_workspace(self, case_uuid: str) -> _WorkspaceInspection:
-        case = CaseService.get_case(self.db, case_uuid)
-        versions = sorted(case.report_versions, key=lambda v: v.version_number)
+    def build_inspection_from_loaded(
+        self,
+        case: GrievanceCase,
+        *,
+        progression_state=None,
+    ) -> _WorkspaceInspection:
+        """Build inspection from already-loaded case/progression (no extra case load)."""
+        versions = sorted(
+            getattr(case, "report_versions", None) or [],
+            key=lambda v: v.version_number,
+        )
         latest: CaseReportVersion | None = versions[-1] if versions else None
 
         current_step_type: StepType | None = None
         template_id: str | None = None
         template_status: str | None = None
         template_available = False
-        has_progression = False
+        has_progression = progression_state is not None
 
-        try:
-            state = self._progression.get_progression(case_uuid)
-            has_progression = True
-            current_step_type = state.current_step_type
+        if progression_state is not None:
+            current_step_type = progression_state.current_step_type
             availability = CaseStepProgressionService.get_step_template_availability(
                 current_step_type
             )
             template_id = availability.template_id
             template_status = availability.availability_status
             template_available = availability.template_available
-        except CaseStepProgressionNotFoundError:
-            has_progression = False
 
         return _WorkspaceInspection(
             case=case,
@@ -1090,6 +1175,17 @@ class CaseWorkspaceActionService:
             case_status=str(case.status or "open"),
         )
 
+    def _inspect_workspace(self, case_uuid: str) -> _WorkspaceInspection:
+        case = CaseService.get_case(self.db, case_uuid)
+        progression_state = None
+        try:
+            progression_state = self._progression.get_progression(case_uuid)
+        except CaseStepProgressionNotFoundError:
+            progression_state = None
+        return self.build_inspection_from_loaded(
+            case, progression_state=progression_state
+        )
+
     @staticmethod
     def _case_not_found_response(
         case_uuid: str,
@@ -1102,7 +1198,11 @@ class CaseWorkspaceActionService:
             status="case_not_found",
             message=f"Case not found: {case_uuid}",
             steward_action_label=(
-                "Generate Grievance" if action == "generate_grievance" else None
+                "Generate Grievance"
+                if action == "generate_grievance"
+                else "Generate Analysis Report"
+                if action == "generate_analysis_report"
+                else None
             ),
             missing_prerequisites=[
                 WorkspaceActionPrerequisite(

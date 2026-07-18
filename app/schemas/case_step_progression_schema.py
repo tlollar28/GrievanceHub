@@ -50,24 +50,34 @@ TimelineEventType = Literal[
     "case_opened",
     "case_reopened",
     "case_closed",
+    "case_settled",
+    "case_archived",
     "files_uploaded",
     "concern_added",
     "analysis_report_generated",
+    "analysis_report_saved",
+    "analysis_report_saved_and_printed",
     "context_saved",
     "analysis_updated",
     "follow_up_added",
     "form_draft_created",
+    "grievance_form_saved",
+    "grievance_form_saved_and_printed",
+    "grievance_revision_created",
     "missing_fields_updated",
     "steward_edit_added",
     "step_meeting_or_hearing_held",
     "step_decision_added",
     "step_closed",
     "step_reopened",
+    "step_changed",
+    "important_case_decision_recorded",
     "appealed_to_next_step",
     "export_created_later",
+    "management_response_uploaded",
 ]
 
-CaseWorkspaceStatus = Literal["open", "closed"]
+CaseWorkspaceStatus = Literal["open", "closed", "settled", "archived"]
 
 StepTemplateAvailability = Literal[
     "available",

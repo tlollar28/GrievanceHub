@@ -83,10 +83,11 @@ def test_html_download_headers():
 def test_pdf_download_headers():
     client = TestClient(app)
     with _MockCaseVersion():
-        response = client.get(f"/cases/{CASE_UUID}/export/pdf")
+        response = client.get(f"/cases/{CASE_UUID}/export/pdf?working_draft=true")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert response.headers["cache-control"] == "no-store"
+    assert response.headers["x-grievancehub-print-mode"] == "working_draft_preview"
     assert response.content.startswith(b"%PDF")
 
 
@@ -141,7 +142,7 @@ def test_export_never_calls_analysis_service():
     client = TestClient(app)
     with _MockCaseVersion():
         with patch("app.services.analysis_service.AnalysisService.generate_report") as mock_generate:
-            client.get(f"/cases/{CASE_UUID}/export/pdf")
+            client.get(f"/cases/{CASE_UUID}/export/pdf?working_draft=true")
     mock_generate.assert_not_called()
 
 
