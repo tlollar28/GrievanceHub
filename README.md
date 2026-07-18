@@ -23,10 +23,12 @@ Production case data, credentials, and private operational assets are not includ
 | Case asset uploads | Implemented |
 | Steward verification UI (`/ui`) | Implemented (FastAPI HTML shell) |
 | Analysis report HTML/PDF export | Implemented |
-| Local 300 Form 79-1 PDF overlay | Deferred (next phase) |
-| Production React UI | Deferred |
-| Authentication / RBAC | Deferred |
-| Cloud deployment | Deferred |
+| Official USPS Step 1 and Step 2 forms | Planned (W5) |
+| USPS Supervisor Manual corpus | Planned (W5) |
+| Authentication / RBAC | Planned (W6) |
+| Production React UI | Planned (W7) |
+| Arbitration and LMOU corpus | Planned (W8) |
+| Cloud deployment | Planned (W9) |
 
 ## Steward workflow
 
@@ -139,12 +141,62 @@ W4 case-lifecycle work is complete in the working tree: Case Memory, domain even
 
 - No production authentication or RBAC
 - Steward UI is a FastAPI verification shell, not a production React application
-- Grievance Generate/Save uses editable field-value drafts; full Local 300 Form 79-1 overlay PDF assembly is deferred
-- Broader corpus expansion and cloud deployment remain future work
+- Official USPS Step 1 and Step 2 form generation is planned for W5
+- USPS Supervisor Manual integration is planned for W5
+- Arbitration decisions and LMOU integration are planned for W8
+- Cloud deployment and operational infrastructure remain future work
 
-## Next phase
+## Development roadmap
 
-**W5** — complete Local 300 Form 79-1 overlay PDF assembly and filled-form execution, followed by production UI, authentication/RBAC, and deployment hardening.
+### W5 — Official Forms and Supervisor Manual Integration
+
+- Implement the official USPS Step 1 grievance form
+- Implement the official USPS Step 2 grievance form
+- Replace placeholder form templates
+- Add approved USPS supervisor manuals to the retrieval corpus
+- Improve retrieval and citation handling for the expanded corpus
+- Add form-generation and retrieval regression tests
+
+### W6 — Security Foundation
+
+- Authentication
+- Role-based access control
+- Case-level authorization
+- Secure upload validation
+- Audit logging
+- Encryption and secrets management
+- Rate limiting
+- Prompt-injection protections
+- Security-focused tests
+
+### W7 — Production Steward Interface
+
+- Login and session flows
+- Case dashboard
+- Persistent case workspace
+- Research and conversation interfaces
+- Form editing and progression controls
+- Citation viewing
+- Responsive production UI
+
+### W8 — Arbitration and LMOU Integration
+
+- Protected arbitration-decision ingestion
+- LMOU ingestion
+- Metadata extraction and indexing
+- Permission-aware retrieval
+- Citation validation
+- Retrieval and evaluation testing
+
+### W9 — Production Deployment
+
+- Managed PostgreSQL and pgvector
+- Object storage for case assets
+- Background workers for retrieval and PDF jobs
+- Monitoring and structured logging
+- Backup and recovery
+- CI/CD hardening
+- Performance and load testing
 
 ## Related documentation
 

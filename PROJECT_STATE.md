@@ -13,10 +13,11 @@ design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | Latest committed tip | `2e50b9e` — CrossCraft retirement |
 | W1–W3 | Complete and committed |
 | W4 | Implemented in working tree (Case Memory, domain events, workflow FSM, steward-controlled artifacts, workspace restore, `/ui` shell, normal-chat indexed retrieval) |
-| W5 | Deferred — Local 300 Form 79-1 overlay PDF assembly |
-| Production React UI | Deferred |
-| Authentication / RBAC | Deferred |
-| Cloud deployment | Deferred |
+| W5 | Planned — Official Forms and Supervisor Manual Integration |
+| W6 | Planned — Security Foundation |
+| W7 | Planned — Production Steward Interface |
+| W8 | Planned — Arbitration and LMOU Integration |
+| W9 | Planned — Production Deployment |
 
 ## Product model
 
@@ -78,10 +79,35 @@ python -m pytest tests/test_chat_source_retrieval.py tests/test_steward_artifact
 python -m pytest tests/ -m "not integration" -q
 ```
 
-## Next phase
+## Roadmap
 
-W5 — complete Local 300 Form 79-1 overlay PDF assembly and filled-form
-execution, then production UI, authentication/RBAC, and deployment hardening.
+### W5 — Official Forms and Supervisor Manual Integration
+
+Implement the official USPS Step 1 and Step 2 forms, replace placeholder
+templates, add approved USPS supervisor manuals to the retrieval corpus, improve
+retrieval and citation handling, and add regression tests.
+
+### W6 — Security Foundation
+
+Implement authentication, RBAC, case-level authorization, secure upload
+validation, audit logging, encryption and secrets management, rate limiting,
+prompt-injection protections, and security-focused tests.
+
+### W7 — Production Steward Interface
+
+Build the production dashboard, persistent case workspace, research and
+conversation interfaces, form editing, progression controls, citation viewing,
+and responsive UI.
+
+### W8 — Arbitration and LMOU Integration
+
+Add protected arbitration decisions and LMOUs with metadata extraction,
+indexing, permission-aware retrieval, citation validation, and evaluation tests.
+
+### W9 — Production Deployment
+
+Add managed PostgreSQL and pgvector, object storage, background workers,
+monitoring, backup and recovery, CI/CD hardening, and performance testing.
 
 ## Related documentation
 
