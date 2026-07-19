@@ -30,6 +30,22 @@ Production case data, credentials, and private operational assets are not includ
 | Arbitration and LMOU corpus | Planned (W8) |
 | Cloud deployment | Planned (W9) |
 
+## Completed implementation milestones
+
+Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
+`Phase 2`, and `Phase 3`. The current public engineering roadmap consolidates
+that work into the following W-series milestones:
+
+| Milestone | Outcome | Status |
+|-----------|---------|--------|
+| W1 — Case Interaction Contract | Canonical case interaction/action contracts and service boundaries | Complete and committed |
+| W2 — AI Case Interaction Orchestration | Persistent case chat, bounded context, indexed-source retrieval, grounded answers, and analysis orchestration foundations | Complete and committed |
+| W3 — Case Evidence and Asset Management | First-class case assets, uploads, metadata, safe storage, and case-context references | Complete and committed |
+| W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Workspace restoration, Case Memory, domain events, workflow FSM, steward-controlled Generate/Save actions, artifacts, Official Case Record, and normal-chat retrieval hardening | Complete and committed |
+
+The old internal phase labels remain part of Git history. They are not missing
+work and should not be used as the current public roadmap.
+
 ## Steward workflow
 
 ```text
@@ -135,7 +151,7 @@ python -m pytest tests/ -m "not integration" -q
 
 ## Current development status
 
-W4 case-lifecycle work is complete in the working tree: Case Memory, domain events, workflow FSM, steward-controlled Generate/Save artifacts, workspace restoration, and the FastAPI verification shell. Continuous chat retrieves from the configured indexed labor-reference corpus and may return grounded citations; it does not create report versions or saved artifacts.
+W1 through W4 are complete and committed on `main`. W4 includes Case Memory, domain events, workflow FSM, steward-controlled Generate/Save artifacts, workspace restoration, and the FastAPI verification shell. Continuous chat retrieves from the configured indexed labor-reference corpus and may return grounded citations; it does not create report versions or saved artifacts.
 
 ## Current limitations
 

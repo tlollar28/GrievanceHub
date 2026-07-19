@@ -1,6 +1,6 @@
 # GrievanceHub Architecture
 
-Technical system design for the current GrievanceHub backend, including W4 case-lifecycle behavior in the working tree.
+Technical system design for the current GrievanceHub backend through W4, complete and committed on `main`.
 
 For a concise product overview, see [`README.md`](../README.md).
 
@@ -24,6 +24,22 @@ Steward / API client / /ui shell
         ├─► PostgreSQL 16 + pgvector
         └─► Local filesystem storage (case assets, generated reports)
 ```
+
+### Implementation lineage
+
+Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
+`Phase 2`, and `Phase 3`. The current public engineering roadmap maps the
+resulting architecture to:
+
+| Milestone | Architectural scope |
+|-----------|---------------------|
+| W1 — Case Interaction Contract | Canonical interaction/action schemas and service boundaries |
+| W2 — AI Case Interaction Orchestration | Persistent chat, bounded context, retrieval, grounded answers, and analysis orchestration foundations |
+| W3 — Case Evidence and Asset Management | Case assets, uploads, metadata, safe storage, and case-context references |
+| W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Workspace restoration, Case Memory, domain events, workflow FSM, steward-controlled Generate/Save actions, artifacts, and Official Case Record |
+
+The historical labels remain in Git history but are not the current public
+roadmap.
 
 ### Workspace paths
 

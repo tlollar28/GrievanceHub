@@ -1,4 +1,4 @@
-﻿# GrievanceHub Engineering Status
+# GrievanceHub Engineering Status
 
 Last updated: 2026-07-18
 
@@ -9,10 +9,11 @@ design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 | Item | State |
 |------|--------|
-| Branch | `phase-W3-case-asset-foundation` |
-| Latest committed tip | `2e50b9e` — CrossCraft retirement |
-| W1–W3 | Complete and committed |
-| W4 | Implemented in working tree (Case Memory, domain events, workflow FSM, steward-controlled artifacts, workspace restore, `/ui` shell, normal-chat indexed retrieval) |
+| Current branch | `main` |
+| W1 — Case Interaction Contract | Complete and committed |
+| W2 — AI Case Interaction Orchestration | Complete and committed |
+| W3 — Case Evidence and Asset Management | Complete and committed |
+| W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 | Planned — Official Forms and Supervisor Manual Integration |
 | W6 | Planned — Security Foundation |
 | W7 | Planned — Production Steward Interface |
@@ -61,16 +62,21 @@ The committed `app/sources/source_index.json` artifact currently includes
 CONTRACT and CIM text chunks for local development. Live retrieval coverage
 depends on the running database index.
 
-## Recent milestones
+## Implementation lineage
 
-| Phase | Outcome |
-|-------|---------|
-| Phase 0–1 | Retrieval relevance stabilization and structured GrievanceHub reports |
-| Phase 2 | Persistent cases and versioned reports |
-| Phase 3 | HTML/PDF export of saved analysis reports |
-| W1–W3 | Workspace actions, AI chat foundation, case assets |
-| W4 | Case Memory, workflow FSM, steward-controlled Generate/Save artifacts, chat indexed retrieval |
+Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
+`Phase 2`, and `Phase 3`. The current public roadmap consolidates that work as:
+
+| Milestone | Outcome |
+|-----------|---------|
+| W1 | Case interaction contracts and service boundaries |
+| W2 | AI case interaction orchestration, persistent chat, retrieval, and analysis foundations |
+| W3 | Case evidence, uploads, metadata, storage, and asset management |
+| W4 | Workspace restoration, Case Memory, domain events, workflow FSM, Generate/Save artifacts, Official Case Record, and chat retrieval hardening |
 | CrossCraft retirement | Obsolete SPBS/cross-craft surface removed |
+
+The historical phase labels remain visible in Git history. They represent the
+earlier implementation sequence and do not indicate missing work.
 
 ## Testing
 
