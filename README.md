@@ -24,11 +24,11 @@ This repository does not include production credentials, private case data, or o
 ## High-level architecture
 
 ```text
-HTTP client / verification UI
+React steward shell (frontend/) / HTTP client / /ui shell
         │
         ▼
    FastAPI routers
-   (/cases, /sources, exports, /ui)
+   (/cases, /sources, exports, /ui, /health)
         │
         ▼
    Service layer
@@ -39,7 +39,7 @@ HTTP client / verification UI
             (case assets, generated reports/forms)
 ```
 
-Chat and analysis share retrieval infrastructure. Chat does not run the full analysis-report pipeline. Detailed design is documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Chat and analysis share retrieval infrastructure. Chat does not run the full analysis-report pipeline. Detailed design is documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The W6 UI blueprint is [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 ## Technology stack
 
@@ -52,8 +52,9 @@ Chat and analysis share retrieval infrastructure. Chat does not run the full ana
 | Embeddings / LLM | OpenAI |
 | PDF forms | pypdf (AcroForm fill) |
 | Report export | Jinja2, WeasyPrint |
+| Steward UI (W6) | React, TypeScript, Vite (`frontend/`) |
 | Verification UI | FastAPI HTML shell (`/ui`) |
-| Tests | pytest |
+| Tests | pytest; Vitest + React Testing Library (frontend) |
 
 ## Repository structure
 
@@ -67,6 +68,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
+frontend/         # W6 React/TypeScript steward workspace (M0 foundations)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -133,6 +135,37 @@ Useful endpoints:
 | `http://localhost:8000/redoc` | ReDoc OpenAPI view |
 | `http://localhost:8000/ui` | Steward verification shell |
 
+## Frontend development (W6)
+
+The React steward workspace lives under `frontend/`. M0 provides the application
+shell, routing, TanStack Query, a typed API client, and a FastAPI health
+indicator. Saved Cases, chat, analysis, and grievance screens are not implemented
+yet.
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Vite proxies `/api` to `http://127.0.0.1:8000` by default (override with
+`DEV_API_TARGET`). Keep FastAPI running in another terminal for a live health
+indicator.
+
+Frontend validation:
+
+```bash
+cd frontend
+npm run typecheck
+npm run lint
+npm run test:run
+npm run build
+```
+
+Do not place `GRIEVANCEHUB_API_KEY`, `GRIEVANCEHUB_ADMIN_API_KEY`, OpenAI keys,
+or database credentials in frontend environment variables.
+
 ## Running tests
 
 ```bash
@@ -174,6 +207,7 @@ This codebase is suitable for local development and controlled internal evaluati
 |----------|----------|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and subsystem behavior |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Canonical post-W5 delivery roadmap |
+| [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md) | W6 steward workspace UI blueprint |
 | [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md) | Saved-case API/UI contract notes |
 | [`PROJECT_STATE.md`](PROJECT_STATE.md) | Current engineering status tracking |
 | [`.env.example`](.env.example) | Environment variable template |

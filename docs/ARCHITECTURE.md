@@ -1,10 +1,11 @@
 # GrievanceHub Architecture
 
-Technical system design for the current GrievanceHub backend through W5, complete
-and committed on `main`.
+Technical system design for the current GrievanceHub backend through W5, plus the
+W6 M0 frontend foundation now present on `main`.
 
 For a concise product overview, see [`README.md`](../README.md). For the
-canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md).
+canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md). For the W6
+UI blueprint, see [`docs/W6_UI_ARCHITECTURE.md`](W6_UI_ARCHITECTURE.md).
 
 ---
 
@@ -13,11 +14,11 @@ canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md).
 GrievanceHub is a FastAPI service that manages persistent grievance case workspaces. The unit of work is a long-lived `GrievanceCase`. Conversation, Case Memory, evidence, reports, grievances, artifacts, and workflow state remain attached to that case across open, close, and reopen.
 
 ```text
-Steward / API client / /ui shell
+React steward shell (frontend/) / API client / /ui shell
         │
         ▼
    FastAPI routers
-   (/cases, /sources, exports, /ui)
+   (/cases, /sources, exports, /ui, /health)
         │
         ▼
    Service layer
@@ -27,6 +28,24 @@ Steward / API client / /ui shell
         └─► Local filesystem storage (case assets, generated reports)
 ```
 
+### Frontend foundation (W6 M0)
+
+`frontend/` is a Vite + React + TypeScript application shell. M0 implements:
+
+- Application shell (TopBar, SideNav, outlet)
+- Routing foundations (`/dashboard`, `/cases`, `/cases/new`, `/help`, not-found)
+- TanStack Query at the application root
+- Typed `fetch` API client with normalized `ApiError`
+- Non-blocking FastAPI health indicator via `GET /api/health` (Vite proxy → `/health`)
+- Design-system CSS custom properties and accessibility foundations
+
+M0 does **not** implement Saved Cases, case creation, chat, analysis, grievances,
+artifacts, uploads, workflow management, or source administration. Those belong
+to later W6 milestones.
+
+The W6 browser must not receive source API secrets
+(`GRIEVANCEHUB_API_KEY` / `GRIEVANCEHUB_ADMIN_API_KEY`). Sources UI remains
+deferred until an approved safe boundary exists.
 ### Implementation lineage
 
 Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
@@ -402,9 +421,9 @@ Future implementation follows the canonical roadmap in
 [`docs/ROADMAP.md`](ROADMAP.md). The former post-W5 sequence (Security → Steward
 UI → Arbitration/LMOU → Deployment) is superseded.
 
-- **W6 — Interactive Steward Workspace (next):** usable end-to-end steward UI as
+- **W6 — Interactive Steward Workspace (in progress):** usable end-to-end steward UI as
   a vertical slice; continuous RAG and generation validation through realistic
-  workflows. Not started.
+  workflows. **M0 Frontend Foundations is complete.** M1–M10 are not started.
 - **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
   citation/faithfulness metrics, and approved quality thresholds before
   multi-agent complexity.
@@ -439,4 +458,5 @@ Source administration may still require a distinct privileged boundary.
 - [`README.md`](../README.md)
 - [`PROJECT_STATE.md`](../PROJECT_STATE.md)
 - [`docs/ROADMAP.md`](ROADMAP.md)
+- [`docs/W6_UI_ARCHITECTURE.md`](W6_UI_ARCHITECTURE.md)
 - [`docs/saved_cases_ui_contract.md`](saved_cases_ui_contract.md)

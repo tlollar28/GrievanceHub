@@ -1,0 +1,44 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.checking {
+  background: var(--text-secondary);
+}
+
+.connected {
+  background: var(--success);
+}
+
+.unavailable {
+  background: var(--danger);
+}
+
+.label {
+  white-space: nowrap;
+}
+
+.retry {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

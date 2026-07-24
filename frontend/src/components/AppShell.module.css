@@ -1,0 +1,25 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--panel-padding);
+  outline: none;
+}
+
+@media (max-width: 900px) {
+  .body {
+    flex-direction: column;
+  }
+}
