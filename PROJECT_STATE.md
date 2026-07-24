@@ -1,24 +1,33 @@
 # GrievanceHub Engineering Status
 
-Last updated: 2026-07-23
+Last updated: 2026-07-24
 
 Concise public engineering status for the current working tree. Detailed system
-design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The canonical
+post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Current status
 
 | Item | State |
 |------|--------|
 | Current branch | `main` |
+| Current completed phase | W5 — Knowledge Foundation |
+| Current implementation state | W5 complete and committed |
+| Next phase | W6 — Interactive Steward Workspace (not started) |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Security Foundation | Next — not started |
-| W7 — Production Steward Interface | Planned |
-| W8 — Arbitration and LMOU Integration | Planned |
-| W9 — Production Deployment | Planned |
+| W6 — Interactive Steward Workspace | Next — not started |
+| W7 — RAG Evaluation and Output Quality | Planned — not started |
+| W8 — Multi-Agent Authority Workflow | Planned — not started |
+| W9 — Security and Governance | Planned — not started |
+| W10 — LMOU and Arbitration Knowledge Expansion | Planned — not started |
+| W11 — Production Packaging and Deployment | Planned — not started |
+
+The former post-W5 sequence (W6 Security → W7 Steward UI → W8 Arbitration/LMOU →
+W9 Deployment) is superseded. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Product model
 
@@ -66,12 +75,25 @@ from ordinary steward case work.
 Python 3, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16 + pgvector, OpenAI
 embeddings and chat, Jinja2 + WeasyPrint, pypdf AcroForm fill, pytest.
 
-## Indexed corpus (repository artifact)
+## Security status
 
-The committed `app/sources/source_index.json` artifact currently includes
-CONTRACT and CIM text chunks for local development. Live retrieval coverage
-depends on the running database index, including Supervisor Manual embeddings
-when those sources have been synchronized and processed locally.
+- Interim `/sources` API-key boundary exists (`GRIEVANCEHUB_API_KEY` /
+  `GRIEVANCEHUB_ADMIN_API_KEY`)
+- Final application identity does not exist
+- Broader `/cases`, export, and UI authentication are not implemented
+- The system is not production secure
+
+## Corpus status
+
+- Existing W5 corpus supported (contract/CIM index artifacts; Supervisor Manual
+  processing when synchronized locally)
+- LMOU and arbitration expansion deferred until after W9 (Security and
+  Governance)
+
+## Deployment status
+
+- Local development via Docker Compose for PostgreSQL is supported
+- Production packaging and deployment are deferred until W11
 
 ## Implementation lineage
 
@@ -97,52 +119,27 @@ python -m pytest tests/test_w5_source_lifecycle.py tests/test_official_grievance
 python -m pytest tests/ -m "not integration" -q
 ```
 
-## Roadmap
+## Roadmap (summary)
 
-### W5 — Knowledge Foundation (complete)
+Canonical detail: [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-Delivered:
+| Phase | Status |
+|-------|--------|
+| W5 — Knowledge Foundation | Complete |
+| W6 — Interactive Steward Workspace | Next |
+| W7 — RAG Evaluation and Output Quality | Planned |
+| W8 — Multi-Agent Authority Workflow | Planned |
+| W9 — Security and Governance | Planned |
+| W10 — LMOU and Arbitration Knowledge Expansion | Planned |
+| W11 — Production Packaging and Deployment | Planned |
 
-- Official USPS Step 1 and Step 2 fillable AcroForm PDF integration
-- Source processing lifecycle metadata and Alembic migration
-- Supervisor Manual registration/sync/processing support (EL-921, EL-801, F-21)
-- Bounded retrieval-agent architecture with fail-closed authorization adapters
-- Interim `/sources` API-key authentication (temporary; not W6 identity)
-
-W5 retrieval components are retrieval infrastructure. They are not completion of a
-future multi-agent product system.
-
-### W6 — Security Foundation (next)
-
-Not started. Planned work includes application identity, RBAC or equivalent
-policy, case-level authorization, secure upload validation, audit logging,
-encryption and secrets management, production rate limiting, broader
-prompt-injection defenses, and security-focused tests.
-
-The interim `GRIEVANCEHUB_API_KEY` / `GRIEVANCEHUB_ADMIN_API_KEY` boundary added
-in W5 protects source/retrieval routes only. It must be replaced or integrated
-into the W6 identity design and must not be described as completing W6.
-
-### W7 — Production Steward Interface
-
-Build the production dashboard, persistent case workspace, research and
-conversation interfaces, form editing, progression controls, citation viewing,
-and responsive UI.
-
-### W8 — Arbitration and LMOU Integration
-
-Add protected arbitration decisions and LMOUs with metadata extraction,
-indexing, permission-aware retrieval, citation validation, and evaluation tests.
-Additional LMOU and historical arbitration expansion remains deferred to this
-phase.
-
-### W9 — Production Deployment
-
-Add managed PostgreSQL and pgvector, object storage, background workers,
-monitoring, backup and recovery, CI/CD hardening, and performance testing.
+W5 retrieval components are retrieval infrastructure. They are not completion of
+W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
+completion of W9 application security.
 
 ## Related documentation
 
+- [`docs/ROADMAP.md`](docs/ROADMAP.md)
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md)
 - [`docs/temp/W5_FINAL_COMPLETION_REPORT.md`](docs/temp/W5_FINAL_COMPLETION_REPORT.md)

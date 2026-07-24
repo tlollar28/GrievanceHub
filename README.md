@@ -173,6 +173,7 @@ This codebase is suitable for local development and controlled internal evaluati
 | Document | Contents |
 |----------|----------|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and subsystem behavior |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Canonical post-W5 delivery roadmap |
 | [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md) | Saved-case API/UI contract notes |
 | [`PROJECT_STATE.md`](PROJECT_STATE.md) | Current engineering status tracking |
 | [`.env.example`](.env.example) | Environment variable template |

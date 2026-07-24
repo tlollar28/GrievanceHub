@@ -1,14 +1,15 @@
 # Saved Cases UI Contract
 
-Frontend for a production saved-cases screen is deferred. No React/Next.js app
-exists in this repository. A FastAPI HTML verification shell at `/ui` implements
-the current interaction model for local verification.
+Frontend for the interactive steward workspace is planned for **W6**. No
+React/Next.js app exists in this repository yet. A FastAPI HTML verification
+shell at `/ui` implements the current interaction model for local verification.
 
-This document defines the route and component contract so a future production
-screen can use the existing backend without inventing a parallel workflow.
+This document defines the route and component contract so the W6 steward
+workspace can use the existing backend without inventing a parallel workflow.
 
-**Docs sync:** 2026-07-18 — W4 steward-controlled artifacts; chat retrieves from
-the indexed corpus; W5 = Local 300 Form 79-1 overlay PDF assembly.
+**Docs sync:** 2026-07-24 — W5 Knowledge Foundation complete; next phase is W6
+Interactive Steward Workspace (vertical slice with continuous RAG validation).
+Canonical roadmap: [`ROADMAP.md`](ROADMAP.md).
 
 ## Product principle
 
@@ -115,8 +116,10 @@ behavior. Future helpers can wrap `/interactions`, `/reports/generate`, and
 
 ## Screen: Saved Cases
 
-**Proposed production route:** `/cases/saved` or `/saved-cases`  
-**Current verification shell:** `GET /ui`  
+**Proposed steward-workspace route:** `/cases/saved` or `/saved-cases`
+
+**Current verification shell:** `GET /ui`
+
 **Data source:** `GET /cases/saved?order=newest_first`
 
 ### List fields
@@ -153,7 +156,7 @@ Render from `available_actions` where `steward_visible !== false`:
 | Generate Analysis Report | `POST /cases/{uuid}/reports/generate` |
 | Generate Grievance | `POST /cases/{uuid}/actions` |
 
-The production workspace exposes Generate Analysis Report and Generate Grievance
+The steward workspace exposes Generate Analysis Report and Generate Grievance
 as the steward artifact actions. Save Context / Update Analysis / Reanalyze are
 not separate steward controls.
 
@@ -172,10 +175,10 @@ not separate steward controls.
 
 ## Out of scope for this contract
 
-- Production React implementation
-- Full Local 300 overlay PDF assembly (next phase)
+- Full W6 steward-workspace visual design and implementation details
 - Source ingestion tooling
-- Production authentication
+- Application authentication and governance (W9)
+- LMOU / arbitration corpus expansion (W10)
 
 ## TypeScript types (future)
 

@@ -1,8 +1,10 @@
 # GrievanceHub Architecture
 
-Technical system design for the current GrievanceHub backend through W5, complete and committed on `main`.
+Technical system design for the current GrievanceHub backend through W5, complete
+and committed on `main`.
 
-For a concise product overview, see [`README.md`](../README.md).
+For a concise product overview, see [`README.md`](../README.md). For the
+canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md).
 
 ---
 
@@ -333,13 +335,23 @@ Saved analysis versions export through Jinja2 HTML and WeasyPrint PDF. Export co
 
 ## 18. Steward UI shell and future frontend
 
-The FastAPI shell at `/ui` provides dashboard and case-workspace verification surfaces. It is not a production frontend. The production steward interface is planned for W7 and can integrate against the existing case and saved-case APIs; see [`docs/saved_cases_ui_contract.md`](saved_cases_ui_contract.md).
+The FastAPI shell at `/ui` provides dashboard and case-workspace verification
+surfaces. It is not a production frontend. The interactive steward workspace is
+planned for **W6** and can integrate against the existing case and saved-case
+APIs; see [`docs/saved_cases_ui_contract.md`](saved_cases_ui_contract.md). W6 is
+a vertical slice: UI work and RAG/generation validation happen together.
 
 ---
 
 ## 19. Security and production readiness
 
-The current codebase is a production-oriented service architecture under active development. W5 added an interim API-key boundary for `/sources` routes only. Application identity, authorization, RBAC, case-level access control, upload security, audit logging, and related protections remain planned for W6 and are not complete. Runtime outputs and private operational data remain outside the portfolio repository.
+The current codebase is a production-oriented service architecture under active
+development. W5 added an interim API-key boundary for `/sources` routes only.
+Final application identity, authorization, case-level access control, upload
+security, audit logging, and related protections remain planned for **W9 —
+Security and Governance** and are not started. The system is not production
+secure. Runtime outputs and private operational data remain outside the
+portfolio repository.
 
 ---
 
@@ -364,10 +376,12 @@ The current codebase is a production-oriented service architecture under active 
 | Source processing lifecycle metadata | Implemented |
 | Bounded retrieval-agent architecture | Implemented |
 | Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Authentication / RBAC | Planned (W6) |
-| Production steward interface | Planned (W7) |
-| Arbitration and LMOU corpus | Planned (W8) |
-| Cloud deployment | Planned (W9) |
+| Interactive steward workspace | Planned (W6) |
+| Formal RAG evaluation / quality gates | Planned (W7) |
+| Multi-agent authority workflow | Planned (W8) |
+| Application identity / governance | Planned (W9) |
+| LMOU and arbitration corpus expansion | Planned (W10) |
+| Production packaging and deployment | Planned (W11) |
 
 ---
 
@@ -384,16 +398,39 @@ python -m pytest tests/ -m "not integration" -q
 
 ## 22. Production extension points
 
-Future implementation follows the remaining engineering roadmap:
+Future implementation follows the canonical roadmap in
+[`docs/ROADMAP.md`](ROADMAP.md). The former post-W5 sequence (Security → Steward
+UI → Arbitration/LMOU → Deployment) is superseded.
 
-- **W6 — Security Foundation (next):** application identity, RBAC or equivalent policy, case-level authorization, secure uploads, audit logging, encryption, production rate limiting, and broader prompt-injection defenses. Replace or integrate the interim `/sources` API-key boundary. W6 has not been started.
-- **W7 — Production Steward Interface:** the production dashboard, case workspace, research, conversation, citation, and form-editing surfaces.
-- **W8 — Arbitration and LMOU Integration:** protected ingestion, indexing, permission-aware retrieval, citation validation, and evaluation. Additional LMOU and historical arbitration expansion remains deferred here.
-- **W9 — Production Deployment:** managed PostgreSQL + pgvector, object storage, background workers, monitoring, backup and recovery, CI/CD, and performance hardening.
+- **W6 — Interactive Steward Workspace (next):** usable end-to-end steward UI as
+  a vertical slice; continuous RAG and generation validation through realistic
+  workflows. Not started.
+- **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
+  citation/faithfulness metrics, and approved quality thresholds before
+  multi-agent complexity.
+- **W8 — Multi-Agent Authority Workflow:** authority-specific agents only after
+  the W7 baseline; must show measurable or clearly justified operational benefit.
+- **W9 — Security and Governance:** application identity, authorization, audit
+  logging, upload controls, and threat model before sensitive corpus expansion.
+  Replace or integrate the interim `/sources` API-key boundary. Do not
+  reintroduce an unapproved steward hierarchy merely because older notes
+  mentioned RBAC.
+- **W10 — LMOU and Arbitration Knowledge Expansion:** protected corpus expansion
+  after W9; jurisdiction/date/authority-role metadata and corpus-specific
+  evaluations.
+- **W11 — Production Packaging and Deployment:** Dockerization, operations,
+  monitoring, backup/restore, and CI/CD. Dockerization alone is not production
+  readiness.
 
-W5 retrieval agents (`RetrievalOrchestrator`, `ContractAgent`, `SupervisorManualAgent`) are bounded retrieval infrastructure. They are not completion of a future multi-agent product system. Multi-agent orchestration, if introduced later, should sit above Case Memory, domain events, and the workflow engine rather than replace them.
+W5 retrieval agents (`RetrievalOrchestrator`, `ContractAgent`,
+`SupervisorManualAgent`) are bounded retrieval infrastructure. They are not
+completion of W8 multi-agent orchestration. Multi-agent work, if introduced in
+W8, should sit above Case Memory, domain events, and the workflow engine rather
+than replace them.
 
-Authenticated stewards are planned to collaborate in a shared workspace without a steward role hierarchy unless that product decision is intentionally revised. Source administration may still require a distinct privileged boundary.
+Authenticated stewards are planned to collaborate in a shared workspace without
+a steward role hierarchy unless that product decision is intentionally revised.
+Source administration may still require a distinct privileged boundary.
 
 ---
 
@@ -401,4 +438,5 @@ Authenticated stewards are planned to collaborate in a shared workspace without 
 
 - [`README.md`](../README.md)
 - [`PROJECT_STATE.md`](../PROJECT_STATE.md)
+- [`docs/ROADMAP.md`](ROADMAP.md)
 - [`docs/saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
