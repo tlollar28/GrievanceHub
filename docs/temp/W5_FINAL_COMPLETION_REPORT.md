@@ -1,4 +1,4 @@
-# W5 Final Completion Report
+﻿# W5 Final Completion Report
 
 **Date:** 2026-07-23  
 **Verdict:** PASS WITH NON-BLOCKING FINDINGS  
@@ -24,7 +24,7 @@ This closeout task began with the W5 implementation already committed on `main` 
 
 Documentation closeout commit (records the public README and this finalized report):
 
-`PLACEHOLDER_ENDING_SHA`
+`29ff525520a988c7b5046ea670ac04bf2796cfda`
 
 W5 implementation checkpoint (already on `main` before this documentation closeout):
 
@@ -46,7 +46,8 @@ W5 implementation checkpoint (already on `main` before this documentation closeo
 
 After the documentation closeout commit:
 
-- Branch: `main` ahead of `origin/main`
+- Tip SHA: `29ff525520a988c7b5046ea670ac04bf2796cfda`
+- Branch: `main...origin/main [ahead 2]`
 - Intentional W5 documentation changes committed
 - Remaining untracked only: deliberately excluded ephemeral `docs/temp/` capture files listed in §8
 - Not pushed
