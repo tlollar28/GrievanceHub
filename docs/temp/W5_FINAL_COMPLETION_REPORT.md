@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-23  
 **Verdict:** PASS WITH NON-BLOCKING FINDINGS  
-**Phase:** W5 — Knowledge Foundation  
-**Next phase:** W6 — Security Foundation (not started)
+**Phase:** W5 - Knowledge Foundation  
+**Next phase:** W6 - Security Foundation (not started)
 
 ## 1. Date
 
@@ -23,11 +23,11 @@ This is the `origin/main` commit that preceded the W5 closeout series.
 
 Exact current branch tip of record for this finalized report:
 
-`38f1172015a9b7d8812eba96881059bfd32d8c35`
+`07b12f017202385c604e8dba61ad275559e1696f`
 
 Final documentation commit SHA:
 
-`38f1172015a9b7d8812eba96881059bfd32d8c35`
+`07b12f017202385c604e8dba61ad275559e1696f`
 
 Original implementation checkpoint:
 
@@ -53,11 +53,10 @@ documentation-only commit that introduces it:
 
 ## 6. Final Git status
 
-Exact output of `git status --short --branch` after the documentation commit
-`38f1172015a9b7d8812eba96881059bfd32d8c35` (`docs: finalize W5 completion record`):
+Exact output of `git status --short --branch` at tip `07b12f017202385c604e8dba61ad275559e1696f`:
 
 ```text
-## main...origin/main [ahead 7]
+## main...origin/main [ahead 8]
 ?? docs/temp/_explain_embedding.py
 ?? docs/temp/_pytest_run1.txt
 ?? docs/temp/_pytest_run2.txt
@@ -65,7 +64,7 @@ Exact output of `git status --short --branch` after the documentation commit
 ?? docs/temp/_pytest_run3b.txt
 ```
 
-Working-tree confirmation at that tip:
+Working-tree confirmation at tip `07b12f017202385c604e8dba61ad275559e1696f`:
 
 - No tracked modifications
 - No tracked deletions
@@ -114,9 +113,13 @@ Chronological order from oldest to newest. Parent of the first closeout commit i
    Message: `docs: finalize W5 completion record`  
    Purpose: Definitive historical W5 completion record (this finalization commit).
 
+8. `07b12f017202385c604e8dba61ad275559e1696f`  
+   Message: `docs: finalize W5 completion record tip SHA`  
+   Purpose: Completion-report-only commit that records finalization commit `38f1172015a9b7d8812eba96881059bfd32d8c35` in the report and sets the branch tip of record to `07b12f017202385c604e8dba61ad275559e1696f`.
+
 ## 8. Files deliberately excluded
 
-Exact remaining untracked paths at tip `a9142b245facbeb9305435306818b3a078092225`:
+Exact remaining untracked paths at tip `07b12f017202385c604e8dba61ad275559e1696f`:
 
 - `docs/temp/_explain_embedding.py`
 - `docs/temp/_pytest_run1.txt`
@@ -215,7 +218,7 @@ Confirmed against the committed implementation:
 - Passed: 614
 - Failed: 0
 - Errors: 0
-- Skipped: 1 — `tests/test_regression_harness.py::test_regression_live_pipeline_smoke` (requires `RUN_REGRESSION=1`)
+- Skipped: 1 - `tests/test_regression_harness.py::test_regression_live_pipeline_smoke` (requires `RUN_REGRESSION=1`)
 - Warnings: present (primarily `datetime.utcnow` deprecations)
 
 No automated test required a live OpenAI request.
@@ -249,5 +252,5 @@ No automated test required a live OpenAI request.
 
 **PASS WITH NON-BLOCKING FINDINGS**
 
-W5 — Knowledge Foundation is complete. W6 — Security Foundation is next
+W5 - Knowledge Foundation is complete. W6 - Security Foundation is next
 and was not started.
