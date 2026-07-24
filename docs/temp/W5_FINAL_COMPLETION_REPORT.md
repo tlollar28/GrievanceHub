@@ -3,7 +3,7 @@
 **Date:** 2026-07-23  
 **Verdict:** PASS WITH NON-BLOCKING FINDINGS  
 **Phase:** W5 - Knowledge Foundation  
-**Next phase:** W6 — Security Foundation (not started)
+**Next phase:** W6 - Security Foundation (not started)
 
 ## 1. Date
 
@@ -30,7 +30,7 @@ W5 closeout commits on `main` (not pushed):
 
 Primary W5 implementation SHA: `132bafc63d7682983db2f3558c7fdc0c3eb6702d`
 Public README closeout SHA: `29ff525520a988c7b5046ea670ac04bf2796cfda`
-Current branch tip after closeout: recorded in the final response and via `git rev-parse HEAD` on `main`.
+Current branch tip after closeout: verify with `git rev-parse HEAD` on `main` (must include `29ff525520a988c7b5046ea670ac04bf2796cfda` or later).
 
 ## 5. Initial Git status
 
@@ -65,8 +65,8 @@ git show --name-only --pretty=format: 132bafc63d7682983db2f3558c7fdc0c3eb6702d
 
 ### Documentation closeout (this tip)
 
-- `README.md` — public-facing engineering entry point (no roadmap/phase management)
-- `docs/temp/W5_FINAL_COMPLETION_REPORT.md` — this report
+- `README.md` ? public-facing engineering entry point (no roadmap/phase management)
+- `docs/temp/W5_FINAL_COMPLETION_REPORT.md` ? this report
 
 ## 8. Files deliberately excluded
 
@@ -164,7 +164,7 @@ Confirmed against committed implementation:
 - **614 passed**
 - **0 failed**
 - **0 errors**
-- **1 skipped** — `tests/test_regression_harness.py::test_regression_live_pipeline_smoke` (requires `RUN_REGRESSION=1`)
+- **1 skipped** ? `tests/test_regression_harness.py::test_regression_live_pipeline_smoke` (requires `RUN_REGRESSION=1`)
 - Warnings present (primarily `datetime.utcnow` deprecations)
 
 No automated test required a live OpenAI request.
@@ -198,4 +198,4 @@ No automated test required a live OpenAI request.
 
 **PASS WITH NON-BLOCKING FINDINGS**
 
-W5 - Knowledge Foundation is complete. W6 — Security Foundation is next and was not started.
+W5 - Knowledge Foundation is complete. W6 ? Security Foundation is next and was not started.
