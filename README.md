@@ -1,109 +1,45 @@
 # GrievanceHub
 
-GrievanceHub is a backend-first, AI-assisted grievance case-management platform for USPS/NPMHU stewards. It is built around long-lived case workspaces rather than one-off chat sessions or disposable report jobs.
+GrievanceHub is a FastAPI backend for USPS/NPMHU steward grievance case work. Each matter is modeled as a persistent `GrievanceCase`. Conversation, Case Memory, evidence, analysis reports, grievance drafts, artifacts, and workflow state remain attached to that case across open, close, and reopen.
 
-Each grievance matter is managed as a persistent **GrievanceCase**. Related conversation, Case Memory, evidence, reports, grievances, artifacts, and workflow history remain attached to that case.
+The service is designed for steward-controlled workflows. Continuous chat can retrieve indexed labor references and return grounded citations. Analysis reports and grievance forms are created only through explicit actions—there is no required Conversation → Analysis → Grievance sequence.
 
-This repository presents a portfolio-quality, production-oriented service architecture under active development. Production authentication, RBAC, a production frontend, and cloud deployment are not yet included.
+This repository does not include production credentials, private case data, or operational infrastructure.
 
-Production case data, credentials, and private operational assets are not included in this portfolio repository.
+## Core capabilities
 
-## Current capabilities
+- Persistent case create, open, reopen, and workspace restoration
+- Continuous case chat with indexed-source retrieval and citation grounding
+- Case Memory projected from domain events
+- Finite-state workflow tracking
+- Explicit analysis-report generation (temporary preview → Save / Save and Print)
+- Explicit grievance draft generation with official Step 1 and Step 2 AcroForm PDF fill
+- Artifacts library and Official Case Record for saved work
+- Case asset uploads
+- Analysis report HTML and PDF export
+- Indexed labor-reference corpus management, including contract sources and Supervisor Manual materials
+- Bounded, domain-aware retrieval over embedded source chunks
+- FastAPI verification shell at `/ui`
 
-| Capability | Status |
-|------------|--------|
-| Persistent case workspaces | Implemented |
-| Continuous AI conversation with indexed-source retrieval | Implemented |
-| Case Memory | Implemented |
-| Domain events | Implemented |
-| Workflow engine (finite-state) | Implemented |
-| Analysis report preview, Save, and versioning | Implemented |
-| Grievance field-value draft Generate / Save | Partially implemented |
-| Artifacts and Official Case Record | Implemented |
-| Case asset uploads | Implemented |
-| Steward verification UI (`/ui`) | Implemented (FastAPI HTML shell) |
-| Analysis report HTML/PDF export | Implemented |
-| Official USPS Step 1 and Step 2 forms | Implemented |
-| USPS Supervisor Manual corpus | Implemented |
-| Source processing lifecycle metadata | Implemented |
-| Bounded retrieval-agent architecture | Implemented |
-| Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Authentication / RBAC | Planned (W6) |
-| Production React UI | Planned (W7) |
-| Arbitration and LMOU corpus | Planned (W8) |
-| Cloud deployment | Planned (W9) |
-
-## Completed implementation milestones
-
-Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
-`Phase 2`, and `Phase 3`. The current public engineering roadmap consolidates
-that work into the following W-series milestones:
-
-| Milestone | Outcome | Status |
-|-----------|---------|--------|
-| W1 — Case Interaction Contract | Canonical case interaction/action contracts and service boundaries | Complete and committed |
-| W2 — AI Case Interaction Orchestration | Persistent case chat, bounded context, indexed-source retrieval, grounded answers, and analysis orchestration foundations | Complete and committed |
-| W3 — Case Evidence and Asset Management | First-class case assets, uploads, metadata, safe storage, and case-context references | Complete and committed |
-| W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Workspace restoration, Case Memory, domain events, workflow FSM, steward-controlled Generate/Save actions, artifacts, Official Case Record, and normal-chat retrieval hardening | Complete and committed |
-| W5 — Knowledge Foundation | Official Step 1/Step 2 forms, Supervisor Manuals, source lifecycle metadata, bounded retrieval agents, and interim `/sources` API-key safety boundary | Complete and committed |
-
-The old internal phase labels remain part of Git history. They are not missing
-work and should not be used as the current public roadmap.
-
-## Steward workflow
+## High-level architecture
 
 ```text
-Dashboard
-      ↓
-New Case  or  Open Existing Case
-      ↓
-Persistent Case Workspace
-      ↓
-Continuous AI Conversation
-      ↓
-Upload Evidence at Any Time
-      ↓
-Steward independently chooses:
-  • Generate Analysis Report
-  • Generate Grievance
-  • Continue Conversation
-      ↓
-Review
-      ↓
-Save  or  Save and Print
-      ↓
-Artifacts → Official Case Record
+HTTP client / verification UI
+        │
+        ▼
+   FastAPI routers
+   (/cases, /sources, exports, /ui)
+        │
+        ▼
+   Service layer
+   (workspace, memory, workflow, retrieval, forms, artifacts)
+        │
+        ├─► PostgreSQL 16 + pgvector
+        └─► Local filesystem storage
+            (case assets, generated reports/forms)
 ```
 
-There is no required Conversation → Analysis → Grievance sequence. The steward controls when artifacts are created.
-
-## Architecture at a glance
-
-```text
-Persistent Case Workspace
-    │
-    ├── Continuous AI Conversation
-    │       ├── Case Memory
-    │       ├── Bounded Conversation Context
-    │       ├── Relevant Source Retrieval
-    │       └── Grounded Conversational Answer
-    │
-    ├── Generate Analysis Report
-    │       ├── Full Case Context
-    │       ├── Structured RAG Analysis Pipeline
-    │       └── Read-only Temporary Preview
-    │
-    └── Generate Grievance
-            └── Editable Temporary Field-Value Draft
-
-Save / Save and Print
-      ↓
-Versioned Artifacts
-      ↓
-Official Case Record
-```
-
-Technical detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Chat and analysis share retrieval infrastructure. Chat does not run the full analysis-report pipeline. Detailed design is documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Technology stack
 
@@ -113,8 +49,9 @@ Technical detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 | Language | Python 3 |
 | Database | PostgreSQL 16 + pgvector |
 | ORM / migrations | SQLAlchemy, Alembic |
-| LLM / embeddings | OpenAI |
-| Report export | Jinja2 + WeasyPrint |
+| Embeddings / LLM | OpenAI |
+| PDF forms | pypdf (AcroForm fill) |
+| Report export | Jinja2, WeasyPrint |
 | Verification UI | FastAPI HTML shell (`/ui`) |
 | Tests | pytest |
 
@@ -122,114 +59,120 @@ Technical detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ```text
 app/
-  api/routes/     # cases, sources, exports, steward UI
-  services/       # workspace, memory, workflow, retrieval, artifacts
-  schemas/        # Pydantic contracts
+  api/            # Route modules and interim source-route auth
+  assets/         # Official grievance form templates
   database/       # SQLAlchemy models and session
-  templates/      # report templates
-  sources/        # source manifest / index artifacts
-alembic/          # migrations
-tests/            # unit and API tests
-docs/             # architecture and UI contracts
-scripts/          # diagnostics and tooling
+  schemas/        # Pydantic request/response contracts
+  services/       # Business logic (cases, retrieval, forms, artifacts)
+  sources/        # Source manifest / index artifacts
+  templates/      # Report templates
+  static/         # Static assets for reports / UI shell
+alembic/          # Database migrations
+docs/             # Architecture and API/UI contracts
+scripts/          # Local diagnostics and tooling
+tests/            # Unit and API tests
+docker-compose.yml
+requirements.txt
+.env.example
 ```
 
-## Local development
+Runtime directories such as `data/`, `uploads/`, and local virtual environments are not part of the committed product surface.
+
+## Local development setup
+
+Requirements: Python 3, Docker (for PostgreSQL + pgvector), and an OpenAI API key for embeddings and LLM-backed paths.
 
 ```bash
+python -m venv venv
+# Windows: venv\Scripts\activate
+# macOS/Linux: source venv/bin/activate
+
+pip install -r requirements.txt
 docker compose up -d
 cp .env.example .env
+```
+
+Edit `.env` with local values before starting the application.
+
+## Configuration
+
+Configuration is loaded from environment variables (see [`.env.example`](.env.example)):
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENAI_API_KEY` | Embeddings and LLM-backed analysis / chat |
+| `DATABASE_URL` | SQLAlchemy PostgreSQL URL |
+| `GRIEVANCEHUB_API_KEY` | Read access to `/sources` routes |
+| `GRIEVANCEHUB_ADMIN_API_KEY` | Source administration (upload, sync, process, and related mutations) |
+| `WEASYPRINT_DLL_DIRECTORIES` | Optional Windows helper when WeasyPrint cannot locate Pango DLLs |
+
+`/sources` routes accept `Authorization: Bearer <key>` or `X-API-Key: <key>`. A local `.env` file is gitignored.
+
+## Database migrations
+
+With PostgreSQL running and `DATABASE_URL` configured:
+
+```bash
 alembic upgrade head
+```
+
+Alembic revisions live under `alembic/versions/`. The application expects PostgreSQL with the `vector` extension available for embedding storage.
+
+## Running the application
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-- Health: `GET /health`
-- Steward UI shell: `http://localhost:8000/ui`
+Useful endpoints:
 
-## Testing
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `http://localhost:8000/docs` | Interactive OpenAPI (Swagger UI) |
+| `http://localhost:8000/redoc` | ReDoc OpenAPI view |
+| `http://localhost:8000/ui` | Steward verification shell |
+
+## Running tests
 
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/ -q
 python -m pytest tests/ -m "not integration" -q
 ```
 
-## Current development status
+Most tests run without live external network calls. Opt-in live regression coverage is gated behind environment flags where present in the suite.
 
-W1 through W5 are complete and committed on `main`. W5 delivered official Step 1
-and Step 2 AcroForm PDFs, Supervisor Manual corpus support, source processing
-lifecycle metadata, bounded retrieval agents, and an interim `/sources` API-key
-boundary. W6 — Security Foundation is next and has not been started.
+## API documentation
 
-## Current limitations
+- Interactive OpenAPI UI: `/docs` when the application is running
+- ReDoc: `/redoc`
+- Case / saved-case UI contract notes: [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md)
+- System design: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
-- No production multi-user identity, sessions, or RBAC (W6)
-- Interim `/sources` API keys are a temporary W5 safety boundary, not W6 completion
-- `/cases` and the steward UI remain without application authentication
-- Steward UI is a FastAPI verification shell, not a production React application
-- Additional LMOU and historical arbitration expansion remain deferred to W8
-- Cloud deployment and operational infrastructure remain future work (W9)
+Primary route groups:
 
-## Development roadmap
+- `/cases` — case workspace, interactions, reports, grievances, artifacts, assets, and report export
+- `/sources` — corpus listing, search, ask/report helpers, sync/process (API-key protected)
+- `/ui` — verification shell
 
-### W5 — Knowledge Foundation (complete)
+## Security posture and production readiness
 
-- Official USPS Step 1 and Step 2 fillable AcroForm PDF integration
-- SourceDocument processing lifecycle metadata and Alembic migration
-- Supervisor Manual corpus support (EL-921, EL-801, F-21)
-- Bounded retrieval-agent architecture with fail-closed authorization adapters
-- Interim `/sources` API-key authentication (temporary; not W6 identity)
+Current posture:
 
-W5 retrieval components are retrieval infrastructure, not completion of a future
-multi-agent product system.
+- `/sources` routes require an interim server-configured API key (read vs administrative).
+- Broader application authentication is not implemented for `/cases`, exports, or the verification UI.
+- There is no multi-user identity system, session model, or role-based access control in the application layer.
+- Retrieved source text is treated as untrusted evidence for downstream LLM prompts.
+- Query length, retrieval fan-out, and embedding retries are bounded in application code.
+- Process-wide request throttling is not provided by the application.
 
-### W6 — Security Foundation (next)
+This codebase is suitable for local development and controlled internal evaluation. It is not production-hardened for public internet exposure.
 
-- Application identity and authentication
-- Role-based or policy-based access control
-- Case-level authorization
-- Secure upload validation
-- Audit logging
-- Encryption and secrets management
-- Production rate limiting
-- Broader prompt-injection protections
-- Security-focused tests
-- Replace or integrate the interim `/sources` API-key boundary
+## Documentation
 
-Authenticated stewards are planned to collaborate in a shared workspace without a
-steward role hierarchy unless that product decision is intentionally revised.
-Source administration may still require a distinct privileged boundary.
-
-### W7 — Production Steward Interface
-
-- Login and session flows
-- Case dashboard
-- Persistent case workspace
-- Research and conversation interfaces
-- Form editing and progression controls
-- Citation viewing
-- Responsive production UI
-
-### W8 — Arbitration and LMOU Integration
-
-- Protected arbitration-decision ingestion
-- LMOU ingestion
-- Metadata extraction and indexing
-- Permission-aware retrieval
-- Citation validation
-- Retrieval and evaluation testing
-
-### W9 — Production Deployment
-
-- Managed PostgreSQL and pgvector
-- Object storage for case assets
-- Background workers for retrieval and PDF jobs
-- Monitoring and structured logging
-- Backup and recovery
-- CI/CD hardening
-- Performance and load testing
-
-## Related documentation
-
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design
-- [`PROJECT_STATE.md`](PROJECT_STATE.md) — engineering status and phase history
-- [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md) — saved-cases UI/API contract
+| Document | Contents |
+|----------|----------|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and subsystem behavior |
+| [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md) | Saved-case API/UI contract notes |
+| [`PROJECT_STATE.md`](PROJECT_STATE.md) | Current engineering status tracking |
+| [`.env.example`](.env.example) | Environment variable template |
