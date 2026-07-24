@@ -31,11 +31,11 @@ from app.schemas.grievance_form_draft_schema import (
     GrievanceFormDraftInput,
 )
 from app.services.grievance_form_draft_builder import (
-    LOCAL_300_TEMPLATE_ID,
     build_grievance_form_draft,
 )
 from app.services.grievance_template_registry import (
-    LOCAL_300_STANDARD_GRIEVANCE_FORM_79_1,
+    OFFICIAL_GRIEVANCE_WORKSHEET_STEP_1,
+    OFFICIAL_STANDARD_GRIEVANCE_FORM_STEP_2,
     get_grievance_template_by_id,
     list_registered_grievance_templates,
 )
@@ -88,13 +88,14 @@ class CaseStepProgressionService:
     def get_step_template_availability(step_type: StepType) -> StepTemplateAvailabilityInfo:
         """Return whether an official template is currently buildable for a step."""
         if step_type == "step_1_initial":
+            template = OFFICIAL_GRIEVANCE_WORKSHEET_STEP_1
             return StepTemplateAvailabilityInfo(
                 step_type=step_type,
-                template_available=False,
-                template_id=None,
-                availability_status="unconfirmed_pending_steward_confirmation",
+                template_available=True,
+                template_id=template.template_id,
+                availability_status="available",
                 notes=[
-                    "Step 1 initial filing template has not been added to the registry.",
+                    "The official Step 1 grievance worksheet is registered.",
                 ],
             )
 
@@ -109,14 +110,14 @@ class CaseStepProgressionService:
                 ],
             )
 
-        template = LOCAL_300_STANDARD_GRIEVANCE_FORM_79_1
+        template = OFFICIAL_STANDARD_GRIEVANCE_FORM_STEP_2
         return StepTemplateAvailabilityInfo(
             step_type=step_type,
             template_available=True,
             template_id=template.template_id,
             availability_status="available",
             notes=[
-                "Local 300 Form 79-1 is the registered Step 2 appeal template.",
+                "The official standard Step 2 grievance form is registered.",
             ],
         )
 
@@ -180,6 +181,7 @@ class CaseStepProgressionService:
             step_type="step_1_initial",
             step_number=1,
             status="open",
+            template_id=step_1_availability.template_id,
             template_availability=step_1_availability.availability_status,
             opened_at=now,
         )
@@ -574,7 +576,7 @@ class CaseStepProgressionService:
         record_history: bool = True,
         event_timestamp: datetime | None = None,
     ):
-        """Build a Step 2 draft via Phase 1.4B builder and optionally record history."""
+        """Build a Step 1 or Step 2 draft and optionally record history."""
         availability = self.get_step_template_availability(step_type)
         if not availability.template_available:
             raise CaseStepProgressionError(

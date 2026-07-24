@@ -1,10 +1,13 @@
 import hashlib
+import re
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.api.auth import AuthenticatedPrincipal, require_admin_principal, require_read_principal
 from app.database.session import get_db
 from app.database.models import SourceDocument, SourceChunk
 from app.services.source_service import SourceService
@@ -23,6 +26,7 @@ router = APIRouter(
 
 
 SOURCE_UPLOAD_DIR = Path("data/sources")
+_SAFE_UPLOAD_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,179}$")
 
 
 def calculate_sha256(file_path: Path):
@@ -35,24 +39,43 @@ def calculate_sha256(file_path: Path):
     return sha256.hexdigest()
 
 
+def _safe_upload_filename(filename: str | None) -> str:
+    raw = Path(filename or "upload.pdf").name.replace(" ", "_")
+    if not _SAFE_UPLOAD_NAME.match(raw):
+        raise HTTPException(status_code=400, detail="Invalid upload filename.")
+    if ".." in raw or "/" in raw or "\\" in raw:
+        raise HTTPException(status_code=400, detail="Invalid upload filename.")
+    return raw
+
+
+def _public_source_dict(source: SourceDocument, *, include_local_path: bool) -> dict:
+    payload = {
+        "id": source.id,
+        "source_id": source.source_id,
+        "name": source.name,
+        "source_type": source.source_type,
+        "official_page": source.official_page,
+        "download_url": source.download_url,
+        "sha256": source.sha256,
+        "is_current": source.is_current,
+    }
+    if include_local_path:
+        payload["local_path"] = source.local_path
+    return payload
+
+
 @router.get("/")
-def get_sources(db: Session = Depends(get_db)):
+def get_sources(
+    db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_read_principal),
+):
     sources = db.query(SourceDocument).all()
+    include_paths = principal.is_admin
 
     return {
         "count": len(sources),
         "sources": [
-            {
-                "id": source.id,
-                "source_id": source.source_id,
-                "name": source.name,
-                "source_type": source.source_type,
-                "official_page": source.official_page,
-                "download_url": source.download_url,
-                "local_path": source.local_path,
-                "sha256": source.sha256,
-                "is_current": source.is_current,
-            }
+            _public_source_dict(source, include_local_path=include_paths)
             for source in sources
         ],
     }
@@ -67,10 +90,12 @@ def upload_pdf_source(
     is_current: bool = Form(True),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
 ):
+    del principal  # authorization side effect only
     SOURCE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    safe_filename = file.filename.replace(" ", "_")
+    safe_filename = _safe_upload_filename(file.filename)
     saved_path = SOURCE_UPLOAD_DIR / safe_filename
 
     with saved_path.open("wb") as buffer:
@@ -99,52 +124,66 @@ def upload_pdf_source(
         "source_id": source.source_id,
         "name": source.name,
         "source_type": source.source_type,
-        "local_path": source.local_path,
         "sha256": source.sha256,
         "is_current": source.is_current,
     }
 
 
 @router.post("/seed-official/")
-def seed_official_sources(db: Session = Depends(get_db)):
+def seed_official_sources(
+    db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
+):
+    del principal
     return KnowledgeBaseService.seed_official_sources(db)
 
 
 @router.get("/embedded/")
-def get_embedded_sources(db: Session = Depends(get_db)):
+def get_embedded_sources(
+    db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_read_principal),
+):
+    include_paths = principal.is_admin
     sources = db.query(SourceDocument).all()
+    if not sources:
+        return {"count": 0, "embedded_sources": []}
+
+    source_ids = [source.id for source in sources]
+    counts = (
+        db.query(
+            SourceChunk.source_document_id,
+            func.count(SourceChunk.id).label("total_chunks"),
+            func.count(SourceChunk.embedding).label("embedded_chunks"),
+        )
+        .filter(SourceChunk.source_document_id.in_(source_ids))
+        .group_by(SourceChunk.source_document_id)
+        .all()
+    )
+    count_map = {
+        row.source_document_id: (
+            int(row.total_chunks or 0),
+            int(row.embedded_chunks or 0),
+        )
+        for row in counts
+    }
+
     embedded_sources = []
-
     for source in sources:
-        embedded_chunks = (
-            db.query(SourceChunk)
-            .filter(
-                SourceChunk.source_document_id == source.id,
-                SourceChunk.embedding.isnot(None),
-            )
-            .count()
-        )
-
-        total_chunks = (
-            db.query(SourceChunk)
-            .filter(SourceChunk.source_document_id == source.id)
-            .count()
-        )
-
-        embedded_sources.append(
-            {
-                "id": source.id,
-                "source_id": source.source_id,
-                "name": source.name,
-                "source_type": source.source_type,
-                "local_path": source.local_path,
-                "sha256": source.sha256,
-                "is_current": source.is_current,
-                "total_chunks": total_chunks,
-                "embedded_chunks": embedded_chunks,
-                "is_embedded": embedded_chunks > 0,
-            }
-        )
+        total_chunks, embedded_chunks = count_map.get(source.id, (0, 0))
+        item = {
+            "id": source.id,
+            "source_id": source.source_id,
+            "name": source.name,
+            "source_type": source.source_type,
+            "sha256": source.sha256,
+            "is_current": source.is_current,
+            "total_chunks": total_chunks,
+            "embedded_chunks": embedded_chunks,
+            "is_embedded": embedded_chunks > 0,
+        }
+        if include_paths:
+            item["local_path"] = source.local_path
+        embedded_sources.append(item)
 
     return {
         "count": len(embedded_sources),
@@ -156,18 +195,25 @@ def get_embedded_sources(db: Session = Depends(get_db)):
 def search_sources(
     query: str,
     limit_per_source: int = 3,
+    domain: str = "auto",
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_read_principal),
 ):
-    results = KnowledgeRetrievalService.search_all(
+    results = KnowledgeRetrievalService.search_with_agents(
         db=db,
         query=query,
+        authorization=principal.retrieval_authorization(),
         limit_per_source=limit_per_source,
+        domain=domain,
     )
 
     return {
         "query": results["query"],
         "limit_per_source": results["limit_per_source"],
         "results_by_source": results["results_by_source"],
+        "retrieval_status": results["retrieval_status"],
+        "partial": results["partial"],
+        "failures": results["failures"],
     }
 
 
@@ -176,10 +222,13 @@ def ask_sources(
     question: str,
     limit_per_source: int = 3,
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_read_principal),
 ):
+    # Retains issue-decomposition via search_all for AnalysisService parity.
     results = KnowledgeRetrievalService.search_all(
         db=db,
         query=question,
+        authorization=principal.retrieval_authorization(),
         limit_per_source=limit_per_source,
     )
 
@@ -197,9 +246,8 @@ def generate_report(
     limit_per_source: int = 3,
     case_uuid: str | None = None,
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_read_principal),
 ):
-    from fastapi import HTTPException
-
     if not question and not case_uuid:
         raise HTTPException(
             status_code=400,
@@ -221,9 +269,11 @@ def generate_report(
     elif search_question:
         search_question = question
 
+    # Retains issue-decomposition, gaps, and coverage audit for report builders.
     results = KnowledgeRetrievalService.search_all(
         db=db,
         query=search_question,
+        authorization=principal.retrieval_authorization(),
         limit_per_source=limit_per_source,
         known_facts=known_facts,
     )
@@ -249,7 +299,9 @@ def create_source(
     official_page: str | None = None,
     download_url: str | None = None,
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
 ):
+    del principal
     source = SourceDocument(
         source_id=source_id,
         name=name,
@@ -270,7 +322,6 @@ def create_source(
         "source_type": source.source_type,
         "official_page": source.official_page,
         "download_url": source.download_url,
-        "local_path": source.local_path,
         "sha256": source.sha256,
         "is_current": source.is_current,
     }
@@ -280,21 +331,25 @@ def create_source(
 def sync_source(
     source_id: int,
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
 ):
+    del principal
     try:
         return SourceSyncService.sync_source(db, source_id)
-    except Exception as e:
-        return {
-            "error": str(e),
-            "type": type(e).__name__,
-        }
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Source synchronization failed.",
+        )
 
 
 @router.post("/{source_id}/download")
 def download_source(
     source_id: int,
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
 ):
+    del principal
     return SourceService.download_source(db, source_id)
 
 
@@ -302,7 +357,9 @@ def download_source(
 def process_source(
     source_id: int,
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_admin_principal),
 ):
+    del principal
     return SourceProcessingService.process_source(db, source_id)
 
 
@@ -311,7 +368,9 @@ def get_chunk(
     source_id: int,
     chunk_index: int,
     db: Session = Depends(get_db),
+    principal: AuthenticatedPrincipal = Depends(require_read_principal),
 ):
+    del principal
     chunk = (
         db.query(SourceChunk)
         .filter(
@@ -322,6 +381,13 @@ def get_chunk(
     )
 
     if chunk is None:
-        return {"error": "Chunk not found."}
+        raise HTTPException(status_code=404, detail="Chunk not found.")
 
-    return AnalysisService.chunk_to_source_dict(chunk)
+    payload = AnalysisService.chunk_to_source_dict(chunk)
+    # Never expose local filesystem paths through chunk serialization.
+    if isinstance(payload, dict):
+        payload.pop("local_path", None)
+        metadata = payload.get("retrieval_metadata")
+        if isinstance(metadata, dict):
+            metadata.pop("local_path", None)
+    return payload

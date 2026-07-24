@@ -12,6 +12,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.database.models import (
+    CaseAsset,
+    CaseDomainEvent,
+    CaseFormDraftRecord,
+    CaseMemoryRecord,
+    CaseMessage,
+    CaseReportVersion,
+    CaseSavedArtifact,
     CaseStep,
     CaseStepOutcome,
     CaseTimelineEventRecord,
@@ -25,6 +32,26 @@ from app.services.case_step_progression_persistence_service import (
 from app.services.saved_case_service import SavedCaseService
 
 SYNTHETIC_CASE_UUID = "00000000-0000-4000-8000-000000000401"
+
+
+def _delete_case_graph(session, case: GrievanceCase) -> None:
+    """Remove a synthetic case in foreign-key-safe order."""
+    for model in (
+        CaseTimelineEventRecord,
+        CaseDomainEvent,
+        CaseFormDraftRecord,
+        CaseSavedArtifact,
+        CaseAsset,
+        CaseStepOutcome,
+        CaseStep,
+        CaseReportVersion,
+        CaseMessage,
+        CaseMemoryRecord,
+    ):
+        session.query(model).filter(model.case_id == case.id).delete(
+            synchronize_session=False
+        )
+    session.delete(case)
 
 
 def _db_available() -> bool:
@@ -74,16 +101,7 @@ def synthetic_case(db_session):
         .first()
     )
     if existing is not None:
-        db_session.query(CaseTimelineEventRecord).filter(
-            CaseTimelineEventRecord.case_id == existing.id
-        ).delete(synchronize_session=False)
-        db_session.query(CaseStepOutcome).filter(
-            CaseStepOutcome.case_id == existing.id
-        ).delete(synchronize_session=False)
-        db_session.query(CaseStep).filter(CaseStep.case_id == existing.id).delete(
-            synchronize_session=False
-        )
-        db_session.delete(existing)
+        _delete_case_graph(db_session, existing)
         db_session.commit()
 
     now = datetime.utcnow()
@@ -132,7 +150,7 @@ def test_saved_cases_list_newest_first(db_session, synthetic_case, progression, 
         .first()
     )
     if existing_b is not None:
-        db_session.delete(existing_b)
+        _delete_case_graph(db_session, existing_b)
         db_session.flush()
     older = GrievanceCase(
         case_uuid=case_b_uuid,

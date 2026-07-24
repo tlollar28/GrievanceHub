@@ -32,9 +32,53 @@ class SourceSyncService:
             "ARBITRATION": Path("uploads/arbitration"),
             "STEP4": Path("uploads/step4"),
             "MOU": Path("uploads/mou"),
+            "SUPERVISOR_MANUAL": Path("uploads/supervisor_manual"),
         }
 
         return folder_map.get(source_type.upper())
+
+    @staticmethod
+    def _update_synced_file(source: SourceDocument, final_path: Path, file_hash: str):
+        """Update file provenance and invalidate processing only when it changed."""
+        path_changed = source.local_path != str(final_path)
+        content_changed = source.sha256 != file_hash
+
+        source.local_path = str(final_path)
+        source.sha256 = file_hash
+
+        if path_changed or content_changed:
+            source.processing_status = "pending"
+
+    @staticmethod
+    def _resolve_local_pdf(
+        source: SourceDocument,
+        local_pdfs: list[Path],
+    ) -> Path | None:
+        """Resolve one source row to one local PDF without arbitrary first-file use."""
+        if source.local_path:
+            configured_path = Path(source.local_path)
+            if configured_path.is_file() and configured_path.suffix.lower() == ".pdf":
+                return configured_path
+            configured_name = configured_path.name.casefold()
+            for candidate in local_pdfs:
+                if candidate.name.casefold() == configured_name:
+                    return candidate
+
+        metadata = (
+            getattr(source, "document_metadata", None)
+            if isinstance(getattr(source, "document_metadata", None), dict)
+            else {}
+        )
+        local_filename = metadata.get("local_filename")
+        if local_filename:
+            expected_name = Path(str(local_filename)).name.casefold()
+            for candidate in local_pdfs:
+                if candidate.name.casefold() == expected_name:
+                    return candidate
+
+        if len(local_pdfs) == 1:
+            return local_pdfs[0]
+        return None
 
     @staticmethod
     def sync_source(db: Session, source_id: int):
@@ -54,15 +98,30 @@ class SourceSyncService:
         )
 
         if local_folder and local_folder.exists():
-            local_pdfs = list(local_folder.glob("*.pdf"))
+            local_pdfs = sorted(
+                local_folder.glob("*.pdf"),
+                key=lambda path: path.name.casefold(),
+            )
 
             if local_pdfs:
-                final_path = local_pdfs[0]
+                final_path = SourceSyncService._resolve_local_pdf(
+                    source,
+                    local_pdfs,
+                )
+                if final_path is None:
+                    return {
+                        "error": (
+                            "Multiple local PDFs found; configure local_path or "
+                            "document_metadata.local_filename for this source."
+                        ),
+                        "source_id": source.id,
+                        "source_type": source.source_type,
+                        "available_files": [path.name for path in local_pdfs],
+                    }
 
                 file_hash = SourceSyncService.calculate_sha256(final_path)
 
-                source.local_path = str(final_path)
-                source.sha256 = file_hash
+                SourceSyncService._update_synced_file(source, final_path, file_hash)
 
                 db.commit()
                 db.refresh(source)
@@ -110,8 +169,7 @@ class SourceSyncService:
 
         file_hash = SourceSyncService.calculate_sha256(final_path)
 
-        source.local_path = str(final_path)
-        source.sha256 = file_hash
+        SourceSyncService._update_synced_file(source, final_path, file_hash)
 
         db.commit()
         db.refresh(source)

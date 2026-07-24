@@ -35,7 +35,11 @@ from app.schemas.grievance_form_draft_schema import (
 from app.services.case_step_progression_persistence_service import (
     CaseStepProgressionPersistenceService,
 )
-from app.services.grievance_form_draft_builder import LOCAL_300_TEMPLATE_ID
+from app.services.grievance_form_draft_builder import (
+    LOCAL_300_TEMPLATE_ID,
+    OFFICIAL_STEP_1_TEMPLATE_ID,
+    OFFICIAL_STEP_2_TEMPLATE_ID,
+)
 from app.services.grievance_template_registry import list_registered_grievance_templates
 
 SYNTHETIC_CASE_UUID = "00000000-0000-4000-8000-000000000201"
@@ -304,7 +308,7 @@ def test_step_2_references_step_1_outcome(persistence, synthetic_case, base_time
     assert step_2.prior_step_outcome_id == outcome.outcome_id
 
 
-def test_step_2_references_local_300_template(persistence, synthetic_case, base_time):
+def test_step_2_references_official_template(persistence, synthetic_case, base_time):
     persistence.create_case_progression(SYNTHETIC_CASE_UUID, event_timestamp=base_time)
     persistence.appeal_to_next_step(
         SYNTHETIC_CASE_UUID,
@@ -313,16 +317,16 @@ def test_step_2_references_local_300_template(persistence, synthetic_case, base_
     )
     availability = persistence.get_step_template_availability("step_2_appeal")
     assert availability.template_available is True
-    assert availability.template_id == LOCAL_300_TEMPLATE_ID
+    assert availability.template_id == OFFICIAL_STEP_2_TEMPLATE_ID
     step_2 = persistence.get_progression(SYNTHETIC_CASE_UUID).steps[1]
-    assert step_2.template_id == LOCAL_300_TEMPLATE_ID
+    assert step_2.template_id == OFFICIAL_STEP_2_TEMPLATE_ID
 
 
-def test_step_1_template_not_available(persistence):
+def test_step_1_official_template_is_available(persistence):
     availability = persistence.get_step_template_availability("step_1_initial")
-    assert availability.template_available is False
-    assert availability.template_id is None
-    assert availability.availability_status == "unconfirmed_pending_steward_confirmation"
+    assert availability.template_available is True
+    assert availability.template_id == OFFICIAL_STEP_1_TEMPLATE_ID
+    assert availability.availability_status == "available"
 
 
 def test_step_3_template_not_available(persistence, synthetic_case, base_time):
@@ -460,10 +464,13 @@ def test_build_step_form_draft_persists_without_export(
     )
     assert draft.build_metadata.export_attempted is False
     assert history is not None
-    assert history.template_id == LOCAL_300_TEMPLATE_ID
+    assert history.template_id == OFFICIAL_STEP_2_TEMPLATE_ID
 
 
-def test_no_registered_step_1_or_step_3_templates():
+def test_registered_templates_include_steps_1_and_2_but_not_step_3():
     templates = list_registered_grievance_templates()
     assert templates
-    assert all(template.step_level == "step_2_appeal" for template in templates)
+    step_levels = {template.step_level for template in templates}
+    assert "step_1_initial" in step_levels
+    assert "step_2_appeal" in step_levels
+    assert "step_3_appeal" not in step_levels

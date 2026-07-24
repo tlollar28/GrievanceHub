@@ -222,7 +222,12 @@ def run_diagnostic(run_number: int = 1) -> dict:
             expanded_queries=expanded_queries,
         )
 
-        retrieval = KnowledgeRetrievalService.search_all(db, FROZEN_QUESTION, limit_per_source=8)
+        retrieval = KnowledgeRetrievalService.search_global_corpus_internal(
+            db,
+            FROZEN_QUESTION,
+            principal_id="phase1-1-coverage-diagnostic-internal",
+            limit_per_source=8,
+        )
         issue_pools = retrieval.get("issue_pools") or {}
         all_chunks = retrieval.get("all_chunks") or []
         retrieved_chunks = retrieval.get("retrieved_chunks") or []

@@ -2224,9 +2224,10 @@ class CaseService:
             recent_message_limit=AI_CONTEXT_RECENT_MESSAGE_LIMIT,
         )
 
-        results = KnowledgeRetrievalService.search_all(
+        results = KnowledgeRetrievalService.search_global_corpus_internal(
             db=db,
             query=analysis_question,
+            principal_id="case-report-preview-internal",
             limit_per_source=limit_per_source,
             known_facts=case.known_facts,
         )

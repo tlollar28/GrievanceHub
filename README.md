@@ -23,8 +23,11 @@ Production case data, credentials, and private operational assets are not includ
 | Case asset uploads | Implemented |
 | Steward verification UI (`/ui`) | Implemented (FastAPI HTML shell) |
 | Analysis report HTML/PDF export | Implemented |
-| Official USPS Step 1 and Step 2 forms | Planned (W5) |
-| USPS Supervisor Manual corpus | Planned (W5) |
+| Official USPS Step 1 and Step 2 forms | Implemented |
+| USPS Supervisor Manual corpus | Implemented |
+| Source processing lifecycle metadata | Implemented |
+| Bounded retrieval-agent architecture | Implemented |
+| Interim `/sources` API-key auth | Temporary W5 safety boundary |
 | Authentication / RBAC | Planned (W6) |
 | Production React UI | Planned (W7) |
 | Arbitration and LMOU corpus | Planned (W8) |
@@ -42,6 +45,7 @@ that work into the following W-series milestones:
 | W2 — AI Case Interaction Orchestration | Persistent case chat, bounded context, indexed-source retrieval, grounded answers, and analysis orchestration foundations | Complete and committed |
 | W3 — Case Evidence and Asset Management | First-class case assets, uploads, metadata, safe storage, and case-context references | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Workspace restoration, Case Memory, domain events, workflow FSM, steward-controlled Generate/Save actions, artifacts, Official Case Record, and normal-chat retrieval hardening | Complete and committed |
+| W5 — Knowledge Foundation | Official Step 1/Step 2 forms, Supervisor Manuals, source lifecycle metadata, bounded retrieval agents, and interim `/sources` API-key safety boundary | Complete and committed |
 
 The old internal phase labels remain part of Git history. They are not missing
 work and should not be used as the current public roadmap.
@@ -151,39 +155,49 @@ python -m pytest tests/ -m "not integration" -q
 
 ## Current development status
 
-W1 through W4 are complete and committed on `main`. W4 includes Case Memory, domain events, workflow FSM, steward-controlled Generate/Save artifacts, workspace restoration, and the FastAPI verification shell. Continuous chat retrieves from the configured indexed labor-reference corpus and may return grounded citations; it does not create report versions or saved artifacts.
+W1 through W5 are complete and committed on `main`. W5 delivered official Step 1
+and Step 2 AcroForm PDFs, Supervisor Manual corpus support, source processing
+lifecycle metadata, bounded retrieval agents, and an interim `/sources` API-key
+boundary. W6 — Security Foundation is next and has not been started.
 
 ## Current limitations
 
-- No production authentication or RBAC
+- No production multi-user identity, sessions, or RBAC (W6)
+- Interim `/sources` API keys are a temporary W5 safety boundary, not W6 completion
+- `/cases` and the steward UI remain without application authentication
 - Steward UI is a FastAPI verification shell, not a production React application
-- Official USPS Step 1 and Step 2 form generation is planned for W5
-- USPS Supervisor Manual integration is planned for W5
-- Arbitration decisions and LMOU integration are planned for W8
-- Cloud deployment and operational infrastructure remain future work
+- Additional LMOU and historical arbitration expansion remain deferred to W8
+- Cloud deployment and operational infrastructure remain future work (W9)
 
 ## Development roadmap
 
-### W5 — Official Forms and Supervisor Manual Integration
+### W5 — Knowledge Foundation (complete)
 
-- Implement the official USPS Step 1 grievance form
-- Implement the official USPS Step 2 grievance form
-- Replace placeholder form templates
-- Add approved USPS supervisor manuals to the retrieval corpus
-- Improve retrieval and citation handling for the expanded corpus
-- Add form-generation and retrieval regression tests
+- Official USPS Step 1 and Step 2 fillable AcroForm PDF integration
+- SourceDocument processing lifecycle metadata and Alembic migration
+- Supervisor Manual corpus support (EL-921, EL-801, F-21)
+- Bounded retrieval-agent architecture with fail-closed authorization adapters
+- Interim `/sources` API-key authentication (temporary; not W6 identity)
 
-### W6 — Security Foundation
+W5 retrieval components are retrieval infrastructure, not completion of a future
+multi-agent product system.
 
-- Authentication
-- Role-based access control
+### W6 — Security Foundation (next)
+
+- Application identity and authentication
+- Role-based or policy-based access control
 - Case-level authorization
 - Secure upload validation
 - Audit logging
 - Encryption and secrets management
-- Rate limiting
-- Prompt-injection protections
+- Production rate limiting
+- Broader prompt-injection protections
 - Security-focused tests
+- Replace or integrate the interim `/sources` API-key boundary
+
+Authenticated stewards are planned to collaborate in a shared workspace without a
+steward role hierarchy unless that product decision is intentionally revised.
+Source administration may still require a distinct privileged boundary.
 
 ### W7 — Production Steward Interface
 

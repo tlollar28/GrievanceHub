@@ -187,7 +187,7 @@ def test_generate_report_version_persists_audit_columns():
     db.refresh.side_effect = _refresh
 
     with patch.object(CaseService, "get_case", return_value=case), patch(
-        "app.services.case_service.KnowledgeRetrievalService.search_all",
+        "app.services.case_service.KnowledgeRetrievalService.search_global_corpus_internal",
         return_value={
             "all_chunks": [],
             "issue_analysis": report_result["issue_analysis"],

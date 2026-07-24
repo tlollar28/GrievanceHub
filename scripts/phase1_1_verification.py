@@ -155,7 +155,12 @@ def _run_live_report(question: str) -> dict:
     db = SessionLocal()
     try:
         LegalIssueAnalyzer.invalidate_cache()
-        results = KnowledgeRetrievalService.search_all(db, question, limit_per_source=8)
+        results = KnowledgeRetrievalService.search_global_corpus_internal(
+            db,
+            question,
+            principal_id="phase1-1-verification-internal",
+            limit_per_source=8,
+        )
         report_payload = AnalysisService.generate_report(
             question=question,
             chunks=results["all_chunks"],

@@ -383,6 +383,7 @@ class CaseStepProgressionPersistenceService:
             step_type="step_1_initial",
             step_number=1,
             status="open",
+            template_id=availability.template_id,
             template_available=availability.template_available,
             template_availability=availability.availability_status,
             opened_at=now,

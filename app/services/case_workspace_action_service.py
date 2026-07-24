@@ -34,6 +34,7 @@ from app.schemas.case_step_progression_schema import (
     CaseTimelineEventReferences,
     StepType,
 )
+from app.schemas.grievance_form_draft_schema import GrievanceFormDraftInput
 from app.schemas.case_workspace_action_schema import (
     AnalysisUpdateResult,
     CaseInteractionMessageSummary,
@@ -62,6 +63,8 @@ from app.services.follow_up_chat_service import (
     CHAT_RETRIEVAL_LIMIT_PER_SOURCE,
     FollowUpChatService,
 )
+from app.services.grievance_form_draft_builder import build_grievance_form_draft
+from app.services.grievance_pdf_export_service import GrievancePdfExportService
 
 # Internal compatibility markers (not steward UI button labels).
 INTERNAL_SAVE_AND_UPDATE_ACTION = "save_and_update_analysis"
@@ -606,8 +609,8 @@ class CaseWorkspaceActionService:
         """Generate an editable grievance draft preview from current case context.
 
         Does not create an official artifact until the steward Saves.
-        Full Local 300 PDF overlay filling remains W5; this returns field values
-        suitable for review/edit and Save / Save and Print.
+        Step 1 and Step 2 values are built against their registered official
+        AcroForm templates for review/edit and Save / Save and Print.
         """
         try:
             inspection = self._inspect_workspace(case_uuid)
@@ -652,25 +655,77 @@ class CaseWorkspaceActionService:
             )
         facts = dict(case.known_facts or {})
         step_type = inspection.current_step_type or "step_1_initial"
-        template_id = inspection.template_id or "local_300_form_79_1"
-        field_values = {
-            "grievant_name": facts.get("grievant_name")
-            or facts.get("employee_name")
-            or case.user_name
-            or "",
-            "grievant_name_or_class": facts.get("grievant_name_or_class")
-            or facts.get("grievant_name")
-            or "",
-            "facts_what_happened": facts.get("facts_what_happened")
-            or case.initial_question
-            or "",
-            "facts_date_time_location": facts.get("facts_date_time_location") or "",
-            "violation_articles_citations": facts.get("violation_articles_citations")
-            or "",
-            "corrective_action_requested": facts.get("corrective_action_requested")
-            or facts.get("remedy")
-            or "Make the grievant whole.",
-        }
+        template_id = inspection.template_id
+        if template_id is None and step_type in {"step_1_initial", "step_2_appeal"}:
+            template_id = CaseStepProgressionService.get_step_template_availability(
+                step_type
+            ).template_id
+
+        if template_id is not None and step_type in {
+            "step_1_initial",
+            "step_2_appeal",
+        }:
+            template_id = GrievancePdfExportService.resolve_template_id(template_id)
+            if (
+                "facts_datetime_location" not in facts
+                and facts.get("facts_date_time_location") not in (None, "")
+            ):
+                facts["facts_datetime_location"] = facts["facts_date_time_location"]
+            if (
+                "corrective_action_requested" not in facts
+                and facts.get("remedy") not in (None, "")
+            ):
+                facts["corrective_action_requested"] = facts["remedy"]
+            if (
+                "grievant_name" not in facts
+                and facts.get("employee_name") not in (None, "")
+            ):
+                facts["grievant_name"] = facts["employee_name"]
+
+            steward_overrides = {
+                str(key): (
+                    ", ".join(str(item) for item in value)
+                    if isinstance(value, (list, tuple, set))
+                    else str(value)
+                )
+                for key, value in facts.items()
+                if value not in (None, "")
+            }
+            draft = build_grievance_form_draft(
+                template_id,
+                GrievanceFormDraftInput(steward_overrides=steward_overrides),
+            )
+            field_values = {
+                field_id: field.value or ""
+                for field_id, field in draft.fields.items()
+            }
+            draft_status = draft.status
+        else:
+            # Step 3 remains deliberately deferred; preserve its legacy
+            # field-value-only draft without adding a Step 3 template/export.
+            template_id = template_id or "step_3_template_deferred"
+            field_values = {
+                "grievant_name": facts.get("grievant_name")
+                or facts.get("employee_name")
+                or "",
+                "grievant_name_or_class": facts.get("grievant_name_or_class")
+                or facts.get("grievant_name")
+                or "",
+                "facts_what_happened": facts.get("facts_what_happened") or "",
+                "facts_datetime_location": facts.get("facts_datetime_location")
+                or facts.get("facts_date_time_location")
+                or "",
+                "violation_articles_citations": facts.get(
+                    "violation_articles_citations"
+                )
+                or "",
+                "corrective_action_requested": facts.get(
+                    "corrective_action_requested"
+                )
+                or facts.get("remedy")
+                or "",
+            }
+            draft_status = "ready_for_steward_review"
         return WorkspaceActionResponse(
             case_uuid=case_uuid,
             action="generate_grievance",
@@ -679,8 +734,7 @@ class CaseWorkspaceActionService:
                 "Temporary editable grievance draft ready for review. "
                 "Save creates the first grievance artifact/version. "
                 "Cancel discards this draft with no artifact, version, or "
-                "Official Case Record event. "
-                "Full Local 300 overlay PDF filling remains W5."
+                "Official Case Record event."
             ),
             steward_action_label="Generate Grievance",
             available_actions=available_actions,
@@ -692,7 +746,7 @@ class CaseWorkspaceActionService:
             grievance_generation=GrievanceGenerationResult(
                 step_type=step_type,  # type: ignore[arg-type]
                 template_id=template_id,
-                draft_status="ready_for_steward_review",
+                draft_status=draft_status,
                 editable=True,
                 field_values=field_values,
                 official_artifact_created=False,
@@ -1085,7 +1139,14 @@ class CaseWorkspaceActionService:
 
         step_type = inspection.current_step_type
         template_status = inspection.template_availability_status
-        template_id = inspection.template_id or "local_300_form_79_1"
+        fallback_template = (
+            CaseStepProgressionService.get_step_template_availability(step_type)
+            if step_type is not None
+            else None
+        )
+        template_id = inspection.template_id or (
+            fallback_template.template_id if fallback_template else None
+        )
 
         # Step 1 / Step 3 may still use field-value draft Save and Print without
         # a confirmed overlay template. Do not require analysis report first.
@@ -1114,7 +1175,7 @@ class CaseWorkspaceActionService:
             reason = (
                 "Generate Grievance is available from current case context "
                 "(analysis report not required). Editable draft review is supported; "
-                "full Local 300 overlay PDF filling remains W5."
+                "official Step 1 and Step 2 PDF filling is available."
             )
         else:
             reason = "One or more Generate Grievance prerequisites are missing."

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import html
 import logging
 from datetime import datetime
 from uuid import uuid4
@@ -35,6 +34,7 @@ from app.services.case_step_progression_persistence_service import (
     CaseStepProgressionPersistenceService,
 )
 from app.services.case_step_progression_service import CaseStepProgressionNotFoundError
+from app.services.grievance_pdf_export_service import GrievancePdfExportService
 from app.services.report_export.pdf_generator import PdfGenerationError
 from app.services.report_export_service import NoReportVersionError, ReportExportService
 
@@ -1274,33 +1274,8 @@ class CaseSavedArtifactService:
         grievance_step: str | None,
         field_values: dict,
     ) -> bytes:
-        """Printable snapshot of persisted field values (official Local-300 overlay is future)."""
-        rows = "".join(
-            (
-                "<tr><th>"
-                f"{html.escape(str(key))}</th><td>"
-                f"{html.escape(str(value) if value is not None else '')}</td></tr>"
-            )
-            for key, value in sorted(field_values.items(), key=lambda item: str(item[0]))
+        """Fill the registered authoritative Step 1 or Step 2 AcroForm."""
+        return GrievancePdfExportService.render_pdf(
+            template_id=template_id,
+            field_values=field_values,
         )
-        html_doc = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>{html.escape(title)}</title>
-<style>
-body {{ font-family: Georgia, serif; margin: 32px; color: #1a1a1a; }}
-h1 {{ font-size: 20px; }}
-table {{ width: 100%; border-collapse: collapse; }}
-th, td {{ border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; }}
-th {{ width: 35%; background: #f4f4f4; }}
-.meta {{ margin-bottom: 16px; font-size: 12px; color: #444; }}
-</style></head><body>
-<h1>{html.escape(title)}</h1>
-<div class="meta">
-Case: {html.escape(case_uuid)}<br/>
-Template: {html.escape(template_id)}
-{" v" + html.escape(template_version) if template_version else ""}<br/>
-Step: {html.escape(str(grievance_step or ""))}<br/>
-Official saved field-value snapshot
-</div>
-<table>{rows or "<tr><td colspan='2'>No field values</td></tr>"}</table>
-</body></html>"""
-        return ReportExportService.render_pdf_from_html(html_doc)

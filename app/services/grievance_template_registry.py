@@ -26,6 +26,14 @@ _LOCAL_300_PDF = (
 )
 _LOCAL_300_JPG_PAGE_1 = "app/assets/grievance_templates/local_300/IMG_5394.jpg"
 _LOCAL_300_JPG_PAGE_2 = "app/assets/grievance_templates/local_300/IMG_5395.jpg"
+_OFFICIAL_STEP_1_PDF = (
+    "app/assets/grievance_templates/official/step_1/"
+    "Grievance_Worksheet_Step_1.pdf"
+)
+_OFFICIAL_STEP_2_PDF = (
+    "app/assets/grievance_templates/official/step_2/"
+    "Standard_Grievance_Form_Step_2.pdf"
+)
 
 _STANDARD_EDIT_BEFORE_PRINT = EditBeforePrintRequirement()
 
@@ -176,8 +184,103 @@ LOCAL_300_STANDARD_GRIEVANCE_FORM_79_1 = GrievanceTemplateDefinition(
     never_invent_fields=_LOCAL_300_NEVER_INVENT_FIELDS,
 )
 
+OFFICIAL_GRIEVANCE_WORKSHEET_STEP_1 = GrievanceTemplateDefinition(
+    template_id="official_grievance_worksheet_step_1",
+    display_name="Official Grievance Worksheet — Step 1",
+    local="NPMHU",
+    form_number="Grievance Worksheet",
+    step_level="step_1_initial",
+    step_1_usage_status="confirmed",
+    step_3_status="not_applicable",
+    preferred_blank_pdf=_OFFICIAL_STEP_1_PDF,
+    page_definitions=[
+        TemplatePageDefinition(
+            page_number=1,
+            label="Step 1 Worksheet",
+            description="Steward worksheet to prepare for the Step 1 meeting",
+        ),
+        TemplatePageDefinition(
+            page_number=2,
+            label="Facts Continuation",
+            description="What Happened continuation from page 1",
+        ),
+    ],
+    default_generated_pages=[1, 2],
+    export_strategy=TemplateExportStrategy(
+        preferred_exact_format_source="pdf_blank",
+        steward_editable_draft_format="html_jinja",
+        official_blank_pdf_is_master_for_approved_export=True,
+        notes=[
+            "Fill the official AcroForm fields directly.",
+            "Preserve the original two-page worksheet layout.",
+            "Protected fields remain blank until supplied by a steward.",
+        ],
+    ),
+    edit_before_print=_STANDARD_EDIT_BEFORE_PRINT,
+    prefilled_fields=_LOCAL_300_PREFILLED_FIELDS,
+    steward_input_fields=sorted(
+        set(_LOCAL_300_STEWARD_INPUT_FIELDS)
+        | {
+            "steward_name",
+            "facts_dates",
+            "facts_time",
+            "facts_location",
+            "installation_city",
+            "installation_state",
+            "installation_zip",
+        }
+    ),
+    never_invent_fields=sorted(
+        set(_LOCAL_300_NEVER_INVENT_FIELDS)
+        | {
+            "steward_name",
+            "facts_dates",
+            "facts_time",
+            "facts_location",
+            "installation_city",
+            "installation_state",
+            "installation_zip",
+        }
+    ),
+)
+
+OFFICIAL_STANDARD_GRIEVANCE_FORM_STEP_2 = GrievanceTemplateDefinition(
+    template_id="official_standard_grievance_form_step_2",
+    display_name="Official Standard Grievance Form — Step 2",
+    local="NPMHU",
+    form_number="Standard Grievance Form",
+    step_level="step_2_appeal",
+    step_1_usage_status="not_applicable",
+    step_3_status="deferred_separate_form_required",
+    preferred_blank_pdf=_OFFICIAL_STEP_2_PDF,
+    page_definitions=[
+        TemplatePageDefinition(
+            page_number=1,
+            label="Step 2 Appeal",
+            description="Official standard form used to appeal a grievance to Step 2",
+        ),
+    ],
+    default_generated_pages=[1],
+    export_strategy=TemplateExportStrategy(
+        preferred_exact_format_source="pdf_blank",
+        steward_editable_draft_format="html_jinja",
+        official_blank_pdf_is_master_for_approved_export=True,
+        notes=[
+            "Fill the official AcroForm fields directly.",
+            "Preserve the original one-page Step 2 appeal layout.",
+            "Protected fields remain blank until supplied by a steward.",
+        ],
+    ),
+    edit_before_print=_STANDARD_EDIT_BEFORE_PRINT,
+    prefilled_fields=_LOCAL_300_PREFILLED_FIELDS,
+    steward_input_fields=_LOCAL_300_STEWARD_INPUT_FIELDS,
+    never_invent_fields=_LOCAL_300_NEVER_INVENT_FIELDS,
+)
+
 _REGISTERED_TEMPLATES: dict[str, GrievanceTemplateDefinition] = {
     LOCAL_300_STANDARD_GRIEVANCE_FORM_79_1.template_id: LOCAL_300_STANDARD_GRIEVANCE_FORM_79_1,
+    OFFICIAL_GRIEVANCE_WORKSHEET_STEP_1.template_id: OFFICIAL_GRIEVANCE_WORKSHEET_STEP_1,
+    OFFICIAL_STANDARD_GRIEVANCE_FORM_STEP_2.template_id: OFFICIAL_STANDARD_GRIEVANCE_FORM_STEP_2,
 }
 
 

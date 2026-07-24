@@ -99,6 +99,9 @@ def test_regression_live_pipeline_smoke():
 
     client = TestClient(app)
     scorecard: list[tuple[int, str, str]] = []
+    api_key = os.environ.get("GRIEVANCEHUB_API_KEY")
+    assert api_key, "GRIEVANCEHUB_API_KEY must be set for live regression"
+    auth_headers = {"Authorization": f"Bearer {api_key}"}
 
     for item in REGRESSION_QUESTIONS:
         index = item["index"]
@@ -106,6 +109,7 @@ def test_regression_live_pipeline_smoke():
         response = client.get(
             "/sources/report/",
             params={"question": question, "limit_per_source": 3},
+            headers=auth_headers,
         )
         assert response.status_code == 200, (
             f"question {index} failed: HTTP {response.status_code} {response.text[:500]}"

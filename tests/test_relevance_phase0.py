@@ -306,7 +306,7 @@ def test_backfill_empty_issue_pools_skips_non_empty_and_unindexed_lmou(mock_chun
 
     calls = {"count": 0}
 
-    def fake_retrieve(db, queries, limit_per_source, issue=None, allowed_source_types=None):
+    def fake_retrieve(db, queries, limit_per_source, issue=None, allowed_source_types=None, **kwargs):
         calls["count"] += 1
         return {}
 

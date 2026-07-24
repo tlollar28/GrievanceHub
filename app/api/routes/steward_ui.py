@@ -392,10 +392,7 @@ const caseUuid = {case_uuid!r};
 let workspace = null;
 let analysisPreview = null;
 let grievanceDraft = null;
-const grievanceFieldIds = [
-  'grievant_name', 'grievant_name_or_class', 'facts_what_happened',
-  'facts_date_time_location', 'violation_articles_citations', 'corrective_action_requested'
-];
+let grievanceFieldIds = [];
 function escapeHtml(s) {{
   return String(s || '').replace(/[&<>"']/g, ch => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[ch]));
 }}
@@ -600,6 +597,7 @@ document.getElementById('analysis-cancel').onclick = () => {{
 function renderGrievanceFields(values) {{
   const root = document.getElementById('grievance-fields');
   root.innerHTML = '';
+  grievanceFieldIds = Object.keys(values || {{}});
   grievanceFieldIds.forEach(id => {{
     const wrap = document.createElement('div');
     const label = document.createElement('label');
@@ -640,7 +638,8 @@ async function saveGrievance(preparePdf) {{
     method: 'POST',
     headers: {{'Content-Type': 'application/json'}},
     body: JSON.stringify({{
-      template_id: (grievanceDraft && grievanceDraft.template_id) || 'local_300_form_79_1',
+      template_id: (grievanceDraft && grievanceDraft.template_id)
+        || 'official_grievance_worksheet_step_1',
       template_version: '1',
       grievance_step: (grievanceDraft && grievanceDraft.step_type)
         || (workspace && workspace.step_progression && workspace.step_progression.current_step_type)

@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import datetime
 import os
 import traceback
 
@@ -41,33 +42,46 @@ def split_text(text: str, max_chars: int = MAX_CHARS):
 class SourceProcessingService:
     @staticmethod
     def process_source(db: Session, source_id: int):
+        """
+        W5 Knowledge Foundation processor.
+
+        Responsibilities:
+        - Read an official source document.
+        - Split it into searchable chunks.
+        - Create embeddings.
+        - Store chunk metadata.
+        - Track processing status.
+        """
+
+        source = (
+            db.query(SourceDocument)
+            .filter(SourceDocument.id == source_id)
+            .first()
+        )
+
+        if source is None:
+            return {"error": "Source not found."}
+
+        if not source.local_path:
+            return {"error": "Source has not been downloaded yet."}
+
+        pdf_path = Path(source.local_path)
+
+        if not pdf_path.exists():
+            return {"error": f"File not found: {pdf_path}"}
+
+        source.processing_status = "processing"
+        source.processing_error = None
+        db.commit()
+
         try:
-            source = (
-                db.query(SourceDocument)
-                .filter(SourceDocument.id == source_id)
-                .first()
-            )
+            reader = PdfReader(str(pdf_path))
 
-            if source is None:
-                return {"error": "Source not found."}
-
-            if not source.local_path:
-                return {"error": "Source has not been downloaded yet."}
-
-            pdf_path = Path(source.local_path)
-
-            if not pdf_path.exists():
-                return {"error": f"File not found: {pdf_path}"}
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
             db.query(SourceChunk).filter(
                 SourceChunk.source_document_id == source.id
             ).delete()
-
-            reader = PdfReader(str(pdf_path))
-
-            client = OpenAI(
-                api_key=os.getenv("OPENAI_API_KEY")
-            )
 
             chunk_count = 0
 
@@ -81,9 +95,8 @@ class SourceProcessingService:
                 ]
 
                 for paragraph in paragraphs:
-                    safe_chunks = split_text(paragraph)
+                    for safe_text in split_text(paragraph):
 
-                    for safe_text in safe_chunks:
                         response = client.embeddings.create(
                             model="text-embedding-3-small",
                             input=safe_text,
@@ -96,11 +109,21 @@ class SourceProcessingService:
                             chunk_index=chunk_count,
                             page_number=page_number,
                             text=safe_text,
+                            chunk_metadata={
+                                "page": page_number,
+                                "chunking_strategy": "generic_pdf_v1",
+                                "source_type": source.source_type,
+                            },
                             embedding=embedding,
                         )
 
                         db.add(chunk)
                         chunk_count += 1
+
+            source.processing_status = "completed"
+            source.processed_at = datetime.utcnow()
+            source.processed_sha256 = source.sha256
+            source.processing_strategy = "generic_pdf_v1"
 
             db.commit()
 
@@ -112,7 +135,21 @@ class SourceProcessingService:
             }
 
         except Exception as e:
+            db.rollback()
+
+            source = (
+                db.query(SourceDocument)
+                .filter(SourceDocument.id == source_id)
+                .first()
+            )
+
+            if source:
+                source.processing_status = "failed"
+                source.processing_error = str(e)
+                db.commit()
+
             traceback.print_exc()
+
             return {
                 "error": str(e),
                 "type": type(e).__name__,

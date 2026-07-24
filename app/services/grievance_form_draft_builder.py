@@ -28,12 +28,16 @@ from app.schemas.grievance_form_draft_schema import (
 from app.schemas.grievance_template_schema import GrievanceTemplateDefinition
 from app.services.grievance_template_registry import (
     LOCAL_300_STANDARD_GRIEVANCE_FORM_79_1,
+    OFFICIAL_GRIEVANCE_WORKSHEET_STEP_1,
+    OFFICIAL_STANDARD_GRIEVANCE_FORM_STEP_2,
     get_default_pages,
     get_grievance_template_by_id,
     get_optional_overflow_pages,
 )
 
 LOCAL_300_TEMPLATE_ID = LOCAL_300_STANDARD_GRIEVANCE_FORM_79_1.template_id
+OFFICIAL_STEP_1_TEMPLATE_ID = OFFICIAL_GRIEVANCE_WORKSHEET_STEP_1.template_id
+OFFICIAL_STEP_2_TEMPLATE_ID = OFFICIAL_STANDARD_GRIEVANCE_FORM_STEP_2.template_id
 
 # Exact-template field mappings for Local 300 Form 79-1.
 # Structured for future official PDF/DOCX placement — no coordinate mapping yet.
@@ -459,8 +463,168 @@ _LOCAL_300_FIELD_MAPPINGS: list[ExactTemplateFieldMapping] = [
     ),
 ]
 
+_LOCAL_300_MAPPING_BY_ID = {
+    mapping.field_id: mapping for mapping in _LOCAL_300_FIELD_MAPPINGS
+}
+
+
+def _mapping_for_official_form(
+    field_id: str,
+    *,
+    page_number: int = 1,
+) -> ExactTemplateFieldMapping:
+    return _LOCAL_300_MAPPING_BY_ID[field_id].model_copy(
+        update={
+            "page_number": page_number,
+            "optional_overflow_page": False,
+        }
+    )
+
+
+_OFFICIAL_STEP_1_FIELD_IDS = (
+    "form_date",
+    "branch_grievance_number",
+    "grievant_name",
+    "grievant_name_or_class",
+    "ssn_or_employee_id",
+    "job_classification",
+    "grievant_phone",
+    "home_address",
+    "city",
+    "state",
+    "zip",
+    "craft_seniority_date",
+    "service_seniority_date",
+    "duty_hours",
+    "installation_name",
+    "installation_station_branch",
+    "veteran_status",
+    "off_days",
+    "employment_status",
+    "violation_national",
+    "violation_articles_citations",
+    "violation_local_mou",
+    "violation_other_grounds",
+    "facts_what_happened",
+    "corrective_action_requested",
+    "additional_sheet_attached",
+    "facts_continued",
+)
+
+_OFFICIAL_STEP_1_FIELD_MAPPINGS = [
+    _mapping_for_official_form(
+        field_id,
+        page_number=2 if field_id == "facts_continued" else 1,
+    )
+    for field_id in _OFFICIAL_STEP_1_FIELD_IDS
+] + [
+    ExactTemplateFieldMapping(
+        field_id="steward_name",
+        official_label="Steward",
+        page_number=1,
+        section_name="Header / Filing Information",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="installation_city",
+        official_label="Installation City",
+        page_number=1,
+        section_name="Installation",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="installation_state",
+        official_label="Installation State",
+        page_number=1,
+        section_name="Installation",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="installation_zip",
+        official_label="Installation ZIP",
+        page_number=1,
+        section_name="Installation",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="facts_dates",
+        official_label="Facts of Grievance — Date(s)",
+        page_number=1,
+        section_name="Facts of Grievance",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="facts_time",
+        official_label="Facts of Grievance — Time",
+        page_number=1,
+        section_name="Facts of Grievance",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="facts_location",
+        official_label="Facts of Grievance — Location",
+        page_number=1,
+        section_name="Facts of Grievance",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="employee_level",
+        official_label="Level",
+        page_number=1,
+        section_name="Employment Information",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="employee_step",
+        official_label="Step",
+        page_number=1,
+        section_name="Employment Information",
+        protected_never_invent=True,
+    ),
+]
+
+_OFFICIAL_STEP_2_UNMAPPED_FIELD_IDS = {
+    "step1_decision_datetime",
+    "step1_supervisor_initials",
+    "facts_continued",
+    "signature_branch_president_or_steward",
+    "admin_mh_initials",
+    "admin_usps_initials",
+    "facts_continued_page3",
+}
+
+_OFFICIAL_STEP_2_FIELD_MAPPINGS = [
+    _mapping_for_official_form(mapping.field_id)
+    for mapping in _LOCAL_300_FIELD_MAPPINGS
+    if mapping.field_id not in _OFFICIAL_STEP_2_UNMAPPED_FIELD_IDS
+] + [
+    ExactTemplateFieldMapping(
+        field_id="step1_decision_outcome",
+        official_label="Step 1 Decision",
+        page_number=1,
+        section_name="Step 1 Decision Details",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="employee_level",
+        official_label="Level",
+        page_number=1,
+        section_name="Employment Information",
+        protected_never_invent=True,
+    ),
+    ExactTemplateFieldMapping(
+        field_id="employee_step",
+        official_label="Step",
+        page_number=1,
+        section_name="Employment Information",
+        protected_never_invent=True,
+    ),
+]
+
 _TEMPLATE_FIELD_MAPPINGS: dict[str, list[ExactTemplateFieldMapping]] = {
     LOCAL_300_TEMPLATE_ID: _LOCAL_300_FIELD_MAPPINGS,
+    OFFICIAL_STEP_1_TEMPLATE_ID: _OFFICIAL_STEP_1_FIELD_MAPPINGS,
+    OFFICIAL_STEP_2_TEMPLATE_ID: _OFFICIAL_STEP_2_FIELD_MAPPINGS,
 }
 
 # Report-content attributes used for safe prefill (primary drafting source).

@@ -4,6 +4,14 @@ from collections import Counter
 from sqlalchemy.orm import Session
 
 from app.retrieval_config import (
+    LEGACY_MAX_BACKFILL_QUERIES,
+    LEGACY_MAX_DECOMPOSED_ISSUES,
+    LEGACY_MAX_GLOBAL_EXPANDED_QUERIES,
+    LEGACY_MAX_LIMIT_PER_SOURCE,
+    LEGACY_MAX_PROVIDER_CALLS,
+    LEGACY_MAX_QUERIES_PER_ISSUE,
+    LEGACY_MAX_TOTAL_CANDIDATE_CHUNKS,
+    LEGACY_MAX_TOTAL_EMBEDDING_CALLS,
     MAX_CHUNKS_TO_RANKER,
     MIN_EMBEDDING_SIMILARITY,
 )
@@ -33,16 +41,25 @@ from app.services.relevance_utils import (
 
 class KnowledgeRetrievalService:
     @staticmethod
-    def _get_indexed_source_types(db: Session) -> set[str]:
+    def _get_indexed_source_types(db: Session, authorization=None) -> set[str]:
         from app.database.models import SourceChunk, SourceDocument
+        from app.services.providers.base_provider import BaseProvider
 
-        rows = (
+        query = (
             db.query(SourceDocument.source_type)
             .join(SourceChunk, SourceChunk.source_document_id == SourceDocument.id)
             .filter(SourceChunk.embedding.isnot(None))
-            .distinct()
-            .all()
         )
+        # Reuse provider authorization predicates without inventing a provider.
+        helper = BaseProvider.__new__(BaseProvider)
+        predicates = helper._authorization_predicates(authorization)
+        if len(predicates) == 1:
+            query = query.filter(predicates[0])
+        elif predicates:
+            from sqlalchemy import or_
+
+            query = query.filter(or_(*predicates))
+        rows = query.distinct().all()
         return {
             str(row[0]).upper()
             for row in rows
@@ -141,13 +158,43 @@ class KnowledgeRetrievalService:
         limit_per_source: int,
         issue: dict | None = None,
         allowed_source_types: set[str] | None = None,
+        *,
+        authorization=None,
+        embedding_cache: dict[str, list[float]] | None = None,
+        budget: dict[str, int] | None = None,
     ) -> dict[tuple, RetrievedChunk]:
         chunk_map: dict[tuple, RetrievedChunk] = {}
+        cache = embedding_cache if embedding_cache is not None else {}
+        counters = budget if budget is not None else {
+            "embedding_calls": 0,
+            "provider_calls": 0,
+            "candidate_chunks": 0,
+        }
 
-        for expanded_query in queries:
-            query_embedding = EmbeddingService.create_embedding(expanded_query)
+        deduped_queries = list(
+            dict.fromkeys(
+                str(item).strip()
+                for item in queries
+                if item is not None and str(item).strip()
+            )
+        )[:LEGACY_MAX_QUERIES_PER_ISSUE]
+
+        for expanded_query in deduped_queries:
+            if counters["embedding_calls"] >= LEGACY_MAX_TOTAL_EMBEDDING_CALLS:
+                break
+            if counters["candidate_chunks"] >= LEGACY_MAX_TOTAL_CANDIDATE_CHUNKS:
+                break
+
+            if expanded_query in cache:
+                query_embedding = cache[expanded_query]
+            else:
+                query_embedding = EmbeddingService.create_embedding(expanded_query)
+                cache[expanded_query] = query_embedding
+                counters["embedding_calls"] += 1
 
             for provider in KnowledgeRetrievalService.providers:
+                if counters["provider_calls"] >= LEGACY_MAX_PROVIDER_CALLS:
+                    break
                 if (
                     allowed_source_types is not None
                     and provider.source_type not in allowed_source_types
@@ -158,9 +205,14 @@ class KnowledgeRetrievalService:
                     db=db,
                     query_embedding=query_embedding,
                     limit=limit_per_source,
+                    authorization=authorization,
                 )
+                counters["provider_calls"] += 1
 
                 for chunk, distance in results:
+                    if counters["candidate_chunks"] >= LEGACY_MAX_TOTAL_CANDIDATE_CHUNKS:
+                        break
+                    counters["candidate_chunks"] += 1
                     embedding_similarity = max(0.0, 1.0 - float(distance))
 
                     if embedding_similarity < MIN_EMBEDDING_SIMILARITY:
@@ -253,6 +305,10 @@ class KnowledgeRetrievalService:
         issue_keywords: list[str],
         limit_per_source: int,
         indexed_source_types: set[str],
+        *,
+        authorization=None,
+        embedding_cache: dict[str, list[float]] | None = None,
+        budget: dict[str, int] | None = None,
     ) -> None:
         """Second-pass retrieval for issue pools still empty after global fallback."""
         for issue in decomposed_issues:
@@ -273,10 +329,13 @@ class KnowledgeRetrievalService:
 
             chunk_map = KnowledgeRetrievalService._retrieve_queries_into_pool(
                 db=db,
-                queries=backfill_queries[:8],
+                queries=backfill_queries[:LEGACY_MAX_BACKFILL_QUERIES],
                 limit_per_source=limit_per_source,
                 issue=issue,
                 allowed_source_types=indexed_source_types,
+                authorization=authorization,
+                embedding_cache=embedding_cache,
+                budget=budget,
             )
 
             issue_keywords_for_issue = extract_issue_keywords_for_issue(
@@ -305,6 +364,10 @@ class KnowledgeRetrievalService:
         limit_per_source: int,
         indexed_source_types: set[str],
         question: str = "",
+        *,
+        authorization=None,
+        embedding_cache: dict[str, list[float]] | None = None,
+        budget: dict[str, int] | None = None,
     ) -> list[dict]:
         """One retrieval pass per indexed source type absent from all issue pools."""
         applicable_issue_types = {
@@ -369,7 +432,9 @@ class KnowledgeRetrievalService:
                         :2
                     ]
                 )
-            combined_queries = list(dict.fromkeys(combined_queries))[:8]
+            combined_queries = list(dict.fromkeys(combined_queries))[
+                :LEGACY_MAX_BACKFILL_QUERIES
+            ]
             if (
                 source_type == "CONTRACT"
                 and dispute_concerns_management_revoking_approved_leave(
@@ -380,7 +445,7 @@ class KnowledgeRetrievalService:
             ):
                 combined_queries = list(
                     dict.fromkeys([question.strip()[:160], *combined_queries])
-                )[:10]
+                )[:LEGACY_MAX_BACKFILL_QUERIES]
 
             chunk_map = KnowledgeRetrievalService._retrieve_queries_into_pool(
                 db=db,
@@ -388,6 +453,9 @@ class KnowledgeRetrievalService:
                 limit_per_source=limit_per_source,
                 issue=None,
                 allowed_source_types={source_type},
+                authorization=authorization,
+                embedding_cache=embedding_cache,
+                budget=budget,
             )
 
             retained_total = 0
@@ -471,6 +539,10 @@ class KnowledgeRetrievalService:
         issue_keywords: list[str],
         limit_per_source: int,
         question: str,
+        *,
+        authorization=None,
+        embedding_cache: dict[str, list[float]] | None = None,
+        budget: dict[str, int] | None = None,
     ) -> None:
         """Extra CONTRACT retrieval when leave-revocation disputes lack commitment language."""
         if not dispute_concerns_management_revoking_approved_leave(
@@ -512,6 +584,9 @@ class KnowledgeRetrievalService:
             limit_per_source=limit_per_source,
             issue=target_issue,
             allowed_source_types={"CONTRACT"},
+            authorization=authorization,
+            embedding_cache=embedding_cache,
+            budget=budget,
         )
 
         if not chunk_map:
@@ -542,13 +617,195 @@ class KnowledgeRetrievalService:
         issue_pools[issue_id] = pool
 
     @staticmethod
+    def retrieve_with_agents(
+        db: Session,
+        query: str,
+        authorization,
+        *,
+        domain: str = "auto",
+        limit_per_source: int = 8,
+        result_limit: int | None = None,
+        source_types: tuple[str, ...] = (),
+        source_ids: tuple[str, ...] = (),
+        include_diagnostics: bool = False,
+    ):
+        """Run the bounded retrieval-agent path.
+
+        ``authorization`` is required. Omitting it is a TypeError at the call
+        site; passing ``None`` fails closed inside the orchestrator. Trusted
+        global-corpus access must use
+        ``retrieve_global_corpus_internal`` or an explicit
+        ``RetrievalAuthorizationContext``.
+        """
+        from app.services.retrieval.models import (
+            RetrievalAuthorizationContext,
+            RetrievalRequest,
+        )
+        from app.services.retrieval.orchestrator import RetrievalOrchestrator
+
+        if not isinstance(authorization, RetrievalAuthorizationContext):
+            authorization = RetrievalAuthorizationContext.unauthenticated()
+
+        return RetrievalOrchestrator().retrieve(
+            db,
+            RetrievalRequest(
+                query=query,
+                domain=domain,
+                per_agent_result_limit=limit_per_source,
+                per_source_result_limit=limit_per_source,
+                result_limit=result_limit or limit_per_source * 2,
+                source_types=source_types,
+                source_ids=source_ids,
+                include_diagnostics=include_diagnostics,
+            ),
+            authorization,
+        )
+
+    @staticmethod
+    def retrieve_global_corpus_internal(
+        db: Session,
+        query: str,
+        *,
+        principal_id: str,
+        domain: str = "auto",
+        limit_per_source: int = 8,
+        result_limit: int | None = None,
+        source_types: tuple[str, ...] = (),
+        source_ids: tuple[str, ...] = (),
+        include_diagnostics: bool = False,
+    ):
+        """Explicit trusted-internal global-corpus retrieval.
+
+        API routes must never call this helper. Use only from audited internal
+        service code that cannot accept client-supplied scope.
+        """
+        from app.services.retrieval.models import RetrievalAuthorizationContext
+
+        if not str(principal_id or "").strip():
+            raise ValueError("principal_id is required for trusted internal retrieval")
+
+        return KnowledgeRetrievalService.retrieve_with_agents(
+            db,
+            query,
+            RetrievalAuthorizationContext.global_corpus(
+                principal_id=str(principal_id).strip(),
+            ),
+            domain=domain,
+            limit_per_source=limit_per_source,
+            result_limit=result_limit,
+            source_types=source_types,
+            source_ids=source_ids,
+            include_diagnostics=include_diagnostics,
+        )
+
+    @staticmethod
+    def search_with_agents(
+        db: Session,
+        query: str,
+        authorization,
+        *,
+        domain: str = "auto",
+        limit_per_source: int = 8,
+        include_diagnostics: bool = False,
+    ) -> dict:
+        """Compatibility JSON adapter for the structured agent result."""
+        effective_limit = (
+            min(limit_per_source, 5)
+            if isinstance(limit_per_source, int)
+            and not isinstance(limit_per_source, bool)
+            and limit_per_source > 0
+            else 1
+        )
+        result = KnowledgeRetrievalService.retrieve_with_agents(
+            db,
+            query,
+            authorization,
+            domain=domain,
+            limit_per_source=effective_limit,
+            include_diagnostics=include_diagnostics,
+        )
+        grouped_results = {
+            source_type: []
+            for source_type in (
+                "CONTRACT",
+                "ELM",
+                "CIM",
+                "LMOU",
+                "ARBITRATION",
+                "SUPERVISOR_MANUAL",
+            )
+        }
+        for evidence in result.results:
+            grouped_results.setdefault(evidence.source_type, [])
+            if len(grouped_results[evidence.source_type]) >= effective_limit:
+                continue
+            grouped_results[evidence.source_type].append(
+                {
+                    "source_id": evidence.canonical_source_id,
+                    "document_name": evidence.source_title,
+                    "document_type": evidence.source_type,
+                    "page": evidence.page_number,
+                    "chunk": evidence.chunk_index,
+                    "text": evidence.chunk_text,
+                    "retrieval_metadata": {
+                        "best_embedding_distance": evidence.raw_vector_distance,
+                        "embedding_similarity": evidence.raw_vector_similarity,
+                        "normalized_score": evidence.normalized_score,
+                        "combined_score": evidence.final_relevance_score,
+                        "retrieval_agent": evidence.retrieval_agent,
+                        "retrieval_domain": evidence.retrieval_domain,
+                        "evidence_role": evidence.evidence_role,
+                        "content_trust": evidence.content_trust,
+                    },
+                    "retrieval_relationship": "embedding_retrieval",
+                }
+            )
+        payload = {
+            "query": query,
+            "limit_per_source": effective_limit,
+            "results_by_source": grouped_results,
+            "retrieval_status": result.status,
+            "partial": result.partial,
+            "failures": [failure.to_dict() for failure in result.failures],
+        }
+        if include_diagnostics:
+            payload["diagnostics"] = result.to_dict(
+                include_text=False,
+                include_diagnostics=True,
+            ).get("diagnostics", {})
+        return payload
+
+    @staticmethod
     def search_all(
         db: Session,
         query: str,
+        authorization,
         limit_per_source: int = 8,
         known_facts: list[str] | None = None,
     ):
+        """Issue-decomposition retrieval facade.
+
+        ``authorization`` is required. Trusted global-corpus callers must use
+        ``search_global_corpus_internal`` or pass an explicit
+        ``RetrievalAuthorizationContext``.
+        """
         from app.services.legal_issue_analyzer import LegalIssueAnalyzer
+        from app.services.retrieval.models import RetrievalAuthorizationContext
+
+        if not isinstance(authorization, RetrievalAuthorizationContext):
+            raise TypeError(
+                "search_all requires an explicit RetrievalAuthorizationContext"
+            )
+        if not authorization.authenticated:
+            raise PermissionError("Authentication is required for search_all")
+
+        effective_limit = (
+            min(int(limit_per_source), LEGACY_MAX_LIMIT_PER_SOURCE)
+            if isinstance(limit_per_source, int)
+            and not isinstance(limit_per_source, bool)
+            and limit_per_source > 0
+            else 1
+        )
 
         analysis = LegalIssueAnalyzer.analyze(
             query,
@@ -567,9 +824,17 @@ class KnowledgeRetrievalService:
         )
 
         dispute_frame = analysis.get("dispute_frame") or {}
-        decomposed_issues = collect_decomposed_issues(analysis)
+        decomposed_issues = collect_decomposed_issues(analysis)[
+            :LEGACY_MAX_DECOMPOSED_ISSUES
+        ]
         issue_pools: dict[str, list[RetrievedChunk]] = {}
         retrieval_gaps: list[dict] = []
+        embedding_cache: dict[str, list[float]] = {}
+        budget = {
+            "embedding_calls": 0,
+            "provider_calls": 0,
+            "candidate_chunks": 0,
+        }
 
         for issue in decomposed_issues:
             issue_id = issue["issue_id"]
@@ -581,8 +846,11 @@ class KnowledgeRetrievalService:
             chunk_map = KnowledgeRetrievalService._retrieve_queries_into_pool(
                 db=db,
                 queries=per_issue_queries,
-                limit_per_source=limit_per_source,
+                limit_per_source=effective_limit,
                 issue=issue,
+                authorization=authorization,
+                embedding_cache=embedding_cache,
+                budget=budget,
             )
 
             issue_keywords_for_issue = extract_issue_keywords_for_issue(
@@ -628,12 +896,17 @@ class KnowledgeRetrievalService:
                 )
 
         # Global fallback retrieval
-        global_queries = [query] + expanded_queries[:8]
+        global_queries = [query] + expanded_queries[
+            :LEGACY_MAX_GLOBAL_EXPANDED_QUERIES
+        ]
         global_map = KnowledgeRetrievalService._retrieve_queries_into_pool(
             db=db,
             queries=global_queries,
-            limit_per_source=limit_per_source,
+            limit_per_source=effective_limit,
             issue=None,
+            authorization=authorization,
+            embedding_cache=embedding_cache,
+            budget=budget,
         )
 
         for retrieved in global_map.values():
@@ -696,7 +969,10 @@ class KnowledgeRetrievalService:
 
             pool.append(retrieved)
 
-        indexed_source_types = KnowledgeRetrievalService._get_indexed_source_types(db)
+        indexed_source_types = KnowledgeRetrievalService._get_indexed_source_types(
+            db,
+            authorization=authorization,
+        )
 
         KnowledgeRetrievalService._backfill_empty_issue_pools(
             db=db,
@@ -704,8 +980,11 @@ class KnowledgeRetrievalService:
             decomposed_issues=decomposed_issues,
             dispute_frame=dispute_frame,
             issue_keywords=issue_keywords,
-            limit_per_source=limit_per_source,
+            limit_per_source=effective_limit,
             indexed_source_types=indexed_source_types,
+            authorization=authorization,
+            embedding_cache=embedding_cache,
+            budget=budget,
         )
 
         source_coverage_audit = KnowledgeRetrievalService._backfill_missing_source_types(
@@ -714,9 +993,12 @@ class KnowledgeRetrievalService:
             decomposed_issues=decomposed_issues,
             dispute_frame=dispute_frame,
             issue_keywords=issue_keywords,
-            limit_per_source=limit_per_source,
+            limit_per_source=effective_limit,
             indexed_source_types=indexed_source_types,
             question=query,
+            authorization=authorization,
+            embedding_cache=embedding_cache,
+            budget=budget,
         )
 
         KnowledgeRetrievalService._supplement_contract_leave_commitment_pool(
@@ -725,8 +1007,11 @@ class KnowledgeRetrievalService:
             decomposed_issues=decomposed_issues,
             dispute_frame=dispute_frame,
             issue_keywords=issue_keywords,
-            limit_per_source=limit_per_source,
+            limit_per_source=effective_limit,
             question=query,
+            authorization=authorization,
+            embedding_cache=embedding_cache,
+            budget=budget,
         )
 
         retrieval_gaps = [
@@ -757,7 +1042,7 @@ class KnowledgeRetrievalService:
             if source_type not in grouped_results:
                 continue
 
-            if len(grouped_results[source_type]) >= limit_per_source:
+            if len(grouped_results[source_type]) >= effective_limit:
                 continue
 
             grouped_results[source_type].append(
@@ -777,7 +1062,7 @@ class KnowledgeRetrievalService:
             "article_mentions": KnowledgeRetrievalService.extract_article_mentions(
                 query
             ),
-            "limit_per_source": limit_per_source,
+            "limit_per_source": effective_limit,
             "results_by_source": grouped_results,
             "all_chunks": all_chunks,
             "retrieved_chunks": retrieved_chunks,
@@ -786,4 +1071,40 @@ class KnowledgeRetrievalService:
             "retrieval_gaps": retrieval_gaps,
             "indexed_source_types": indexed_source_types,
             "source_coverage_audit": source_coverage_audit,
+            "retrieval_budget": {
+                "embedding_calls": budget["embedding_calls"],
+                "provider_calls": budget["provider_calls"],
+                "candidate_chunks": budget["candidate_chunks"],
+                "max_embedding_calls": LEGACY_MAX_TOTAL_EMBEDDING_CALLS,
+                "max_provider_calls": LEGACY_MAX_PROVIDER_CALLS,
+                "max_candidate_chunks": LEGACY_MAX_TOTAL_CANDIDATE_CHUNKS,
+            },
         }
+
+    @staticmethod
+    def search_global_corpus_internal(
+        db: Session,
+        query: str,
+        *,
+        principal_id: str,
+        limit_per_source: int = 8,
+        known_facts: list[str] | None = None,
+    ):
+        """Explicit trusted-internal legacy search over the global corpus.
+
+        API routes must never call this helper.
+        """
+        from app.services.retrieval.models import RetrievalAuthorizationContext
+
+        if not str(principal_id or "").strip():
+            raise ValueError("principal_id is required for trusted internal search")
+
+        return KnowledgeRetrievalService.search_all(
+            db,
+            query,
+            RetrievalAuthorizationContext.global_corpus(
+                principal_id=str(principal_id).strip(),
+            ),
+            limit_per_source=limit_per_source,
+            known_facts=known_facts,
+        )

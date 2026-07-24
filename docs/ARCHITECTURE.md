@@ -1,6 +1,6 @@
 # GrievanceHub Architecture
 
-Technical system design for the current GrievanceHub backend through W4, complete and committed on `main`.
+Technical system design for the current GrievanceHub backend through W5, complete and committed on `main`.
 
 For a concise product overview, see [`README.md`](../README.md).
 
@@ -37,6 +37,7 @@ resulting architecture to:
 | W2 — AI Case Interaction Orchestration | Persistent chat, bounded context, retrieval, grounded answers, and analysis orchestration foundations |
 | W3 — Case Evidence and Asset Management | Case assets, uploads, metadata, safe storage, and case-context references |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Workspace restoration, Case Memory, domain events, workflow FSM, steward-controlled Generate/Save actions, artifacts, and Official Case Record |
+| W5 — Knowledge Foundation | Official Step 1/Step 2 forms, Supervisor Manuals, source lifecycle metadata, bounded retrieval agents, and interim `/sources` API-key safety boundary |
 
 The historical labels remain in Git history but are not the current public
 roadmap.
@@ -306,7 +307,7 @@ Versioning begins at Save.
 
 ## 14. Grievance drafts
 
-Generate Grievance returns a temporary editable field-value draft independent of analysis-report existence. Save / Save and Print create official grievance artifacts. W5 will replace placeholder templates with the official USPS Step 1 and Step 2 forms and add approved USPS supervisor manuals to the retrieval corpus.
+Generate Grievance returns a temporary editable field-value draft independent of analysis-report existence. Save / Save and Print create official grievance artifacts. Official USPS Step 1 and Step 2 AcroForm PDFs are filled through the W5 export path; Step 3 generation is not implemented.
 
 ---
 
@@ -338,7 +339,7 @@ The FastAPI shell at `/ui` provides dashboard and case-workspace verification su
 
 ## 19. Security and production readiness
 
-The current codebase is a production-oriented service architecture under active development. Authentication, authorization, RBAC, case-level access control, upload security, audit logging, and related protections are planned for W6. Runtime outputs and private operational data remain outside the portfolio repository.
+The current codebase is a production-oriented service architecture under active development. W5 added an interim API-key boundary for `/sources` routes only. Application identity, authorization, RBAC, case-level access control, upload security, audit logging, and related protections remain planned for W6 and are not complete. Runtime outputs and private operational data remain outside the portfolio repository.
 
 ---
 
@@ -352,14 +353,17 @@ The current codebase is a production-oriented service architecture under active 
 | Domain events | Implemented |
 | Workflow engine | Implemented |
 | Analysis reports (preview + Save versioning) | Implemented |
-| Grievance field-value drafts | Partially implemented |
+| Grievance field-value drafts | Implemented |
 | Artifact management | Implemented |
 | Official Case Record | Implemented |
 | Uploads / Case Assets | Implemented |
 | Steward UI shell | Implemented |
 | Report HTML/PDF export | Implemented |
-| Official USPS Step 1 and Step 2 forms | Planned (W5) |
-| USPS Supervisor Manual corpus | Planned (W5) |
+| Official USPS Step 1 and Step 2 forms | Implemented |
+| USPS Supervisor Manual corpus | Implemented |
+| Source processing lifecycle metadata | Implemented |
+| Bounded retrieval-agent architecture | Implemented |
+| Interim `/sources` API-key auth | Temporary W5 safety boundary |
 | Authentication / RBAC | Planned (W6) |
 | Production steward interface | Planned (W7) |
 | Arbitration and LMOU corpus | Planned (W8) |
@@ -380,15 +384,16 @@ python -m pytest tests/ -m "not integration" -q
 
 ## 22. Production extension points
 
-Future implementation follows the W5–W9 engineering roadmap:
+Future implementation follows the remaining engineering roadmap:
 
-- **W5 — Official Forms and Supervisor Manual Integration:** official USPS Step 1 and Step 2 forms, supervisor-manual retrieval, citation improvements, and supporting tests.
-- **W6 — Security Foundation:** authentication, RBAC, case-level authorization, secure uploads, audit logging, encryption, rate limiting, and prompt-injection defenses.
+- **W6 — Security Foundation (next):** application identity, RBAC or equivalent policy, case-level authorization, secure uploads, audit logging, encryption, production rate limiting, and broader prompt-injection defenses. Replace or integrate the interim `/sources` API-key boundary. W6 has not been started.
 - **W7 — Production Steward Interface:** the production dashboard, case workspace, research, conversation, citation, and form-editing surfaces.
-- **W8 — Arbitration and LMOU Integration:** protected ingestion, indexing, permission-aware retrieval, citation validation, and evaluation.
+- **W8 — Arbitration and LMOU Integration:** protected ingestion, indexing, permission-aware retrieval, citation validation, and evaluation. Additional LMOU and historical arbitration expansion remains deferred here.
 - **W9 — Production Deployment:** managed PostgreSQL + pgvector, object storage, background workers, monitoring, backup and recovery, CI/CD, and performance hardening.
 
-Multi-agent orchestration, if introduced later, should sit above Case Memory, domain events, and the workflow engine rather than replace them.
+W5 retrieval agents (`RetrievalOrchestrator`, `ContractAgent`, `SupervisorManualAgent`) are bounded retrieval infrastructure. They are not completion of a future multi-agent product system. Multi-agent orchestration, if introduced later, should sit above Case Memory, domain events, and the workflow engine rather than replace them.
+
+Authenticated stewards are planned to collaborate in a shared workspace without a steward role hierarchy unless that product decision is intentionally revised. Source administration may still require a distinct privileged boundary.
 
 ---
 

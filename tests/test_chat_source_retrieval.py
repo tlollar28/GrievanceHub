@@ -16,6 +16,7 @@ from app.services.follow_up_chat_service import (
 )
 from app.services.knowledge_retrieval_service import KnowledgeRetrievalService
 from app.services.case_memory_service import CaseMemoryService
+from app.services.retrieval.models import OrchestrationResult, RetrievalEvidence
 
 CASE_A = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 CASE_B = "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"
@@ -36,6 +37,46 @@ def _chunk(*, text: str, source_type: str = "CONTRACT", name: str = "National Ag
             "combined_score": 0.82,
             "article_or_section": "Article 10.5",
         },
+    )
+
+
+def _orchestration(
+    *,
+    text: str = "",
+    source_type: str = "CONTRACT",
+    name: str = "National Agreement",
+    status: str = "success",
+    empty: bool = False,
+):
+    results = ()
+    if not empty and text:
+        results = (
+            RetrievalEvidence(
+                source_document_id=1,
+                canonical_source_id="contract-1",
+                source_title=name,
+                source_type=source_type,
+                source_version=None,
+                source_sha256=None,
+                chunk_id=3,
+                chunk_index=3,
+                page_number=44,
+                chunk_text=text,
+                raw_vector_distance=0.18,
+                raw_vector_similarity=0.82,
+                normalized_score=0.8,
+                final_relevance_score=0.82,
+                retrieval_agent="ContractAgent",
+                retrieval_domain="contract",
+                evidence_role="controlling_contract_language",
+                processing_strategy=None,
+                safe_chunk_metadata={"article_or_section": "Article 10.5"},
+            ),
+        )
+    return OrchestrationResult(
+        status=status if results or empty else "no_relevant_results",
+        results=results,
+        selected_agents=("ContractAgent",),
     )
 
 
@@ -163,11 +204,8 @@ def test_attach_source_retrieval_threads_limit_and_query():
     }
     with patch.object(
         KnowledgeRetrievalService,
-        "search_all",
-        return_value={
-            "all_chunks": [_chunk(text=LEAVE_QUOTE)],
-            "indexed_source_types": ["CONTRACT", "CIM"],
-        },
+        "retrieve_global_corpus_internal",
+        return_value=_orchestration(text=LEAVE_QUOTE),
     ) as mock_search:
         FollowUpChatService.attach_source_retrieval(
             package,
@@ -386,7 +424,7 @@ def test_retrieval_failure_distinct_from_empty_and_strips_citations():
 def test_retrieve_indexed_source_passages_marks_failure():
     with patch.object(
         KnowledgeRetrievalService,
-        "search_all",
+        "retrieve_global_corpus_internal",
         side_effect=RuntimeError("db down"),
     ):
         result = FollowUpChatService.retrieve_indexed_source_passages(
@@ -436,11 +474,8 @@ def test_answer_follow_up_without_report_reaches_retrieval_with_question():
         ),
         patch.object(
             KnowledgeRetrievalService,
-            "search_all",
-            return_value={
-                "all_chunks": [_chunk(text=LEAVE_QUOTE)],
-                "indexed_source_types": ["CONTRACT", "CIM"],
-            },
+            "retrieve_global_corpus_internal",
+            return_value=_orchestration(text=LEAVE_QUOTE),
         ) as mock_search,
         patch.object(
             CaseService,
@@ -507,11 +542,8 @@ def test_answer_follow_up_with_saved_report_still_runs_fresh_retrieval():
         ),
         patch.object(
             KnowledgeRetrievalService,
-            "search_all",
-            return_value={
-                "all_chunks": [_chunk(text=LEAVE_QUOTE)],
-                "indexed_source_types": ["CONTRACT", "CIM"],
-            },
+            "retrieve_global_corpus_internal",
+            return_value=_orchestration(text=LEAVE_QUOTE),
         ) as mock_search,
         patch.object(
             CaseService,
@@ -627,8 +659,8 @@ def test_normal_chat_creates_no_report_artifact_or_ocr_via_add_exchange_path():
         ),
         patch.object(
             KnowledgeRetrievalService,
-            "search_all",
-            return_value={"all_chunks": [], "indexed_source_types": ["CONTRACT"]},
+            "retrieve_global_corpus_internal",
+            return_value=_orchestration(empty=True),
         ),
         patch.object(
             CaseService,
@@ -705,8 +737,8 @@ def test_answer_follow_up_returns_memory_projection_status():
         ),
         patch.object(
             KnowledgeRetrievalService,
-            "search_all",
-            return_value={"all_chunks": [], "indexed_source_types": ["CONTRACT"]},
+            "retrieve_global_corpus_internal",
+            return_value=_orchestration(empty=True),
         ),
         patch.object(
             CaseService,

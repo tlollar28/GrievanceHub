@@ -182,7 +182,7 @@ def test_export_html_does_not_call_retrieval(client):
         "get_case",
         return_value=SimpleNamespace(report_versions=[version]),
     ), patch(
-        "app.services.case_service.KnowledgeRetrievalService.search_all",
+        "app.services.case_service.KnowledgeRetrievalService.search_global_corpus_internal",
     ) as mock_search:
         response = client.get(f"/cases/{CASE_UUID}/export/html")
 

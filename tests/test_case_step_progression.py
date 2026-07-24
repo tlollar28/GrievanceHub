@@ -20,7 +20,10 @@ from app.services.case_step_progression_service import (
     CaseStepProgressionError,
     CaseStepProgressionService,
 )
-from app.services.grievance_form_draft_builder import LOCAL_300_TEMPLATE_ID
+from app.services.grievance_form_draft_builder import (
+    OFFICIAL_STEP_1_TEMPLATE_ID,
+    OFFICIAL_STEP_2_TEMPLATE_ID,
+)
 from app.services.grievance_template_registry import list_registered_grievance_templates
 
 SYNTHETIC_CASE_UUID = "00000000-0000-4000-8000-000000000101"
@@ -266,7 +269,7 @@ def test_step_2_references_prior_step_1_outcome(service, base_time):
     assert prior.decision_summary == "Synthetic Step 1 denial for Step 2 context."
 
 
-def test_step_2_can_reference_local_300_template(service, base_time):
+def test_step_2_references_official_standard_grievance_template(service, base_time):
     service.create_case_progression(SYNTHETIC_CASE_UUID, event_timestamp=base_time)
     service.appeal_to_next_step(
         SYNTHETIC_CASE_UUID,
@@ -275,18 +278,20 @@ def test_step_2_can_reference_local_300_template(service, base_time):
     )
     availability = service.get_step_template_availability("step_2_appeal")
     assert availability.template_available is True
-    assert availability.template_id == LOCAL_300_TEMPLATE_ID
+    assert availability.template_id == OFFICIAL_STEP_2_TEMPLATE_ID
 
     step_2 = service.get_progression(SYNTHETIC_CASE_UUID).steps[1]
-    assert step_2.template_id == LOCAL_300_TEMPLATE_ID
+    assert step_2.template_id == OFFICIAL_STEP_2_TEMPLATE_ID
 
 
-def test_step_1_template_not_available(service):
+def test_step_1_official_template_is_available(service):
     availability = service.get_step_template_availability("step_1_initial")
-    assert availability.template_available is False
-    assert availability.template_id is None
-    assert availability.availability_status == "unconfirmed_pending_steward_confirmation"
-    assert service.list_buildable_template_ids_for_step("step_1_initial") == []
+    assert availability.template_available is True
+    assert availability.template_id == OFFICIAL_STEP_1_TEMPLATE_ID
+    assert availability.availability_status == "available"
+    assert service.list_buildable_template_ids_for_step("step_1_initial") == [
+        OFFICIAL_STEP_1_TEMPLATE_ID
+    ]
 
 
 def test_step_3_template_not_available(service, base_time):
@@ -337,7 +342,7 @@ def test_draft_history_links_case_step_report_followups_template_version(service
     assert history.report_version_id == SYNTHETIC_REPORT_VERSION_ID
     assert history.report_version_number == SYNTHETIC_REPORT_VERSION_NUMBER
     assert history.follow_up_message_ids == SYNTHETIC_FOLLOW_UP_IDS
-    assert history.template_id == LOCAL_300_TEMPLATE_ID
+    assert history.template_id == OFFICIAL_STEP_2_TEMPLATE_ID
     assert history.draft_version == 1
 
 
@@ -362,14 +367,17 @@ def test_draft_creation_adds_timeline_event(service, base_time):
     assert draft_events[0].references.form_draft_id is not None
 
 
-def test_step_1_draft_build_is_rejected(service, base_time):
+def test_step_1_official_draft_can_be_built(service, base_time):
     service.create_case_progression(SYNTHETIC_CASE_UUID, event_timestamp=base_time)
-    with pytest.raises(CaseStepProgressionError, match="No buildable official template"):
-        service.build_step_form_draft(
-            SYNTHETIC_CASE_UUID,
-            "step_1_initial",
-            _minimal_report_input(),
-        )
+    draft, history = service.build_step_form_draft(
+        SYNTHETIC_CASE_UUID,
+        "step_1_initial",
+        _minimal_report_input(),
+    )
+    assert draft.template_id == OFFICIAL_STEP_1_TEMPLATE_ID
+    assert draft.step_level == "step_1_initial"
+    assert history is not None
+    assert history.template_id == OFFICIAL_STEP_1_TEMPLATE_ID
 
 
 def test_step_3_draft_build_is_rejected(service, base_time):
@@ -392,10 +400,13 @@ def test_step_3_draft_build_is_rejected(service, base_time):
         )
 
 
-def test_no_registered_step_1_or_step_3_templates():
+def test_registered_templates_include_steps_1_and_2_but_not_step_3():
     templates = list_registered_grievance_templates()
     assert templates
-    assert all(template.step_level == "step_2_appeal" for template in templates)
+    step_levels = {template.step_level for template in templates}
+    assert "step_1_initial" in step_levels
+    assert "step_2_appeal" in step_levels
+    assert "step_3_appeal" not in step_levels
 
 
 def test_build_step_form_draft_does_not_export(service, base_time):

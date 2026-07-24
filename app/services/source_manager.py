@@ -108,6 +108,7 @@ def update_source(source, manifest):
     save_path.write_bytes(content)
 
     manifest["sources"][source["id"]] = {
+        "id": source["id"],
         "name": source["name"],
         "source_type": source["source_type"],
         "official_page": source["official_page"],
@@ -116,6 +117,7 @@ def update_source(source, manifest):
         "local_path": str(save_path),
         "sha256": file_hash,
         "content_type": response.headers.get("content-type"),
+        "version": source.get("version"),
     }
 
     print(f"Saved: {save_path}")

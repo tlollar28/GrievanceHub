@@ -36,6 +36,33 @@ class SourceDocument(Base):
     sha256: Mapped[str | None] = mapped_column(String(128), nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
+    # W5 knowledge-foundation metadata. These fields make source processing
+    # versioned, observable, retryable, and corpus-aware.
+    version: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    document_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    processing_strategy: Mapped[str | None] = mapped_column(
+        String(80),
+        nullable=True,
+    )
+    processing_status: Mapped[str] = mapped_column(
+        String(40),
+        nullable=False,
+        default="pending",
+        index=True,
+    )
+    processed_sha256: Mapped[str | None] = mapped_column(
+        String(128),
+        nullable=True,
+    )
+    processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
+    )
+    processing_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     is_current: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -53,6 +80,10 @@ class SourceChunk(Base):
     page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     section_label: Mapped[str | None] = mapped_column(String(100), nullable=True)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Corpus-specific structure such as handbook code, chapter, section,
+    # heading, and the chunking-strategy version used to create this chunk.
+    chunk_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
 

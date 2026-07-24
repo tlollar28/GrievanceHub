@@ -429,9 +429,10 @@ def run_question(db, item: dict, limit_per_source: int = 8) -> dict:
     log(f"decomposed_issues_count: {len(decomposed)}")
     log(f"search_queries ({len(expanded_queries)}): {expanded_queries[:20]}")
 
-    retrieval = KnowledgeRetrievalService.search_all(
+    retrieval = KnowledgeRetrievalService.search_global_corpus_internal(
         db,
         question,
+        principal_id="diagnose-regression-internal",
         limit_per_source=limit_per_source,
     )
 

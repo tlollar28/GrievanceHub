@@ -19,7 +19,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 
 from app.config import CASE_ASSET_DIR, CASE_ASSET_MAX_UPLOAD_BYTES
-from app.database.models import CaseAsset, GrievanceCase
+from app.database.models import (
+    CaseAsset,
+    CaseDomainEvent,
+    CaseMemoryRecord,
+    CaseTimelineEventRecord,
+    GrievanceCase,
+)
 from app.database.session import SessionLocal
 from app.main import app
 from app.schemas.case_asset_schema import (
@@ -476,7 +482,18 @@ def test_upload_document_roundtrip_postgres(tmp_path, monkeypatch, postgres_sess
     stored = Path(tmp_path) / case_uuid / meta.stored_filename
     assert stored.read_bytes() == content
 
-    session.query(CaseAsset).filter(CaseAsset.case_uuid == case_uuid).delete()
+    session.query(CaseTimelineEventRecord).filter(
+        CaseTimelineEventRecord.case_uuid == case_uuid
+    ).delete(synchronize_session=False)
+    session.query(CaseDomainEvent).filter(
+        CaseDomainEvent.case_uuid == case_uuid
+    ).delete(synchronize_session=False)
+    session.query(CaseMemoryRecord).filter(
+        CaseMemoryRecord.case_uuid == case_uuid
+    ).delete(synchronize_session=False)
+    session.query(CaseAsset).filter(CaseAsset.case_uuid == case_uuid).delete(
+        synchronize_session=False
+    )
     session.query(GrievanceCase).filter(GrievanceCase.case_uuid == case_uuid).delete()
     session.commit()
 
