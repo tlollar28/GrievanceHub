@@ -23,11 +23,11 @@ This is the `origin/main` commit that preceded the W5 closeout series.
 
 Exact current branch tip of record for this finalized report:
 
-`51f8d50d4a991bc77825bd88114817b89de409dd`
+`32ff296ba6732fa0d530a9e9894b10a71e5b0496`
 
 Final documentation commit SHA (docs: finalize W5 completion record that wrote the definitive body):
 
-`51f8d50d4a991bc77825bd88114817b89de409dd`
+`32ff296ba6732fa0d530a9e9894b10a71e5b0496`
 
 Original implementation checkpoint:
 
@@ -53,10 +53,10 @@ documentation-only commit that introduces it:
 
 ## 6. Final Git status
 
-Exact output of `git status --short --branch` at tip `51f8d50d4a991bc77825bd88114817b89de409dd`:
+Exact output of `git status --short --branch` at tip `32ff296ba6732fa0d530a9e9894b10a71e5b0496`:
 
 ```text
-## main...origin/main [ahead 9]
+## main...origin/main [ahead 10]
 ?? docs/temp/_explain_embedding.py
 ?? docs/temp/_pytest_run1.txt
 ?? docs/temp/_pytest_run2.txt
@@ -64,7 +64,7 @@ Exact output of `git status --short --branch` at tip `51f8d50d4a991bc77825bd8811
 ?? docs/temp/_pytest_run3b.txt
 ```
 
-Working-tree confirmation at tip `51f8d50d4a991bc77825bd88114817b89de409dd`:
+Working-tree confirmation at tip `32ff296ba6732fa0d530a9e9894b10a71e5b0496`:
 
 - No tracked modifications
 - No tracked deletions
@@ -117,9 +117,13 @@ Chronological order from oldest to newest. Parent of the first closeout commit i
    Message: `docs: finalize W5 completion record`
    Purpose: Completion-report encoding cleanup and tip-of-record synchronization to `51f8d50d4a991bc77825bd88114817b89de409dd`.
 
+10. `32ff296ba6732fa0d530a9e9894b10a71e5b0496`
+   Message: `docs: finalize W5 completion record`
+   Purpose: Final completion-report tip-of-record synchronization for branch tip `32ff296ba6732fa0d530a9e9894b10a71e5b0496`.
+
 ## 8. Files deliberately excluded
 
-Exact remaining untracked paths at tip `51f8d50d4a991bc77825bd88114817b89de409dd`:
+Exact remaining untracked paths at tip `32ff296ba6732fa0d530a9e9894b10a71e5b0496`:
 
 - `docs/temp/_explain_embedding.py`
 - `docs/temp/_pytest_run1.txt`
