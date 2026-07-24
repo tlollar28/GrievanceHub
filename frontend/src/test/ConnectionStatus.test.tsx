@@ -1,16 +1,12 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  installApiMock,
+  jsonResponse,
+  makeListResponse,
+} from './savedCasesFixtures'
 import { renderApp } from './testUtils'
-
-function jsonResponse(payload: unknown, status = 200): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: new Headers({ 'content-type': 'application/json' }),
-    json: async () => payload,
-  } as Response
-}
 
 describe('ConnectionStatus health indicator', () => {
   afterEach(() => {
@@ -19,12 +15,13 @@ describe('ConnectionStatus health indicator', () => {
   })
 
   it('renders Connected when health succeeds', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        jsonResponse({ status: 'healthy', service: 'GrievanceHub' }),
-      ),
-    )
+    installApiMock((input) => {
+      const url = String(input)
+      if (url.includes('/cases/saved')) {
+        return jsonResponse(makeListResponse([]))
+      }
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
 
     renderApp({ initialEntries: ['/dashboard'] })
 
@@ -32,14 +29,24 @@ describe('ConnectionStatus health indicator', () => {
   })
 
   it('renders Unavailable with a retry control when health fails', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
-      .mockResolvedValueOnce(
-        jsonResponse({ status: 'healthy', service: 'GrievanceHub' }),
-      )
-
-    vi.stubGlobal('fetch', fetchMock)
+    let healthCalls = 0
+    const fetchMock = installApiMock(
+      (input) => {
+        const url = String(input)
+        if (url.includes('/health')) {
+          healthCalls += 1
+          if (healthCalls === 1) {
+            throw new TypeError('Failed to fetch')
+          }
+          return jsonResponse({ status: 'healthy', service: 'GrievanceHub' })
+        }
+        if (url.includes('/cases/saved')) {
+          return jsonResponse(makeListResponse([]))
+        }
+        throw new Error(`Unexpected fetch: ${url}`)
+      },
+      { autoHealth: false },
+    )
 
     const user = userEvent.setup()
     renderApp({ initialEntries: ['/dashboard'] })

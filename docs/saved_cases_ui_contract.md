@@ -1,8 +1,8 @@
 # Saved Cases UI Contract
 
-Frontend for the interactive steward workspace is planned for **W6**. No
-React/Next.js app exists in this repository yet. A FastAPI HTML verification
-shell at `/ui` implements the current interaction model for local verification.
+The W6 React steward workspace under `frontend/` implements Saved Cases listing
+and open/reopen (M1). A FastAPI HTML verification shell at `/ui` remains available
+for local backend verification.
 
 This document defines the route and component contract so the W6 steward
 workspace can use the existing backend without inventing a parallel workflow.
@@ -116,11 +116,11 @@ behavior. Future helpers can wrap `/interactions`, `/reports/generate`, and
 
 ## Screen: Saved Cases
 
-**Proposed steward-workspace route:** `/cases/saved` or `/saved-cases`
+**Steward-workspace routes:** `/dashboard` (recent), `/cases` (full list)
 
 **Current verification shell:** `GET /ui`
 
-**Data source:** `GET /cases/saved?order=newest_first`
+**Data source:** `GET /cases/saved?order=newest_first` (+ `status`, `step`, `search`, `limit`, `offset`)
 
 ### List fields
 
@@ -140,9 +140,10 @@ behavior. Future helpers can wrap `/interactions`, `/reports/generate`, and
 
 ### Row click behavior
 
-1. Closed case → `POST /cases/saved/{case_uuid}/reopen` with `{ "source": "manual_ui" }`
+1. Closed / settled / archived case → `POST /cases/saved/{case_uuid}/reopen` with `{ "source": "manual_ui" }`
 2. Open / reopened / appealed → `POST /cases/saved/{case_uuid}/open` with `{ "source": "manual_ui" }`
-3. On success, navigate to the case workspace with chat ready
+3. If open returns `action_taken: "closed_requires_reopen"`, prompt the steward to reopen instead of navigating
+4. On success, navigate to `/cases/{case_uuid}` with chat ready (full chat UI arrives after M1)
 
 ### Explicit action buttons
 
@@ -168,10 +169,11 @@ not separate steward controls.
 
 ## Filters (optional)
 
-- Status: `all` | `open` | `closed` | `reopened` | `appealed`
-- Step: `step_1_initial` | `step_2_appeal` | `step_3_arbitration`
+- Status: `all` | `open` | `closed` | `reopened` | `appealed` | `settled` | `archived`
+- Step: `step_1_initial` | `step_2_appeal` | `step_3_appeal` (OpenAPI/`StepLevel`; not `step_3_arbitration`)
 - Search: uuid, title, or numeric case id
 - Order: `newest_first` (default) | `oldest_first`
+- Pagination: `limit` (1–100, default 50) and `offset` (≥ 0)
 
 ## Out of scope for this contract
 
@@ -180,7 +182,8 @@ not separate steward controls.
 - Application authentication and governance (W9)
 - LMOU / arbitration corpus expansion (W10)
 
-## TypeScript types (future)
+## TypeScript types
 
-Mirror `app/schemas/saved_case_schema.py` and
-`app/schemas/case_workspace_action_schema.py` when the frontend is implemented.
+Mirror `app/schemas/saved_case_schema.py` and related step literals in
+`frontend/src/api/types/savedCases.ts`. Workspace action objects from
+`app/schemas/case_workspace_action_schema.py` are used in later milestones.

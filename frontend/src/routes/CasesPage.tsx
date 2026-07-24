@@ -1,17 +1,44 @@
-import styles from './pages.module.css'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { SavedCasesPanel } from '../components/cases/SavedCasesPanel'
+import {
+  DEFAULT_CASES_LIMIT,
+  parseSavedCaseFilters,
+  savedCaseFiltersToSearchParams,
+} from '../features/cases/savedCaseFilters'
+import type { ListSavedCasesParams } from '../api/types/savedCases'
 
 export function CasesPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const filters = useMemo(
+    () =>
+      parseSavedCaseFilters(searchParams, {
+        limit: DEFAULT_CASES_LIMIT,
+      }),
+    [searchParams],
+  )
+
+  function onFiltersChange(next: ListSavedCasesParams) {
+    setSearchParams(
+      savedCaseFiltersToSearchParams(next, {
+        limit: DEFAULT_CASES_LIMIT,
+      }),
+      { replace: true },
+    )
+  }
+
   return (
-    <section className={styles.page} aria-labelledby="cases-heading">
-      <h1 id="cases-heading">Cases</h1>
-      <p>
-        Full Saved Cases list with filters will live here. No case data is loaded
-        in M0.
-      </p>
-      <p className={styles.statusNote}>
-        Implementation status: route shell only. M1 will connect{' '}
-        <code>GET /cases/saved</code>.
-      </p>
-    </section>
+    <SavedCasesPanel
+      headingId="cases-heading"
+      title="Cases"
+      description="Full Saved Cases list. Filters are reflected in the URL."
+      filters={{
+        ...filters,
+        limit: filters.limit ?? DEFAULT_CASES_LIMIT,
+      }}
+      onFiltersChange={onFiltersChange}
+      showPagination
+    />
   )
 }

@@ -1,18 +1,21 @@
 import { screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  installApiMock,
+  jsonResponse,
+  makeListResponse,
+} from './savedCasesFixtures'
 import { renderApp } from './testUtils'
 
 describe('routing foundations', () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => ({ status: 'healthy', service: 'GrievanceHub' }),
-      }),
-    )
+    installApiMock((input) => {
+      const url = String(input)
+      if (url.includes('/cases/saved')) {
+        return jsonResponse(makeListResponse([]))
+      }
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
   })
 
   afterEach(() => {

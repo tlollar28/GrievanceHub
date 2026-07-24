@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0 Frontend Foundations complete
+**Status:** W6 in progress — M0 Foundations and M1 Saved Cases complete
 **Date:** 2026-07-24
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -12,7 +12,7 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | Milestone | Status |
 |-----------|--------|
 | **M0 — Foundations** | **Complete** — `frontend/` Vite/React/TS shell, design tokens, AppShell, typed apiClient, `/api` proxy, health ConnectionStatus, accessibility foundations, Vitest coverage |
-| M1 — Saved cases | Planned |
+| **M1 — Saved cases** | **Complete** — Dashboard + Cases list against `GET /cases/saved`, URL filters/search/pagination, open/reopen, minimal `/cases/:caseUuid` workspace-entry route |
 | M2 — Create + workspace restore | Planned |
 | M3 — Conversation | Planned |
 | M4 — Evidence | Planned |
@@ -1313,9 +1313,9 @@ Estimates assume the W5 API remains stable; any backend gaps found during M3–M
 |------|-------|
 | Path | `docs/W6_UI_ARCHITECTURE.md` |
 | Phase | W6 Interactive Steward Workspace — M0 complete |
-| Implementation | M0 Frontend Foundations complete; M1–M10 planned |
+| Implementation | M0 Foundations and M1 Saved Cases complete; M2–M10 planned |
 | Supersedes | None (complements `saved_cases_ui_contract.md`) |
-| Next step | M1 Saved Cases — dashboard/list against `GET /cases/saved` |
+| Next step | M2 Create Case + workspace restore shell |
 
 ---
 

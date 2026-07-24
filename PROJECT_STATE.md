@@ -12,16 +12,16 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0 Frontend Foundations complete |
-| Next milestone | W6 M1 — Saved Cases |
+| Current implementation state | W6 in progress — M0 Foundations and M1 Saved Cases complete |
+| Next milestone | W6 M2 — Create Case + workspace restore |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Interactive Steward Workspace | In progress (M0 complete; M1–M10 not started) |
+| W6 — Interactive Steward Workspace | In progress (M0–M1 complete; M2–M10 not started) |
 | W6 M0 — Frontend Foundations | Complete and committed |
-| W6 M1 — Saved Cases | Next — not started |
+| W6 M1 — Saved Cases | Complete and committed |
 | W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
@@ -66,6 +66,8 @@ from ordinary steward case work.
 - Interim API-key authentication on `/sources` routes (temporary W5 safety boundary)
 - W6 M0 React/TypeScript frontend foundation under `frontend/` (AppShell, routing,
   TanStack Query, typed API client, health ConnectionStatus, design tokens)
+- W6 M1 Saved Cases dashboard/list (`GET /cases/saved`), URL filters/search/
+  pagination, open/reopen, and minimal `/cases/:caseUuid` workspace-entry route
 
 ## Normal chat vs analysis
 
@@ -115,6 +117,7 @@ Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
 | W4 | Workspace restoration, Case Memory, domain events, workflow FSM, Generate/Save artifacts, Official Case Record, and chat retrieval hardening |
 | W5 | Knowledge Foundation: official forms, Supervisor Manuals, source lifecycle, retrieval agents, and interim source-route API-key boundary |
 | W6 M0 | Frontend foundations: Vite/React/TS shell, routing, Query client, typed API client, health indicator |
+| W6 M1 | Saved Cases dashboard/list, filters/search/pagination, open/reopen, minimal workspace-entry route |
 | CrossCraft retirement | Obsolete SPBS/cross-craft surface removed |
 
 The historical phase labels remain visible in Git history. They represent the
@@ -136,7 +139,7 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 | Phase | Status |
 |-------|--------|
 | W5 — Knowledge Foundation | Complete |
-| W6 — Interactive Steward Workspace | In progress (M0 complete) |
+| W6 — Interactive Steward Workspace | In progress (M0–M1 complete) |
 | W7 — RAG Evaluation and Output Quality | Planned |
 | W8 — Multi-Agent Authority Workflow | Planned |
 | W9 — Security and Governance | Planned |
@@ -145,8 +148,8 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 W5 retrieval components are retrieval infrastructure. They are not completion of
 W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
-completion of W9 application security. W6 M0 is shell foundations only — Saved
-Cases, chat, analysis, and grievance screens are not implemented yet.
+completion of W9 application security. W6 M0–M1 cover shell foundations and
+Saved Cases entry; chat, analysis, and grievance screens remain later milestones.
 
 ## Related documentation
 

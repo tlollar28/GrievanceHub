@@ -68,7 +68,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
-frontend/         # W6 React/TypeScript steward workspace (M0 foundations)
+frontend/         # W6 React/TypeScript steward workspace (M0–M1)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -139,8 +139,9 @@ Useful endpoints:
 
 The React steward workspace lives under `frontend/`. M0 provides the application
 shell, routing, TanStack Query, a typed API client, and a FastAPI health
-indicator. Saved Cases, chat, analysis, and grievance screens are not implemented
-yet.
+indicator. M1 adds the Saved Cases dashboard/list, URL filters/search/pagination,
+open/reopen, and a minimal `/cases/:caseUuid` workspace-entry route. Chat,
+analysis, and grievance screens are not implemented yet.
 
 ```bash
 cd frontend
