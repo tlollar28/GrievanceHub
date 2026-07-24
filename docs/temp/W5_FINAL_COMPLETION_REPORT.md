@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-23  
 **Verdict:** PASS WITH NON-BLOCKING FINDINGS  
-**Phase:** W5 ? Knowledge Foundation  
-**Next phase:** W6 ? Security Foundation (not started)
+**Phase:** W5 — Knowledge Foundation  
+**Next phase:** W6 — Security Foundation (not started)
 
 ## 1. Date
 
@@ -21,15 +21,19 @@ This is the `origin/main` commit that preceded the W5 closeout series.
 
 ## 4. Ending commit SHA and branch tip
 
-Exact current branch tip:
+Exact current branch tip of record for this finalized report:
 
-`a9142b245facbeb9305435306818b3a078092225`
+`38f1172015a9b7d8812eba96881059bfd32d8c35`
 
-Original W5 implementation checkpoint:
+Final documentation commit SHA:
+
+`38f1172015a9b7d8812eba96881059bfd32d8c35`
+
+Original implementation checkpoint:
 
 `132bafc63d7682983db2f3558c7fdc0c3eb6702d`
 
-Public README and completion-report closeout:
+Public README closeout:
 
 `29ff525520a988c7b5046ea670ac04bf2796cfda`
 
@@ -49,11 +53,11 @@ documentation-only commit that introduces it:
 
 ## 6. Final Git status
 
-Exact output of `git status --short --branch` at branch tip
-`a9142b245facbeb9305435306818b3a078092225`:
+Exact output of `git status --short --branch` after the documentation commit
+`38f1172015a9b7d8812eba96881059bfd32d8c35` (`docs: finalize W5 completion record`):
 
 ```text
-## main...origin/main [ahead 6]
+## main...origin/main [ahead 7]
 ?? docs/temp/_explain_embedding.py
 ?? docs/temp/_pytest_run1.txt
 ?? docs/temp/_pytest_run2.txt
@@ -105,6 +109,10 @@ Chronological order from oldest to newest. Parent of the first closeout commit i
 6. `a9142b245facbeb9305435306818b3a078092225`  
    Message: `docs(w5): fix completion report encoding`  
    Purpose: Completion-report-only fix for encoding artifacts in the report header.
+
+7. `38f1172015a9b7d8812eba96881059bfd32d8c35`  
+   Message: `docs: finalize W5 completion record`  
+   Purpose: Definitive historical W5 completion record (this finalization commit).
 
 ## 8. Files deliberately excluded
 
@@ -207,7 +215,7 @@ Confirmed against the committed implementation:
 - Passed: 614
 - Failed: 0
 - Errors: 0
-- Skipped: 1 ? `tests/test_regression_harness.py::test_regression_live_pipeline_smoke` (requires `RUN_REGRESSION=1`)
+- Skipped: 1 — `tests/test_regression_harness.py::test_regression_live_pipeline_smoke` (requires `RUN_REGRESSION=1`)
 - Warnings: present (primarily `datetime.utcnow` deprecations)
 
 No automated test required a live OpenAI request.
@@ -241,5 +249,5 @@ No automated test required a live OpenAI request.
 
 **PASS WITH NON-BLOCKING FINDINGS**
 
-W5 ? Knowledge Foundation is complete. W6 ? Security Foundation is next
+W5 — Knowledge Foundation is complete. W6 — Security Foundation is next
 and was not started.
