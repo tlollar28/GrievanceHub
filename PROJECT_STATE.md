@@ -1,6 +1,6 @@
 # GrievanceHub Engineering Status
 
-Last updated: 2026-07-24
+Last updated: 2026-07-25
 
 Concise public engineering status for the current working tree. Detailed system
 design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The canonical
@@ -12,19 +12,20 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M4 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence) |
-| Next milestone | W6 M5 — Analysis |
+| Current implementation state | W6 in progress — M0–M5 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence, Analysis) |
+| Next milestone | W6 M6 — Grievance |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Interactive Steward Workspace | In progress (M0–M4 complete; M5–M10 not started) |
+| W6 — Interactive Steward Workspace | In progress (M0–M5 complete; M6–M10 not started) |
 | W6 M0 — Frontend Foundations | Complete and committed |
 | W6 M1 — Saved Cases | Complete and committed |
 | W6 M2 — Create Case + workspace restore | Complete and committed |
 | W6 M3 — Conversation + retrieval | Complete and committed |
 | W6 M4 — Evidence uploads + asset references | Complete and committed |
+| W6 M5 — Analysis generate / preview / save | Complete and committed |
 | W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
@@ -82,6 +83,14 @@ from ordinary steward case work.
   multipart upload (`POST /cases/{uuid}/assets`), metadata detail, and
   conversation `upload_refs` attachment selection; uploaded evidence is
   case-context reference only and is not authority-corpus RAG
+- W6 M5 Analysis workspace (`/cases/:caseUuid/analysis`) with explicit Generate
+  Analysis (`POST /cases/{uuid}/reports/generate` → temporary client-held
+  preview), Cancel (no persistence), Save / Save and Print
+  (`POST /cases/{uuid}/reports/save-and-print` with `prepare_pdf` false/true and
+  client `idempotency_key`), saved version list/detail
+  (`GET /cases/{uuid}/versions[/{n}]`), and HTML/PDF export controls with
+  official-versus-working-draft labeling; normal conversation still creates no
+  analysis version or artifact
 
 ## Normal chat vs analysis
 
@@ -165,11 +174,12 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 W5 retrieval components are retrieval infrastructure. They are not completion of
 W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
-completion of W9 application security. W6 M0–M4 cover shell foundations, Saved
+completion of W9 application security. W6 M0–M5 cover shell foundations, Saved
 Cases entry, Create Case, durable workspace restore, case conversation with
-retrieval/citations, and evidence uploads with `upload_refs`; Analysis (M5) and
-later grievance/artifact screens remain later milestones. Case evidence uploads
-are not indexed into the authority corpus.
+retrieval/citations, evidence uploads with `upload_refs`, and Analysis
+generate/preview/save. Grievance (M6) and later artifact/workflow screens remain
+later milestones. Case evidence uploads are not indexed into the authority
+corpus.
 
 ## Related documentation
 
@@ -183,4 +193,5 @@ are not indexed into the authority corpus.
 - [`docs/temp/W6_M2_CREATE_WORKSPACE_REPORT.md`](docs/temp/W6_M2_CREATE_WORKSPACE_REPORT.md)
 - [`docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md`](docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md)
 - [`docs/temp/W6_M4_EVIDENCE_REPORT.md`](docs/temp/W6_M4_EVIDENCE_REPORT.md)
+- [`docs/temp/W6_M5_ANALYSIS_REPORT.md`](docs/temp/W6_M5_ANALYSIS_REPORT.md)
 - [`README.md`](README.md)

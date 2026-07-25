@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0–M4 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence)
+**Status:** W6 in progress — M0–M5 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence, Analysis)
 **Date:** 2026-07-24
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -16,7 +16,7 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | **M2 — Create + workspace restore** | **Complete** — Create Case form; durable `GET /cases/{uuid}/workspace` restore; `CaseWorkspaceShell` + Case Rail; overview/memory/facts; facts `PATCH` |
 | **M3 — Conversation** | **Complete** — `/cases/:caseUuid/conversation`; `GET .../messages` + `POST .../interactions`; retrieval statuses; citations/research panel; disclosures; facts-needed; no artifacts from chat |
 | **M4 — Evidence** | **Complete** — `/cases/:caseUuid/evidence`; `GET/POST .../assets`; metadata detail; Conversation `upload_refs` picker; no case-file RAG; no analysis/grievance/artifact side effects |
-| M5 — Analysis | Planned |
+| **M5 — Analysis** | **Complete** — `/cases/:caseUuid/analysis`; Generate temporary preview; Cancel/no-persist; Save / Save and Print; versions; HTML/PDF export; idempotency + `saved_pdf_failed` handling |
 | M6 — Grievance | Planned |
 | M7 — Artifacts & history | Planned |
 | M8 — Workflow outcomes | Planned |
@@ -1228,7 +1228,7 @@ Each milestone is independently testable against the live W5 API.
 | **M2 — Create + workspace restore** | Create case; CaseWorkspaceShell; left rail overview/facts/step | New case appears; workspace restores memory/overview |
 | **M3 — Conversation** | **Complete** — Messages + interactions + citations + retrieval states | Chat with citations end-to-end; no artifacts created |
 | **M4 — Evidence** | **Complete** — UploadPanel + asset table/detail + upload_refs in composer | Upload and reference in chat; not authority RAG |
-| **M5 — Analysis** | Generate preview → Save / Save and Print → versions | Temporary vs saved clearly distinct; Official Case Record updates on Save |
+| **M5 — Analysis** | **Complete** — Generate preview → Save / Save and Print → versions | Temporary vs saved clearly distinct; Official Case Record updates on Save |
 | **M6 — Grievance** | Generate draft → edit → validate → Save / Save and Print → Step 1/2 PDF | Official forms preview/download |
 | **M7 — Artifacts & history** | Library, detail, compare, Official Case Record, jump-to-context | Browse versions; download PDFs |
 | **M8 — Workflow outcomes** | Record outcome, close/settle/archive, workflow view | Lifecycle without DB edits |

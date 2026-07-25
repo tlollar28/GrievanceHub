@@ -68,3 +68,13 @@ export const assetKeys = {
   detail: (caseUuid: string, assetUuid: string) =>
     [...assetKeys.details(), caseUuid, assetUuid] as const,
 }
+
+/** TanStack Query keys for analysis versions */
+export const analysisKeys = {
+  all: ['analysisVersions'] as const,
+  lists: () => [...analysisKeys.all, 'list'] as const,
+  list: (caseUuid: string) => [...analysisKeys.lists(), caseUuid] as const,
+  details: () => ['analysisVersion'] as const,
+  detail: (caseUuid: string, versionNumber: number) =>
+    [...analysisKeys.details(), caseUuid, versionNumber] as const,
+}

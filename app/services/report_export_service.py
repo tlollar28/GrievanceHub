@@ -36,13 +36,17 @@ def _authorize_export(case_uuid: str) -> None:
 
 def _load_version(db: Session, case_uuid: str, version_number: int | None):
     case = CaseService.get_case(db, case_uuid)
-    if not case.report_versions:
+    # Expire cached relationship so a version flushed earlier in the same
+    # transaction (Save and Print from temporary preview) is visible.
+    db.expire(case, ["report_versions"])
+    versions = list(case.report_versions or [])
+    if not versions:
         raise NoReportVersionError(case_uuid)
 
     if version_number is None:
-        return max(case.report_versions, key=lambda item: item.version_number)
+        return max(versions, key=lambda item: item.version_number)
 
-    for version in case.report_versions:
+    for version in versions:
         if version.version_number == version_number:
             return version
     raise ReportVersionNotFoundError(version_number)

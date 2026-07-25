@@ -1,6 +1,7 @@
 import { Navigate, type RouteObject } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
+import { CaseAnalysisPage } from '../routes/CaseAnalysisPage'
 import { CaseConversationPage } from '../routes/CaseConversationPage'
 import { CaseEvidencePage } from '../routes/CaseEvidencePage'
 import {
@@ -30,6 +31,7 @@ export const appRoutes: RouteObject[] = [
           { index: true, element: <CaseWorkspaceIndexRedirect /> },
           { path: 'conversation', element: <CaseConversationPage /> },
           { path: 'evidence', element: <CaseEvidencePage /> },
+          { path: 'analysis', element: <CaseAnalysisPage /> },
         ],
       },
       { path: 'help', element: <HelpPage /> },

@@ -26,6 +26,15 @@ import type {
   CaseAssetMetadata,
   CaseAssetUploadResponse,
 } from '../api/types/assets'
+import type {
+  AnalysisPreviewPayload,
+  AnalysisVersionDetail,
+  AnalysisVersionListResponse,
+  AnalysisVersionSummary,
+  GenerateAnalysisResponse,
+  GrievanceHubReportData,
+  SaveAndPrintResponse,
+} from '../api/types/reports'
 
 export const SAMPLE_ASSET_UUID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 export const OTHER_ASSET_UUID = 'ffffffff-1111-4222-8333-444444444444'
@@ -452,6 +461,245 @@ export function makeUploadResponse(
   }
 }
 
+export function makeReportData(
+  overrides: Partial<GrievanceHubReportData> = {},
+): GrievanceHubReportData {
+  return {
+    report_title: 'W6 M5 analysis smoke report',
+    brand: 'GrievanceHub',
+    generated_at: '2026-07-24T20:00:00Z',
+    case_information: {
+      case_id: SAMPLE_CASE_UUID,
+      case_title: 'Overtime dispute',
+      user_name: 'Steward Ada',
+      local_number: '501',
+    },
+    research_draft_notice: 'Research draft — not an official filing.',
+    your_question: 'Was overtime properly paid?',
+    quick_assessment: {
+      summary: 'Possible overtime violation based on supplied facts.',
+      grievability: 'Potentially grievable',
+      confidence: 'Medium',
+      why: 'Contract overtime language may apply.',
+    },
+    secondary_issues: ['Schedule notice'],
+    key_contract_violations: [
+      {
+        article_or_section: 'Article 8',
+        issue: 'Overtime assignment',
+        role: 'union_supporting',
+        role_title: 'Union Supporting Authority',
+        why_relevant: 'Addresses overtime distribution.',
+        direct_quote: 'Overtime shall be distributed equitably.',
+        citation: {
+          document_name: 'National Agreement',
+          document_type: 'CONTRACT',
+          page: 12,
+        },
+      },
+    ],
+    recommended_remedy: {
+      statements: ['Request make-whole overtime pay.'],
+      grounding_authorities: ['Article 8'],
+    },
+    detailed_analysis: {
+      grievance_framework: 'Evaluate overtime distribution under Article 8.',
+      evidence_to_gather: ['Clock rings for the week'],
+      strategic_tips: [
+        { title: 'Documentation', text: 'Collect tour schedules.' },
+      ],
+    },
+    supporting_evidence: [
+      {
+        document_name: 'National Agreement',
+        document_type: 'CONTRACT',
+        article_or_section: 'Article 8',
+        page: 12,
+        direct_quote: 'Overtime shall be distributed equitably.',
+        what_it_supports: 'Equitable overtime distribution duty.',
+      },
+    ],
+    union_supporting_authority: [],
+    procedural_requirements: [],
+    information_rights: [],
+    timeline_requirements: [],
+    remedy_authority: [],
+    management_limiting_authority: [],
+    background_authority: [],
+    limitations: {
+      missing_facts: ['Exact hours denied'],
+      caveats: ['Authority corpus may be incomplete for local practice.'],
+      known_facts: ['Tour 2'],
+      retrieval_gaps: { local_mou: 'not_indexed' },
+    },
+    source_references: {
+      found: [
+        {
+          source_type: 'CONTRACT',
+          document_names: ['National Agreement'],
+          authority_count: 1,
+        },
+      ],
+      not_found: [],
+    },
+    citation_validation: {
+      status: 'Needs Review',
+      evidence_items_checked: 1,
+      direct_quotes_found: 1,
+      notes: ['Verify quote against source page.'],
+    },
+    ...overrides,
+  }
+}
+
+export function makeAnalysisPreview(
+  overrides: Partial<AnalysisPreviewPayload> = {},
+): AnalysisPreviewPayload {
+  const report = overrides.report_data ?? makeReportData()
+  return {
+    temporary: true,
+    persisted: false,
+    review_mode: 'read_only',
+    editable: false,
+    suggested_version_number_if_saved: 1,
+    report_data: report,
+    ranked_authorities: [],
+    issue_analysis: null,
+    evidence_items: report.supporting_evidence ?? [],
+    retrieval_gaps: report.limitations?.retrieval_gaps ?? {},
+    source_coverage_audit: null,
+    report_summary: { title: report.report_title },
+    ...overrides,
+  }
+}
+
+export function makeGenerateResponse(
+  overrides: Partial<GenerateAnalysisResponse> = {},
+): GenerateAnalysisResponse {
+  const preview = (overrides.preview ??
+    overrides.analysis_preview ??
+    makeAnalysisPreview()) as AnalysisPreviewPayload
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    action: 'generate_analysis_report',
+    status: 'completed',
+    message:
+      'Temporary analysis preview ready for read-only review. Save creates the next Analysis Report version and artifact.',
+    review_mode: 'read_only',
+    editable: false,
+    persisted: false,
+    report_version: null,
+    preview,
+    analysis_preview: preview,
+    analysis_preview_ready: true,
+    analysis_editable: false,
+    official_artifact_created: false,
+    ...overrides,
+  }
+}
+
+export function makeVersionSummary(
+  overrides: Partial<AnalysisVersionSummary> = {},
+): AnalysisVersionSummary {
+  return {
+    id: overrides.id ?? 1,
+    version_number: overrides.version_number ?? 1,
+    trigger_message_id: null,
+    created_at: '2026-07-24T21:00:00Z',
+    retrieval_gaps: null,
+    source_coverage_audit: null,
+    report_summary: { title: 'W6 M5 analysis smoke report' },
+    ...overrides,
+  }
+}
+
+export function makeVersionListResponse(
+  versions: AnalysisVersionSummary[] = [],
+  overrides: Partial<AnalysisVersionListResponse> = {},
+): AnalysisVersionListResponse {
+  const caseUuid = overrides.case_uuid ?? SAMPLE_CASE_UUID
+  return {
+    case_uuid: caseUuid,
+    count: versions.length,
+    versions,
+    ...overrides,
+  }
+}
+
+export function makeVersionDetail(
+  overrides: Partial<AnalysisVersionDetail> = {},
+): AnalysisVersionDetail {
+  const summary = makeVersionSummary(overrides)
+  return {
+    ...summary,
+    report_data: overrides.report_data ?? makeReportData(),
+    ranked_authorities: overrides.ranked_authorities ?? [],
+    issue_analysis: overrides.issue_analysis ?? null,
+    evidence_items: overrides.evidence_items ?? [],
+    ...overrides,
+  }
+}
+
+export function makeSaveResponse(
+  overrides: Partial<SaveAndPrintResponse> = {},
+): SaveAndPrintResponse {
+  const versionNumber =
+    overrides.artifact?.version_number ??
+    overrides.artifact?.source_report_version_number ??
+    1
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    status: 'saved',
+    message: 'Official analysis report saved.',
+    print_ready: false,
+    pdf_error: null,
+    export_path: null,
+    artifact: {
+      artifact_uuid: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      case_uuid: SAMPLE_CASE_UUID,
+      artifact_type: 'analysis_report',
+      title: 'Analysis Report v1',
+      version_number: versionNumber,
+      version_label: `v${versionNumber}`,
+      printed: false,
+      pdf_status: 'pending',
+      pdf_asset_uuid: null,
+      is_latest_official: true,
+      saved_by: 'Steward Ada',
+      saved_at: '2026-07-24T21:05:00Z',
+      source_report_version_number: versionNumber,
+      retrieval: {
+        artifact: `/cases/${SAMPLE_CASE_UUID}/artifacts/aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee`,
+      },
+      ...overrides.artifact,
+    },
+    ...overrides,
+  }
+}
+
+export function binaryResponse(
+  body: BlobPart,
+  contentType: string,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
+  const blob = body instanceof Blob ? body : new Blob([body], { type: contentType })
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers({
+      'content-type': contentType,
+      'content-disposition': 'inline; filename="report.bin"',
+      ...extraHeaders,
+    }),
+    blob: async () => blob,
+    json: async () => {
+      throw new Error('Not JSON')
+    },
+    text: async () => (typeof body === 'string' ? body : ''),
+  } as unknown as Response
+}
+
 export function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -471,11 +719,13 @@ export function installApiMock(
     autoHealth?: boolean
     autoEmptyMessages?: boolean
     autoEmptyAssets?: boolean
+    autoEmptyVersions?: boolean
   } = {},
 ) {
   const autoHealth = options.autoHealth !== false
   const autoEmptyMessages = options.autoEmptyMessages !== false
   const autoEmptyAssets = options.autoEmptyAssets !== false
+  const autoEmptyVersions = options.autoEmptyVersions !== false
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
@@ -504,6 +754,15 @@ export function installApiMock(
         const match = url.match(/\/cases\/([^/]+)\/assets/)
         const caseUuid = match?.[1] ?? SAMPLE_CASE_UUID
         return jsonResponse(makeAssetListResponse([], { case_uuid: caseUuid }))
+      }
+      if (
+        autoEmptyVersions &&
+        /\/cases\/[^/]+\/versions\/?$/.test(url.split('?')[0] ?? url) &&
+        (!init?.method || init.method === 'GET')
+      ) {
+        const match = url.match(/\/cases\/([^/]+)\/versions/)
+        const caseUuid = match?.[1] ?? SAMPLE_CASE_UUID
+        return jsonResponse(makeVersionListResponse([], { case_uuid: caseUuid }))
       }
       return handler(input, init)
     },

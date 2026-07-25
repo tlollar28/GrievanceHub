@@ -68,7 +68,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
-frontend/         # W6 React/TypeScript steward workspace (M0–M3)
+frontend/         # W6 React/TypeScript steward workspace (M0–M5)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -151,8 +151,13 @@ prompts. Normal conversation does not create an analysis report, grievance, or
 saved artifact. M4 adds Evidence on `/cases/:caseUuid/evidence` (list/upload/
 metadata for `GET/POST /cases/{uuid}/assets`) and conversation attachment of
 current-case assets via verified `upload_refs`. Uploaded evidence is case
-context only — it is not authority-corpus RAG. Analysis generation, grievance
-drafting, and artifact library screens are not implemented yet.
+context only — it is not authority-corpus RAG. M5 adds Analysis on
+`/cases/:caseUuid/analysis`: explicit Generate → temporary unsaved preview →
+Cancel (no version) or Save / Save and Print (`prepare_pdf` false/true,
+idempotency keys, `saved` / `saved_pdf_failed` / `idempotent_replay`), plus
+saved-version list/detail and HTML/PDF export with official-versus-working-draft
+labels. Grievance drafting and general artifact-library screens are not
+implemented yet.
 
 ```bash
 cd frontend

@@ -202,6 +202,90 @@ export async function apiMultipartRequest<T>(
   return handleApiResponse<T>(response, path)
 }
 
+export type ApiBinaryRequestOptions = {
+  method?: string
+  signal?: AbortSignal
+  headers?: Record<string, string>
+  /** Expected content-type family, e.g. application/pdf or text/html. */
+  accept?: string
+}
+
+export type ApiBinaryResult = {
+  blob: Blob
+  contentType: string
+  filename: string | null
+  printMode: string | null
+}
+
+function parseFilename(disposition: string | null): string | null {
+  if (!disposition) {
+    return null
+  }
+  const utfMatch = /filename\*=UTF-8''([^;]+)/i.exec(disposition)
+  if (utfMatch?.[1]) {
+    try {
+      return decodeURIComponent(utfMatch[1].trim())
+    } catch {
+      return utfMatch[1].trim()
+    }
+  }
+  const plainMatch = /filename="?([^";]+)"?/i.exec(disposition)
+  return plainMatch?.[1]?.trim() ?? null
+}
+
+/**
+ * Binary/HTML export helper. Preserves ApiError normalization for failures.
+ * Does not log response bodies.
+ */
+export async function apiBinaryRequest(
+  path: string,
+  options: ApiBinaryRequestOptions = {},
+): Promise<ApiBinaryResult> {
+  const baseUrl = getApiBaseUrl()
+  const url = joinPath(baseUrl, path)
+  const headers: Record<string, string> = {
+    Accept: options.accept ?? '*/*',
+    ...options.headers,
+  }
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: options.method ?? 'GET',
+      headers,
+      signal: options.signal,
+    })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error
+    }
+    throw new ApiError({
+      status: 0,
+      path,
+      message: 'Unable to reach the API.',
+    })
+  }
+
+  if (!response.ok) {
+    const parsed = await parseErrorBody(response)
+    throw new ApiError({
+      status: response.status,
+      path,
+      code: parsed.code,
+      message: safeErrorMessage(response.status, parsed.message),
+    })
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  const blob = await response.blob()
+  return {
+    blob,
+    contentType,
+    filename: parseFilename(response.headers.get('content-disposition')),
+    printMode: response.headers.get('x-grievancehub-print-mode'),
+  }
+}
+
 export function getConfiguredApiBaseUrl(): string {
   return getApiBaseUrl()
 }
