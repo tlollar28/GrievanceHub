@@ -6,6 +6,7 @@ import { CaseArtifactsPage } from '../routes/CaseArtifactsPage'
 import { CaseConversationPage } from '../routes/CaseConversationPage'
 import { CaseEvidencePage } from '../routes/CaseEvidencePage'
 import { CaseGrievancePage } from '../routes/CaseGrievancePage'
+import { CaseResearchPage } from '../routes/CaseResearchPage'
 import { CaseWorkflowPage } from '../routes/CaseWorkflowPage'
 import {
   CaseWorkspaceIndexRedirect,
@@ -38,6 +39,7 @@ export const appRoutes: RouteObject[] = [
           { path: 'grievance', element: <CaseGrievancePage /> },
           { path: 'artifacts', element: <CaseArtifactsPage /> },
           { path: 'workflow', element: <CaseWorkflowPage /> },
+          { path: 'research', element: <CaseResearchPage /> },
         ],
       },
       { path: 'help', element: <HelpPage /> },

@@ -1,7 +1,7 @@
 # GrievanceHub Architecture
 
 Technical system design for the current GrievanceHub backend through W5, plus the
-W6 M0–M8 frontend steward shell now present on `main`.
+W6 M0–M9 frontend steward shell now present on `main`.
 
 For a concise product overview, see [`README.md`](../README.md). For the
 canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md). For the W6
@@ -28,7 +28,7 @@ React steward shell (frontend/) / API client / /ui shell
         └─► Local filesystem storage (case assets, generated reports)
 ```
 
-### Frontend steward shell (W6 M0–M8)
+### Frontend steward shell (W6 M0–M9)
 
 `frontend/` is a Vite + React + TypeScript application. Implemented:
 
@@ -107,7 +107,22 @@ React steward shell (frontend/) / API client / /ui shell
   generic button surface. Outcome/lifecycle actions invalidate workflow,
   workspace, saved-case list, timeline, and history queries; they do not create
   analysis/grievance artifacts. Step 3 workflow states show an unsupported-form
-  disclosure. Sources administration remains out of scope.
+  disclosure.
+- **M9:** Sources Research on `/cases/:caseUuid/research`. Browser clients call
+  the interim read-only `/research/*` FastAPI boundary (not protected `/sources`).
+  Routes: `GET /research/meta`, `GET /research/sources`,
+  `GET /research/sources/{source_document_id}`, `POST /research/search`,
+  `GET /research/passages/{source_chunk_id}`. The router reuses
+  `KnowledgeRetrievalService` / ORM reads in-process with a server-constructed
+  global-corpus authorization context; browser-supplied API keys are ignored and
+  never required. Responses use allowlisted Pydantic schemas (no embeddings,
+  filesystem paths, secrets, or stack traces). Server caps: query ≤ 2000 chars,
+  limit ≤ 24, limit_per_source ≤ 5, offset ≤ 200. Research is read-only: no
+  source mutation, Case Memory, messages, artifacts, workflow, or timeline
+  events. Authority corpus is distinct from case Evidence uploads. Ask Sources
+  was excluded (legacy `GET /sources/ask/` would duplicate Conversation). This
+  boundary does not satisfy W9 production authentication; protected `/sources`
+  admin routes remain API-key gated.
 
 Query ownership:
 
@@ -122,6 +137,9 @@ Query ownership:
 - Artifacts & History (M7): `["caseArtifacts", "list"|"detail"|"history"|
   "timeline"|"context"|"compare", caseUuid, …]`
 - Workflow (M8): `["caseWorkflow", caseUuid]`
+- Sources Research (M9): `["sourceResearch", "meta"|"search"|"source"|"passage", …]`
+  (authority corpus; not invalidated by case mutations; not stored under message/
+  artifact/workflow keys)
 
 Open/reopen may seed the workspace cache; the workspace layout refetches on mount
 and treats the server response as authoritative. Message history is loaded when
@@ -129,8 +147,8 @@ the Conversation panel mounts and is not embedded in the lean workspace payload.
 Asset lists are case-scoped and invalidated only for the affected case after upload.
 
 The W6 browser must not receive source API secrets
-(`GRIEVANCEHUB_API_KEY` / `GRIEVANCEHUB_ADMIN_API_KEY`). Sources UI remains
-deferred until an approved safe boundary exists.
+(`GRIEVANCEHUB_API_KEY` / `GRIEVANCEHUB_ADMIN_API_KEY`). Steward research uses
+`/research/*` only; protected `/sources` administration remains server-side.
 ### Implementation lineage
 
 Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
@@ -214,7 +232,8 @@ Entry point: `app/main.py`.
 | Router | Module | Responsibility |
 |--------|--------|----------------|
 | Cases | `app/api/routes/cases.py` | Case lifecycle, workspace, chat, actions, memory, workflow, artifacts, assets |
-| Sources | `app/api/routes/sources.py` | Source ingest and search helpers |
+| Sources | `app/api/routes/sources.py` | Source ingest and search helpers (API-key protected) |
+| Sources Research | `app/api/routes/research.py` | Browser-safe read-only research boundary (W6 M9) |
 | Exports | `app/api/routes/exports.py` | HTML/PDF export of saved analysis versions |
 | Steward UI | `app/api/routes/steward_ui.py` | FastAPI HTML verification shell (`/ui`) |
 | Health | `GET /health` | Service liveness |
@@ -516,7 +535,7 @@ portfolio repository.
 | Source processing lifecycle metadata | Implemented |
 | Bounded retrieval-agent architecture | Implemented |
 | Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Interactive steward workspace | In progress (W6; M0–M8 complete, M9–M10 not started) |
+| Interactive steward workspace | In progress (W6; M0–M9 complete, M10 not started) |
 | Formal RAG evaluation / quality gates | Planned (W7) |
 | Multi-agent authority workflow | Planned (W8) |
 | Application identity / governance | Planned (W9) |
@@ -549,8 +568,8 @@ UI → Arbitration/LMOU → Deployment) is superseded.
   `upload_refs`, Analysis generate/preview/save, Grievance Generate → Edit →
   Validate → Save / Save and Print for Step 1/2, Artifacts & History library /
   Official Case Record / timeline / compare / jump-to-context, and Workflow
-  outcomes / case lifecycle). **M9 Sources research is next.** M9–M10 are not
-  started.
+  outcomes / case lifecycle, and Sources Research). **M10 Polish & a11y is next.**
+  M10 is not started.
 - **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
   citation/faithfulness metrics, and approved quality thresholds before
   multi-agent complexity.

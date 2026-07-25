@@ -157,6 +157,11 @@ export function CaseRail({ workspace, factsReadOnly = false }: Props) {
               Open Workflow
             </Link>
           </p>
+          <p className={styles.empty}>
+            <Link to={`/cases/${workspace.case_uuid}/research`}>
+              Open Sources Research
+            </Link>
+          </p>
         </section>
 
         <section

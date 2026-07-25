@@ -31,7 +31,14 @@ describe('frontend secret boundary', () => {
       'GRIEVANCEHUB_' + 'ADMIN_API_KEY',
     ]
 
-    const productionDirs = ['api', 'app', 'components', 'routes', 'styles']
+    const productionDirs = [
+      'api',
+      'app',
+      'components',
+      'features',
+      'routes',
+      'styles',
+    ]
     const files = productionDirs.flatMap((dir) =>
       collectSourceFiles(join(frontendRoot, 'src', dir)),
     )

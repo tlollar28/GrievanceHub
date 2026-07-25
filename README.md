@@ -72,7 +72,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
-frontend/         # W6 React/TypeScript steward workspace (M0–M8)
+frontend/         # W6 React/TypeScript steward workspace (M0–M9)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -178,7 +178,15 @@ current workflow/step display, progression visualization, Record Outcome
 settle / archive / reopen via saved-case lifecycle routes. Outcome and lifecycle
 actions do not create analysis or grievance artifacts. Official form generation
 remains Step 1/2 only; Step 3 may appear as workflow tracking with an
-unsupported-form disclosure. Sources administration (M9) remains out of scope.
+unsupported-form disclosure. M9 adds Sources Research on
+`/cases/:caseUuid/research` via a browser-safe FastAPI `/research/*` boundary
+(meta, source list/detail, search, passage detail). The UI reuses the retrieval
+service layer without browser API keys, keeps authority corpus results distinct
+from Evidence uploads, and does not mutate sources, Case Memory, messages,
+artifacts, or workflow. Protected `/sources` administration remains API-key
+gated. Ask Sources was intentionally excluded (would duplicate Conversation /
+create a second chatbot surface). Production authentication remains
+unimplemented (W9).
 
 ```bash
 cd frontend

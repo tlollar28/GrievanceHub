@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0–M8 complete (Foundations through Workflow outcomes)
+**Status:** W6 in progress — M0–M9 complete (Foundations through Sources research)
 **Date:** 2026-07-25
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -20,7 +20,7 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | **M6 — Grievance** | **Complete** — `/cases/:caseUuid/grievance`; Generate → Edit → Validate → Save / Save and Print for Step 1/2 official forms only; temporary local React draft state; limited saved `grievance_form` list/detail/PDF |
 | **M7 — Artifacts & history** | **Complete** — `/cases/:caseUuid/artifacts`; Artifact Library (analysis + grievance), read-only detail/PDF, Official Case Record, timeline, compare, jump-to-context; no generation workflows |
 | **M8 — Workflow outcomes** | **Complete** — `/cases/:caseUuid/workflow`; workflow/step display, progression, Record Outcome, same-case appeal, close/settle/archive/reopen; no artifact creation; Step 3 form generation unsupported |
-| M9 — Sources research | Planned |
+| **M9 — Sources research** | **Complete** — `/cases/:caseUuid/research`; browser-safe `/research/*` boundary; search/filter/detail; no browser API keys; Ask Sources excluded |
 | M10 — Polish & a11y | Planned |
 
 ### API-contract verification rule
@@ -86,7 +86,7 @@ Do not render as steward buttons:
 | HTTP client | **fetch wrapper** (`apiClient`) with typed errors | Thin abstraction over OpenAPI-shaped responses; no heavy SDK required. |
 | Types | Generated or hand-mirrored from `app/schemas/*.py` | Start with hand-mirrored TS types for critical paths; optionally generate from `/openapi.json` later. |
 | Testing | Vitest + React Testing Library + Playwright | Unit for components; e2e for Generate → Save workflows. |
-| Dev proxy | Vite proxy `/cases`, `/sources`, `/health` → FastAPI | Same-origin during local development. |
+| Dev proxy | Vite proxy `/api` → FastAPI (`/cases`, `/research`, `/sources`, `/health`) | Same-origin during local development. |
 
 **Not recommended for W6:** Next.js App Router (SSR/auth complexity before W9), Redux Toolkit (overkill vs Query + Zustand), GraphQL (backend is REST), WebSocket chat (backend is request/response).
 
@@ -136,7 +136,7 @@ Primary items:
 | Dashboard | `/dashboard` | Saved-case oriented home |
 | Cases | `/cases` | Full saved-case list |
 | New case | `/cases/new` | Create flow |
-| Sources | `/sources` | Deferred past M0; no browser source API secrets |
+| Sources Research | `/cases/:caseUuid/research` | M9 complete — browser-safe `/research/*` boundary; no browser source API secrets |
 | Help | `/help` | Short workflow guidance |
 
 Collapsed icon rail on medium widths; full labels at ≥1280px.
@@ -212,16 +212,17 @@ Do not build a mobile-first chatbot layout.
 │   ├── /cases/:caseUuid/artifacts      # Artifact library
 │   ├── /cases/:caseUuid/history        # Official Case Record
 │   ├── /cases/:caseUuid/memory         # Case Memory / overview (read-mostly)
-│   └── /cases/:caseUuid/workflow       # Step progression / outcomes
+│   ├── /cases/:caseUuid/workflow       # Step progression / outcomes
+│   └── /cases/:caseUuid/research       # Sources Research (authority corpus, read-only)
 ├── /cases/:caseUuid/analysis/preview   # Full-page temporary preview (optional deep link)
 ├── /cases/:caseUuid/artifacts/:artifactUuid
 ├── /cases/:caseUuid/print/analysis/:version?   # Print-oriented view (no chat)
 ├── /cases/:caseUuid/print/grievance/:artifactUuid
-├── /sources                            # Source corpus browser
-├── /sources/search                     # Ad-hoc retrieval research
-├── /sources/:sourceId                  # Source detail / chunks (read)
 └── /help
 ```
+
+Protected `/sources` administration remains API-only (not a W6 browser route).
+Steward research uses `/cases/:caseUuid/research` → `/research/*`.
 
 ### Routing rules
 
@@ -804,7 +805,33 @@ Source-processing status for the **authority corpus** lives under `/sources` (ad
 
 ## 11. Sources / research (secondary)
 
-Steward research against the indexed corpus (API-key protected):
+### 11.1 Steward Sources Research (M9 — implemented)
+
+Workspace route: `/cases/:caseUuid/research` (inside `CaseWorkspaceShell`).
+Nav label: **Sources Research**.
+
+Browser-safe FastAPI boundary (no API key; interim W6; not production auth):
+
+| Operation | API |
+|-----------|-----|
+| Meta / supported filters | `GET /research/meta` |
+| List source summaries | `GET /research/sources?limit=&offset=&source_type=` |
+| Source detail | `GET /research/sources/{source_document_id}` |
+| Search | `POST /research/search` |
+| Passage detail | `GET /research/passages/{source_chunk_id}` |
+
+The React client must call only `/research/*`. Protected `/sources` routes remain
+API-key gated for administration and must not receive browser credentials.
+
+Product rules for M9:
+- Read-only authority-corpus inspection
+- Distinct from case Evidence uploads
+- No source ingest/edit/delete/process/re-embed controls
+- No Case Memory, message, artifact, workflow, or timeline mutation
+- Ask Sources intentionally excluded (would duplicate Conversation)
+- Server enforces result limits and allowlisted response fields
+
+### 11.2 Protected `/sources` administration (not browser-facing)
 
 | Screen | API |
 |--------|-----|
@@ -814,9 +841,7 @@ Steward research against the indexed corpus (API-key protected):
 | Ask | `GET /sources/ask/` |
 | Chunk | `GET /sources/{id}/chunks/{chunk_index}` |
 
-Admin mutations (upload-pdf, process, sync) may be behind an “Admin” disclosure; W6 can ship read/search first.
-
-Case chat already performs retrieval — Sources pages are for corpus inspection and debugging weak retrieval, supporting W6’s continuous RAG validation goal.
+Admin mutations (upload-pdf, process, sync) remain server-side / API-key only.
 
 ---
 
@@ -1025,12 +1050,14 @@ Prerequisites surfaced via `available_actions` / `missing_prerequisites` (`templ
 | `GET/POST .../assets` | Evidence |
 | `GET .../assets/{id}` | Metadata |
 
-### 13.12 Sources
+### 13.12 Sources / research
 
 | Endpoint | Auth | Screen |
 |----------|------|--------|
-| `GET /sources/`, `/search/`, `/ask/`, `/embedded/` | API key | Sources |
-| Admin POSTs | Admin key | Optional admin |
+| `GET /research/meta`, `/sources`, `/sources/{id}`, `/passages/{id}` | None (interim browser-safe) | Sources Research |
+| `POST /research/search` | None (interim browser-safe) | Sources Research |
+| `GET /sources/`, `/search/`, `/ask/`, `/embedded/` | API key | Admin / internal only |
+| Admin POSTs on `/sources` | Admin key | Not exposed in W6 UI |
 
 ### 13.13 Health
 
@@ -1270,7 +1297,7 @@ Each milestone is independently testable against the live W5 API.
 | **M6 — Grievance** | **Complete** — Generate → Edit → Validate → Save / Save and Print → Step 1/2 PDF | Official Step 1/2 forms only; limited saved grievance list/detail/PDF |
 | **M7 — Artifacts & history** | **Complete** — Library, detail, compare, Official Case Record, jump-to-context | Browse versions; download PDFs |
 | **M8 — Workflow outcomes** | **Complete** — Record outcome, close/settle/archive, workflow view | Lifecycle without DB edits |
-| **M9 — Sources research** | Source list/search/ask via approved safe boundary | Corpus inspection for RAG debugging (no browser API secrets) |
+| **M9 — Sources research** | **Complete** — `/research/*` safe boundary + workspace research UI | Corpus inspection without browser API secrets; Ask Sources excluded |
 | **M10 — Polish & a11y** | Empty/error states, keyboard, print routes, regression hooks | Exit criteria checklist green |
 
 **Engineering sequence rationale:** list → restore → chat (highest RAG signal) → uploads → explicit Generate flows → artifacts → lifecycle → sources admin → polish. This matches the roadmap’s vertical-slice and continuous RAG validation rules.
@@ -1372,10 +1399,10 @@ Estimates assume the W5 API remains stable; any backend gaps found during M3–M
 | Item | Value |
 |------|-------|
 | Path | `docs/W6_UI_ARCHITECTURE.md` |
-| Phase | W6 Interactive Steward Workspace — M0–M8 complete |
-| Implementation | M0–M8 complete (Foundations through Workflow outcomes); M9–M10 planned |
+| Phase | W6 Interactive Steward Workspace — M0–M9 complete |
+| Implementation | M0–M9 complete (Foundations through Sources research); M10 planned |
 | Supersedes | None (complements `saved_cases_ui_contract.md`) |
-| Next step | M9 Sources research |
+| Next step | M10 Polish & a11y |
 
 ---
 

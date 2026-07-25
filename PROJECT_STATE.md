@@ -12,14 +12,14 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M8 complete (Foundations through Workflow outcomes) |
-| Next milestone | W6 M9 — Sources research |
+| Current implementation state | W6 in progress — M0–M9 complete (Foundations through Sources research) |
+| Next milestone | W6 M10 — Polish & a11y |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Interactive Steward Workspace | In progress (M0–M8 complete; M9–M10 not started) |
+| W6 — Interactive Steward Workspace | In progress (M0–M9 complete; M10 not started) |
 | W6 M0 — Frontend Foundations | Complete and committed |
 | W6 M1 — Saved Cases | Complete and committed |
 | W6 M2 — Create Case + workspace restore | Complete and committed |
@@ -29,6 +29,8 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 | W6 M6 — Grievance generate / edit / validate / save | Complete and committed |
 | W6 M7 — Artifacts and History | Complete and committed |
 | W6 M8 — Workflow outcomes | Complete and committed |
+| W6 M9 — Sources research | Complete and committed |
+| W6 M10 — Polish & a11y | Planned — not started |
 | W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
@@ -117,8 +119,16 @@ from ordinary steward case work.
   close / settle / archive / reopen via saved-case lifecycle routes. Outcome and
   lifecycle actions do not create analysis or grievance artifacts. Official
   form generation remains Step 1/2 only; Step 3 may appear as workflow tracking
-  with an unsupported-form disclosure. Sources administration remains out of
-  scope.
+  with an unsupported-form disclosure.
+- W6 M9 Sources Research workspace (`/cases/:caseUuid/research`) with a
+  browser-safe FastAPI boundary (`GET /research/meta`, `GET /research/sources`,
+  `GET /research/sources/{id}`, `POST /research/search`,
+  `GET /research/passages/{chunk_id}`). Reuses the retrieval service layer
+  in-process; no browser source API keys; allowlisted read-only responses;
+  authority corpus clearly distinguished from case Evidence uploads. Research
+  does not mutate sources, Case Memory, messages, artifacts, or workflow.
+  Protected `/sources` administration remains API-key gated. Production
+  authentication remains unimplemented (W9).
 
 ## Normal chat vs analysis
 
@@ -138,6 +148,8 @@ Frontend (W6): React, TypeScript, Vite, React Router, TanStack Query, Vitest.
 
 - Interim `/sources` API-key boundary exists (`GRIEVANCEHUB_API_KEY` /
   `GRIEVANCEHUB_ADMIN_API_KEY`)
+- Interim W6 browser-safe read-only `/research/*` boundary exists (no browser
+  API key; does not satisfy W9 production authentication)
 - Final application identity does not exist
 - Broader `/cases`, export, and UI authentication are not implemented
 - The W6 browser must not receive source API secrets
