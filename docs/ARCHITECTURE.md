@@ -1,7 +1,7 @@
 # GrievanceHub Architecture
 
 Technical system design for the current GrievanceHub backend through W5, plus the
-W6 M0–M6 frontend steward shell now present on `main`.
+W6 M0–M7 frontend steward shell now present on `main`.
 
 For a concise product overview, see [`README.md`](../README.md). For the
 canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md). For the W6
@@ -28,7 +28,7 @@ React steward shell (frontend/) / API client / /ui shell
         └─► Local filesystem storage (case assets, generated reports)
 ```
 
-### Frontend steward shell (W6 M0–M6)
+### Frontend steward shell (W6 M0–M7)
 
 `frontend/` is a Vite + React + TypeScript application. Implemented:
 
@@ -86,8 +86,18 @@ React steward shell (frontend/) / API client / /ui shell
   exposed as UI placeholders. Protected / never-invent fields stay blank unless
   the steward fills them; steward edits are tracked in
   `steward_override_field_ids`. The route lists/details/PDFs saved Step 1/2
-  `grievance_form` artifacts for the case; the general Artifact Library remains
-  **M7**.
+  `grievance_form` artifacts for the case.
+- **M7:** Artifacts & History on `/cases/:caseUuid/artifacts`. Case-scoped
+  Artifact Library for `analysis_report` and `grievance_form`
+  (`GET /cases/{uuid}/artifacts`, detail, PDF). Official Case Record
+  (`GET /cases/saved/{uuid}/history`), broader timeline
+  (`GET /cases/saved/{uuid}/timeline`), jump-to-context
+  (`GET /cases/{uuid}/history/{event_id}/context`), and compatible comparison
+  (`POST /cases/{uuid}/artifacts/compare`). All views are read-only for
+  generation/save workflows; browsing/compare/context create no artifacts.
+  Durable server state uses TanStack Query (`artifactKeys`). Case switch clears
+  local selections/dialogs. M8 workflow outcomes and Sources administration are
+  not implemented.
 
 Query ownership:
 
@@ -99,6 +109,8 @@ Query ownership:
   `["analysisVersion", caseUuid, versionNumber]`
 - Grievance artifacts (M6, Step 1/2 `grievance_form` filter): grievance list/detail
   keys scoped by `caseUuid` / `artifactUuid`
+- Artifacts & History (M7): `["caseArtifacts", "list"|"detail"|"history"|
+  "timeline"|"context"|"compare", caseUuid, …]`
 
 Open/reopen may seed the workspace cache; the workspace layout refetches on mount
 and treats the server response as authoritative. Message history is loaded when
@@ -493,7 +505,7 @@ portfolio repository.
 | Source processing lifecycle metadata | Implemented |
 | Bounded retrieval-agent architecture | Implemented |
 | Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Interactive steward workspace | In progress (W6; M0–M6 complete, M7–M10 not started) |
+| Interactive steward workspace | In progress (W6; M0–M7 complete, M8–M10 not started) |
 | Formal RAG evaluation / quality gates | Planned (W7) |
 | Multi-agent authority workflow | Planned (W8) |
 | Application identity / governance | Planned (W9) |
@@ -521,11 +533,12 @@ UI → Arbitration/LMOU → Deployment) is superseded.
 
 - **W6 — Interactive Steward Workspace (in progress):** usable end-to-end steward UI as
   a vertical slice; continuous RAG and generation validation through realistic
-  workflows. **M0–M6 are complete** (Foundations, Saved Cases, Create Case +
+  workflows. **M0–M7 are complete** (Foundations, Saved Cases, Create Case +
   workspace restore, Conversation + retrieval, Evidence uploads +
   `upload_refs`, Analysis generate/preview/save, Grievance Generate → Edit →
-  Validate → Save / Save and Print for Step 1/2). **M7 Artifacts and History is
-  next.** M7–M10 are not started.
+  Validate → Save / Save and Print for Step 1/2, Artifacts & History library /
+  Official Case Record / timeline / compare / jump-to-context). **M8 Workflow
+  outcomes is next.** M8–M10 are not started.
 - **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
   citation/faithfulness metrics, and approved quality thresholds before
   multi-agent complexity.

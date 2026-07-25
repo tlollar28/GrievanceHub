@@ -36,6 +36,14 @@ import type {
   SaveAndPrintResponse,
 } from '../api/types/reports'
 import type {
+  ArtifactCompareResponse,
+  CaseHistoryContextResponse,
+  CaseHistoryItem,
+  CaseHistoryResponse,
+  CaseTimelineEvent,
+  SavedCaseTimelineResponse,
+} from '../api/types/artifacts'
+import type {
   CaseSavedArtifactDetail,
   CaseSavedArtifactListResponse,
   CaseSavedArtifactSummary,
@@ -686,6 +694,11 @@ export function makeSaveResponse(
 
 export const SAMPLE_GRIEVANCE_ARTIFACT_UUID =
   'cccccccc-dddd-4eee-8fff-000000000001'
+export const SAMPLE_ANALYSIS_ARTIFACT_UUID =
+  'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeee0001'
+export const SAMPLE_ANALYSIS_ARTIFACT_UUID_V2 =
+  'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeee0002'
+export const SAMPLE_HISTORY_EVENT_ID = 'evt-official-saved-001'
 
 export function makeStep1FieldValues(
   overrides: Record<string, string> = {},
@@ -894,6 +907,233 @@ export function makeGrievanceSaveResponse(
     export_path: `/cases/${SAMPLE_CASE_UUID}/artifacts/${artifact.artifact_uuid}/pdf`,
     ...overrides,
     artifact,
+  }
+}
+
+export function makeAnalysisArtifactSummary(
+  overrides: Partial<CaseSavedArtifactSummary> = {},
+): CaseSavedArtifactSummary {
+  return {
+    artifact_uuid: SAMPLE_ANALYSIS_ARTIFACT_UUID,
+    case_uuid: SAMPLE_CASE_UUID,
+    artifact_type: 'analysis_report',
+    title: 'Analysis Report v1',
+    version_number: 1,
+    version_label: 'v1',
+    grievance_step: 'step_1_initial',
+    template_id: null,
+    printed: true,
+    pdf_status: 'ready',
+    pdf_asset_uuid: 'pdf-asset-analysis-1',
+    is_latest_official: true,
+    saved_by: 'Steward Ada',
+    saved_at: '2026-07-24T20:00:00Z',
+    source_report_version_number: 1,
+    key_summary: {
+      primary_issue: 'Denied overtime',
+      grievability: 'Likely grievable',
+      confidence: 'medium',
+    },
+    ...overrides,
+  }
+}
+
+export function makeArtifactListResponse(
+  artifacts: CaseSavedArtifactSummary[] = [],
+  overrides: Partial<CaseSavedArtifactListResponse> = {},
+): CaseSavedArtifactListResponse {
+  const caseUuid = overrides.case_uuid ?? SAMPLE_CASE_UUID
+  return {
+    case_uuid: caseUuid,
+    count: artifacts.length,
+    artifacts,
+    groups: {
+      analysis_reports: artifacts.filter(
+        (item) => item.artifact_type === 'analysis_report',
+      ),
+      grievances: artifacts.filter(
+        (item) => item.artifact_type === 'grievance_form',
+      ),
+      ...overrides.groups,
+    },
+    ...overrides,
+  }
+}
+
+export function makeAnalysisArtifactDetail(
+  overrides: Partial<CaseSavedArtifactDetail> = {},
+): CaseSavedArtifactDetail {
+  const summary = makeAnalysisArtifactSummary(overrides)
+  return {
+    ...summary,
+    content_json: overrides.content_json ?? {
+      report_data: {
+        report: {
+          quick_assessment: {
+            summary: 'Denied overtime appears grievable under Article 8.',
+            grievability: 'Likely grievable',
+            confidence: 'medium',
+          },
+        },
+      },
+      // Intentionally present in fixtures — UI must never render this.
+      stored_path: '/secret/storage/path/should-not-display.pdf',
+    },
+    pdf_download_path:
+      overrides.pdf_download_path ??
+      `/cases/${summary.case_uuid}/artifacts/${summary.artifact_uuid}/pdf`,
+    ...overrides,
+  }
+}
+
+export function makeHistoryItem(
+  overrides: Partial<CaseHistoryItem> = {},
+): CaseHistoryItem {
+  return {
+    event_id: SAMPLE_HISTORY_EVENT_ID,
+    event_type: 'analysis_report_saved_and_printed',
+    title: 'Analysis report saved and printed',
+    details: 'Official analysis artifact created',
+    event_timestamp: '2026-07-24T20:00:00Z',
+    icon: 'printed',
+    clickable: true,
+    artifact_uuid: SAMPLE_ANALYSIS_ARTIFACT_UUID,
+    artifact_type: 'analysis_report',
+    report_version_number: 1,
+    context_path: `/cases/${SAMPLE_CASE_UUID}/history/${SAMPLE_HISTORY_EVENT_ID}/context`,
+    record_class: 'official_record',
+    display_label: 'Official saved',
+    ...overrides,
+  }
+}
+
+export function makeHistoryResponse(
+  events: CaseHistoryItem[] = [makeHistoryItem()],
+  overrides: Partial<CaseHistoryResponse> = {},
+): CaseHistoryResponse {
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    label: 'Official Case Record',
+    count: events.length,
+    order: 'newest_first',
+    events,
+    ...overrides,
+  }
+}
+
+export function makeTimelineEvent(
+  overrides: Partial<CaseTimelineEvent> = {},
+): CaseTimelineEvent {
+  return {
+    event_id: 'timeline-evt-001',
+    case_uuid: SAMPLE_CASE_UUID,
+    step_type: 'step_1_initial',
+    event_type: 'case_created',
+    event_timestamp: '2026-07-01T12:00:00Z',
+    title: 'Case created',
+    details: 'Workspace opened',
+    references: {},
+    ...overrides,
+  }
+}
+
+export function makeTimelineResponse(
+  events: CaseTimelineEvent[] = [makeTimelineEvent()],
+  overrides: Partial<SavedCaseTimelineResponse> = {},
+): SavedCaseTimelineResponse {
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    order: 'newest_first',
+    count: events.length,
+    events,
+    ...overrides,
+  }
+}
+
+export function makeHistoryContextResponse(
+  overrides: Partial<CaseHistoryContextResponse> = {},
+): CaseHistoryContextResponse {
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    event_id: SAMPLE_HISTORY_EVENT_ID,
+    event_details: {
+      event_uuid: SAMPLE_HISTORY_EVENT_ID,
+      event_type: 'analysis_report_saved_and_printed',
+      title: 'Analysis report saved and printed',
+      details: 'Official analysis artifact created',
+      event_timestamp: '2026-07-24T20:00:00Z',
+      step_type: 'step_1_initial',
+    },
+    related_artifact: {
+      artifact_uuid: SAMPLE_ANALYSIS_ARTIFACT_UUID,
+      artifact_type: 'analysis_report',
+      title: 'Analysis Report v1',
+      version_number: 1,
+    },
+    related_conversation: {
+      message_ids: [1, 2],
+      messages: [
+        { id: 1, role: 'user', content: 'Can we grieve denied overtime?' },
+        {
+          id: 2,
+          role: 'assistant',
+          content: 'Article 8 may support a grievance.',
+        },
+      ],
+      bounded: true,
+      full_transcript_replayed: false,
+      window_size: 2,
+    },
+    related_evidence: [],
+    related_workflow_state: {
+      step_type: 'step_1_initial',
+      event_type: 'analysis_report_saved_and_printed',
+      note: 'Historical workflow snapshot from event linkage; not a rollback.',
+    },
+    related_decisions: [],
+    previous_event: {
+      event_id: 'timeline-evt-001',
+      title: 'Case created',
+    },
+    next_event: null,
+    retrieval_references: {
+      history_context: `/cases/${SAMPLE_CASE_UUID}/history/${SAMPLE_HISTORY_EVENT_ID}/context`,
+    },
+    record_class: 'official_record',
+    mutates_current_memory: false,
+    unavailable_fields: [],
+    ...overrides,
+  }
+}
+
+export function makeCompareResponse(
+  overrides: Partial<ArtifactCompareResponse> = {},
+): ArtifactCompareResponse {
+  const left = makeAnalysisArtifactDetail()
+  const right = makeAnalysisArtifactDetail({
+    artifact_uuid: SAMPLE_ANALYSIS_ARTIFACT_UUID_V2,
+    title: 'Analysis Report v2',
+    version_number: 2,
+    version_label: 'v2',
+    saved_at: '2026-07-25T10:00:00Z',
+    key_summary: {
+      primary_issue: 'Denied overtime — revised',
+      grievability: 'Likely grievable',
+      confidence: 'high',
+    },
+  })
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    artifact_type: 'analysis_report',
+    left,
+    right,
+    changed_summary_keys: ['primary_issue', 'confidence'],
+    left_only_summary_keys: [],
+    right_only_summary_keys: [],
+    version_delta: 1,
+    retrieval_note:
+      'Both official versions were retrieved automatically from the case record.',
+    ...overrides,
   }
 }
 

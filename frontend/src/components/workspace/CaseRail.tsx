@@ -250,8 +250,21 @@ export function CaseRail({ workspace, factsReadOnly = false }: Props) {
                 </li>
               ))}
             </ul>
+            <p className={styles.empty}>
+              <Link to={`/cases/${workspace.case_uuid}/artifacts`}>
+                Open Artifacts & History
+              </Link>
+            </p>
           </section>
-        ) : null}
+        ) : (
+          <section className={styles.section} aria-label="Artifacts and history">
+            <p className={styles.empty}>
+              <Link to={`/cases/${workspace.case_uuid}/artifacts`}>
+                Open Artifacts & History
+              </Link>
+            </p>
+          </section>
+        )}
 
         <CaseMemoryPanel memory={workspace.case_memory} />
       </nav>

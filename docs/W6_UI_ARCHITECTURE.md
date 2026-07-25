@@ -1,7 +1,7 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0–M6 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence, Analysis, Grievance)
-**Date:** 2026-07-24
+**Status:** W6 in progress — M0–M7 complete (Foundations through Artifacts & History)
+**Date:** 2026-07-25
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
 
@@ -17,8 +17,8 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | **M3 — Conversation** | **Complete** — `/cases/:caseUuid/conversation`; `GET .../messages` + `POST .../interactions`; retrieval statuses; citations/research panel; disclosures; facts-needed; no artifacts from chat |
 | **M4 — Evidence** | **Complete** — `/cases/:caseUuid/evidence`; `GET/POST .../assets`; metadata detail; Conversation `upload_refs` picker; no case-file RAG; no analysis/grievance/artifact side effects |
 | **M5 — Analysis** | **Complete** — `/cases/:caseUuid/analysis`; Generate temporary preview; Cancel/no-persist; Save / Save and Print; versions; HTML/PDF export; idempotency + `saved_pdf_failed` handling |
-| **M6 — Grievance** | **Complete** — `/cases/:caseUuid/grievance`; Generate → Edit → Validate → Save / Save and Print for Step 1/2 official forms only; temporary local React draft state; limited saved `grievance_form` list/detail/PDF (full Artifact Library is M7) |
-| M7 — Artifacts & history | Planned |
+| **M6 — Grievance** | **Complete** — `/cases/:caseUuid/grievance`; Generate → Edit → Validate → Save / Save and Print for Step 1/2 official forms only; temporary local React draft state; limited saved `grievance_form` list/detail/PDF |
+| **M7 — Artifacts & history** | **Complete** — `/cases/:caseUuid/artifacts`; Artifact Library (analysis + grievance), read-only detail/PDF, Official Case Record, timeline, compare, jump-to-context; no generation workflows; no M8 outcomes |
 | M8 — Workflow outcomes | Planned |
 | M9 — Sources research | Planned |
 | M10 — Polish & a11y | Planned |
@@ -717,39 +717,54 @@ Official templates supported by the W6 steward UI:
 ### 8.6 Saved grievance browsing (M6-limited)
 
 M6 lists/details/PDFs saved Step 1/2 `grievance_form` artifacts on the grievance
-route (`GET .../artifacts?artifact_type=grievance_form`, detail + PDF). This is
-**not** the general Artifact Library, Official Case Record browser, or artifact
-compare experience — those remain **M7**.
+route (`GET .../artifacts?artifact_type=grievance_form`, detail + PDF). M7 provides
+the general Artifact Library, Official Case Record browser, timeline, compare,
+and jump-to-context on `/cases/:caseUuid/artifacts`.
 
 ---
 
 ## 9. Artifact management
 
-### 9.1 Library
+### 9.1 Library (M7 complete)
 
-**API:** `GET /cases/{uuid}/artifacts` → `artifacts` + `groups` (`analysis_reports`, `grievances`, …)
+**Route:** `/cases/:caseUuid/artifacts` under `CaseWorkspaceShell` (nav:
+Artifacts & History).
 
-UI: `ArtifactLibrary` with grouped sections, version labels, printed flag, pdf_status (`pending` | `ready` | `failed`).
+**API:** `GET /cases/{uuid}/artifacts` → `artifacts` + `groups`
+(`analysis_reports`, `grievances`, …). Optional `artifact_type` filter:
+`analysis_report` | `grievance_form`.
 
-### 9.2 Detail and download
+UI: `ArtifactsPanel` / Artifact Library with type filter, newest/oldest sort
+(URL search params), version labels, printed flag, pdf_status
+(`pending` | `ready` | `failed`). Analysis and grievance artifacts both listed.
+`stored_path` is never rendered. Empty/loading/error states are accessible.
+
+### 9.2 Detail and download (M7 complete)
 
 | Action | API |
 |--------|-----|
-| View JSON/content | `GET .../artifacts/{artifactUuid}` |
-| Download PDF | `GET .../artifacts/{artifactUuid}/pdf` |
-| Analysis HTML preview | export preview routes |
+| View detail (read-only) | `GET .../artifacts/{artifactUuid}` |
+| Download/preview PDF | `GET .../artifacts/{artifactUuid}/pdf` (blob URL; revoke on close/case switch) |
+| Analysis HTML preview | export preview routes (Analysis workspace) |
 | Compare two versions | `POST .../artifacts/compare` |
 
-### 9.3 Official Case Record vs artifacts
+Detail is read-only. Opening an artifact does not regenerate or modify it.
+PDF unavailable / pending / failed states are steward-facing.
+
+### 9.3 Official Case Record vs artifacts (M7 complete)
 
 | Concept | Meaning | API |
 |---------|---------|-----|
-| Artifacts | Document library of saved analysis/grievance docs | `/artifacts` |
-| Official Case Record | Chronological meaningful saved events | `/cases/saved/{uuid}/history` or history in workspace |
-| Timeline | Steward timeline events | `/cases/saved/{uuid}/timeline` |
+| Artifacts | Document library of saved analysis/grievance docs | `/cases/:caseUuid/artifacts` |
+| Official Case Record | Chronological meaningful saved events | `GET /cases/saved/{uuid}/history` |
+| Timeline | Broader steward timeline events | `GET /cases/saved/{uuid}/timeline` |
 | Domain events | Internal projections — **do not primary-surface** | `/domain-events` (debug/advanced only) |
 
-Jump-to-context: `GET /cases/{uuid}/history/{event_id}/context` opens bounded window (messages/report slice) in a modal — does not dump full case.
+Jump-to-context: `GET /cases/{uuid}/history/{event_id}/context` opens a bounded
+read-only dialog (nearby messages, related artifact/workflow, event position).
+Escape closes; focus restores. Does not mutate Case Memory or create messages /
+artifacts. Comparison requires same `artifact_type` and distinct UUIDs; creates
+no new official artifact.
 
 ### 9.4 PDF export rules
 
@@ -1253,7 +1268,7 @@ Each milestone is independently testable against the live W5 API.
 | **M4 — Evidence** | **Complete** — UploadPanel + asset table/detail + upload_refs in composer | Upload and reference in chat; not authority RAG |
 | **M5 — Analysis** | **Complete** — Generate preview → Save / Save and Print → versions | Temporary vs saved clearly distinct; Official Case Record updates on Save |
 | **M6 — Grievance** | **Complete** — Generate → Edit → Validate → Save / Save and Print → Step 1/2 PDF | Official Step 1/2 forms only; limited saved grievance list/detail/PDF |
-| **M7 — Artifacts & history** | Library, detail, compare, Official Case Record, jump-to-context | Browse versions; download PDFs |
+| **M7 — Artifacts & history** | **Complete** — Library, detail, compare, Official Case Record, jump-to-context | Browse versions; download PDFs |
 | **M8 — Workflow outcomes** | Record outcome, close/settle/archive, workflow view | Lifecycle without DB edits |
 | **M9 — Sources research** | Source list/search/ask via approved safe boundary | Corpus inspection for RAG debugging (no browser API secrets) |
 | **M10 — Polish & a11y** | Empty/error states, keyboard, print routes, regression hooks | Exit criteria checklist green |
@@ -1357,10 +1372,10 @@ Estimates assume the W5 API remains stable; any backend gaps found during M3–M
 | Item | Value |
 |------|-------|
 | Path | `docs/W6_UI_ARCHITECTURE.md` |
-| Phase | W6 Interactive Steward Workspace — M0–M6 complete |
-| Implementation | M0–M6 complete (Foundations through Grievance Step 1/2); M7–M10 planned |
+| Phase | W6 Interactive Steward Workspace — M0–M7 complete |
+| Implementation | M0–M7 complete (Foundations through Artifacts & History); M8–M10 planned |
 | Supersedes | None (complements `saved_cases_ui_contract.md`) |
-| Next step | M7 Artifacts and History |
+| Next step | M8 Workflow outcomes |
 
 ---
 

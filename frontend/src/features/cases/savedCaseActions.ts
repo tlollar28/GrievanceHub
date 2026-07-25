@@ -1,4 +1,10 @@
 import type {
+  HistoryContextParams,
+  ListArtifactsParams,
+  ListCaseHistoryParams,
+  ListCaseTimelineParams,
+} from '../../api/types/artifacts'
+import type {
   ListSavedCasesParams,
   SavedCaseSummary,
   SavedCaseWorkspaceStatus,
@@ -87,4 +93,35 @@ export const grievanceKeys = {
   details: () => ['grievanceArtifact'] as const,
   detail: (caseUuid: string, artifactUuid: string) =>
     [...grievanceKeys.details(), caseUuid, artifactUuid] as const,
+}
+
+/**
+ * TanStack Query keys for M7 Artifact Library, Official Case Record,
+ * timeline, jump-to-context, and comparison.
+ */
+export const artifactKeys = {
+  all: ['caseArtifacts'] as const,
+  lists: () => [...artifactKeys.all, 'list'] as const,
+  list: (caseUuid: string, filters: ListArtifactsParams = {}) =>
+    [...artifactKeys.lists(), caseUuid, filters] as const,
+  details: () => [...artifactKeys.all, 'detail'] as const,
+  detail: (caseUuid: string, artifactUuid: string) =>
+    [...artifactKeys.details(), caseUuid, artifactUuid] as const,
+  histories: () => [...artifactKeys.all, 'history'] as const,
+  history: (caseUuid: string, params: ListCaseHistoryParams = {}) =>
+    [...artifactKeys.histories(), caseUuid, params] as const,
+  timelines: () => [...artifactKeys.all, 'timeline'] as const,
+  timeline: (caseUuid: string, params: ListCaseTimelineParams = {}) =>
+    [...artifactKeys.timelines(), caseUuid, params] as const,
+  contexts: () => [...artifactKeys.all, 'context'] as const,
+  context: (
+    caseUuid: string,
+    eventId: string,
+    params: HistoryContextParams = {},
+  ) => [...artifactKeys.contexts(), caseUuid, eventId, params] as const,
+  compares: () => [...artifactKeys.all, 'compare'] as const,
+  compare: (
+    caseUuid: string,
+    selection: { left: string; right: string },
+  ) => [...artifactKeys.compares(), caseUuid, selection] as const,
 }

@@ -386,6 +386,9 @@ describe('W6 M2 Create Case and Workspace Restoration', () => {
     expect(
       within(rail).queryByRole('heading', { name: 'Artifact summary' }),
     ).not.toBeInTheDocument()
+    expect(
+      within(rail).getByRole('link', { name: 'Open Artifacts & History' }),
+    ).toHaveAttribute('href', `/cases/${SAMPLE_CASE_UUID}/artifacts`)
   })
 
   it('shows honest empty memory/overview states', async () => {

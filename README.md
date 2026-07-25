@@ -17,8 +17,8 @@ This repository does not include production credentials, private case data, or o
   for official Step 1 and Step 2 forms only (AcroForm PDF fill/export)
 - Official grievance generation ends at Step 2 — Step 3 official forms are not
   generated in the product
-- Versioned saved artifacts and Official Case Record on the backend (general
-  Artifact Library browsing is not yet exposed in the React steward UI)
+- Versioned saved artifacts and Official Case Record, with React Artifact
+  Library / history browsing on `/cases/:caseUuid/artifacts`
 - Case asset uploads
 - Analysis report HTML and PDF export
 - Indexed labor-reference corpus management, including contract sources and Supervisor Manual materials
@@ -72,7 +72,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
-frontend/         # W6 React/TypeScript steward workspace (M0–M6)
+frontend/         # W6 React/TypeScript steward workspace (M0–M7)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -167,8 +167,13 @@ Validate → Save / Save and Print
 official Step 1 (`official_grievance_worksheet_step_1`) and Step 2
 (`official_standard_grievance_form_step_2`) forms only. Official grievance
 generation ends at Step 2. The grievance route can list/detail/PDF saved Step
-1/2 `grievance_form` artifacts for that case; a general Artifact Library /
-Official Case Record browser is not implemented yet (M7).
+1/2 `grievance_form` artifacts for that case. M7 adds Artifacts & History on
+`/cases/:caseUuid/artifacts`: case-scoped Artifact Library for
+`analysis_report` and `grievance_form`, read-only detail and PDF preview,
+Official Case Record and timeline browsing, compatible artifact comparison, and
+read-only jump-to-context. Browsing, comparing, and opening context do not
+create artifacts. Workflow outcomes (M8) and Sources administration remain out
+of scope.
 
 ```bash
 cd frontend

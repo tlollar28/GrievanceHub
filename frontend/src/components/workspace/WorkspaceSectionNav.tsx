@@ -40,6 +40,14 @@ export function WorkspaceSectionNav({ caseUuid }: Props) {
       >
         Grievance
       </NavLink>
+      <NavLink
+        to={`/cases/${caseUuid}/artifacts`}
+        className={({ isActive }) =>
+          `${styles.link}${isActive ? ` ${styles.active}` : ''}`
+        }
+      >
+        Artifacts & History
+      </NavLink>
     </nav>
   )
 }
