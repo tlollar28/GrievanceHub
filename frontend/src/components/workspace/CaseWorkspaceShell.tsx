@@ -31,21 +31,7 @@ export function CaseWorkspaceShell({
         <CaseRail workspace={workspace} factsReadOnly={factsReadOnly} />
         <div className={styles.main}>
           <div className={styles.mainInner}>
-            {children ?? (
-              <section
-                className={styles.panel}
-                aria-labelledby="workspace-main-heading"
-              >
-                <h2 id="workspace-main-heading" className={styles.panelHeading}>
-                  Case workspace
-                </h2>
-                <p className={styles.panelBody}>
-                  Case identity, overview, Case Memory, known facts, and
-                  workflow are restored from the server. Conversation and
-                  retrieval arrive in W6 M3.
-                </p>
-              </section>
-            )}
+            {children}
           </div>
         </div>
       </div>

@@ -68,7 +68,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
-frontend/         # W6 React/TypeScript steward workspace (M0–M2)
+frontend/         # W6 React/TypeScript steward workspace (M0–M3)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -143,8 +143,13 @@ indicator. M1 adds the Saved Cases dashboard/list, URL filters/search/pagination
 and open/reopen. M2 adds Create Case (`/cases/new` → `POST /cases/`), durable
 workspace restoration on `/cases/:caseUuid` (`GET /cases/{uuid}/workspace`), a
 `CaseWorkspaceShell` with Case Rail (overview, Case Memory, workflow, timeline
-slice), and known-facts editing (`PATCH /cases/{uuid}/facts`). Chat, retrieval,
-analysis, and grievance screens are not implemented yet.
+slice), and known-facts editing (`PATCH /cases/{uuid}/facts`). M3 adds
+case-scoped conversation on `/cases/:caseUuid/conversation`
+(`GET /cases/{uuid}/messages`, `POST /cases/{uuid}/interactions`) with retrieval
+status, citation chips, a research/detail panel, disclosures, and facts-needed
+prompts. Normal conversation does not create an analysis report, grievance, or
+saved artifact. Evidence upload, analysis generation, grievance drafting, and
+artifact library screens are not implemented yet.
 
 ```bash
 cd frontend

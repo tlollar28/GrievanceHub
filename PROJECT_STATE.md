@@ -12,17 +12,18 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M2 complete (Foundations, Saved Cases, Create/Restore) |
-| Next milestone | W6 M3 — Conversation |
+| Current implementation state | W6 in progress — M0–M3 complete (Foundations, Saved Cases, Create/Restore, Conversation) |
+| Next milestone | W6 M4 — Evidence |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Interactive Steward Workspace | In progress (M0–M2 complete; M3–M10 not started) |
+| W6 — Interactive Steward Workspace | In progress (M0–M3 complete; M4–M10 not started) |
 | W6 M0 — Frontend Foundations | Complete and committed |
 | W6 M1 — Saved Cases | Complete and committed |
 | W6 M2 — Create Case + workspace restore | Complete and committed |
+| W6 M3 — Conversation + retrieval | Complete and committed |
 | W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
@@ -72,6 +73,10 @@ from ordinary steward case work.
 - W6 M2 Create Case (`POST /cases/`), durable workspace restore
   (`GET /cases/{uuid}/workspace`), `CaseWorkspaceShell`, Case Rail, overview /
   Case Memory presentation, and known-facts editing (`PATCH /cases/{uuid}/facts`)
+- W6 M3 case conversation (`GET /cases/{uuid}/messages`,
+  `POST /cases/{uuid}/interactions`), retrieval-status UI, citation chips and
+  research panel, disclosures / facts-needed; normal chat creates no analysis
+  report, grievance, or artifact
 
 ## Normal chat vs analysis
 
@@ -123,6 +128,7 @@ Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
 | W6 M0 | Frontend foundations: Vite/React/TS shell, routing, Query client, typed API client, health indicator |
 | W6 M1 | Saved Cases dashboard/list, filters/search/pagination, open/reopen, workspace-entry route |
 | W6 M2 | Create Case, durable workspace restore, CaseWorkspaceShell, Case Rail, facts editor |
+| W6 M3 | Case conversation, message restore, interactions, retrieval status, citations |
 | CrossCraft retirement | Obsolete SPBS/cross-craft surface removed |
 
 The historical phase labels remain visible in Git history. They represent the
@@ -144,7 +150,7 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 | Phase | Status |
 |-------|--------|
 | W5 — Knowledge Foundation | Complete |
-| W6 — Interactive Steward Workspace | In progress (M0–M2 complete) |
+| W6 — Interactive Steward Workspace | In progress (M0–M3 complete) |
 | W7 — RAG Evaluation and Output Quality | Planned |
 | W8 — Multi-Agent Authority Workflow | Planned |
 | W9 — Security and Governance | Planned |
@@ -153,9 +159,10 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 W5 retrieval components are retrieval infrastructure. They are not completion of
 W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
-completion of W9 application security. W6 M0–M2 cover shell foundations, Saved
-Cases entry, Create Case, and durable workspace restore; chat, analysis, and
-grievance screens remain later milestones.
+completion of W9 application security. W6 M0–M3 cover shell foundations, Saved
+Cases entry, Create Case, durable workspace restore, and case conversation with
+retrieval/citations; Evidence (M4), analysis, and grievance screens remain later
+milestones.
 
 ## Related documentation
 
@@ -165,4 +172,7 @@ grievance screens remain later milestones.
 - [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md)
 - [`docs/temp/W5_FINAL_COMPLETION_REPORT.md`](docs/temp/W5_FINAL_COMPLETION_REPORT.md)
 - [`docs/temp/W6_M0_FRONTEND_FOUNDATIONS_REPORT.md`](docs/temp/W6_M0_FRONTEND_FOUNDATIONS_REPORT.md)
+- [`docs/temp/W6_M1_SAVED_CASES_REPORT.md`](docs/temp/W6_M1_SAVED_CASES_REPORT.md)
+- [`docs/temp/W6_M2_CREATE_WORKSPACE_REPORT.md`](docs/temp/W6_M2_CREATE_WORKSPACE_REPORT.md)
+- [`docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md`](docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md)
 - [`README.md`](README.md)

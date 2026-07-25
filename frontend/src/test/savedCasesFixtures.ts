@@ -11,6 +11,16 @@ import type {
   CreateCaseResponse,
   UpdateFactsResponse,
 } from '../api/types/cases'
+import type {
+  CaseInteractionResponse,
+  InteractionCitation,
+  RetrievalStatus,
+} from '../api/types/interactions'
+import type {
+  CaseMessage,
+  ListCaseMessagesResponse,
+} from '../api/types/messages'
+import { MESSAGES_DEFAULT_LIMIT } from '../api/types/messages'
 
 export const SAMPLE_CASE_UUID = '11111111-1111-4111-8111-111111111111'
 export const CLOSED_CASE_UUID = '22222222-2222-4222-8222-222222222222'
@@ -289,6 +299,101 @@ export function makeReopenResponse(
   }
 }
 
+export function makeCaseMessage(
+  overrides: Partial<CaseMessage> = {},
+): CaseMessage {
+  return {
+    id: 1,
+    role: 'user',
+    content: 'What does Article 10 say about overtime?',
+    metadata: { intent: 'follow_up' },
+    created_at: '2026-07-20T15:00:00Z',
+    ...overrides,
+  }
+}
+
+export function makeMessagesResponse(
+  messages: CaseMessage[] = [],
+  overrides: Partial<ListCaseMessagesResponse> = {},
+): ListCaseMessagesResponse {
+  const caseUuid = overrides.case_uuid ?? SAMPLE_CASE_UUID
+  return {
+    case_uuid: caseUuid,
+    count: messages.length,
+    total: messages.length,
+    limit: MESSAGES_DEFAULT_LIMIT,
+    offset: 0,
+    order: 'oldest_first',
+    has_more: false,
+    messages,
+    ...overrides,
+  }
+}
+
+export function makeCitation(
+  overrides: Partial<InteractionCitation> = {},
+): InteractionCitation {
+  return {
+    document_type: 'CBA',
+    document_name: 'Local 300 Agreement',
+    article_or_section: 'Article 10',
+    page: 12,
+    quote: 'Overtime shall be offered by seniority.',
+    grounded: true,
+    grounding_provenance: 'retrieved_passage',
+    ...overrides,
+  }
+}
+
+export function makeInteractionResponse(
+  overrides: Partial<CaseInteractionResponse> = {},
+): CaseInteractionResponse {
+  const citations = overrides.citations ?? [makeCitation()]
+  const retrievalStatus: RetrievalStatus =
+    overrides.retrieval_status === undefined
+      ? 'ok'
+      : (overrides.retrieval_status ?? 'ok')
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    status: 'completed',
+    message: 'Conversation saved. No analysis report was generated.',
+    workspace_current: true,
+    user_message: {
+      id: 101,
+      role: 'user',
+      content: 'What does Article 10 say about overtime?',
+      metadata: { intent: 'case_interaction' },
+      created_at: '2026-07-24T20:00:00Z',
+    },
+    assistant_message: {
+      id: 102,
+      role: 'assistant',
+      content: 'Article 10 addresses overtime distribution by seniority.',
+      metadata: {
+        intent: 'follow_up',
+        answer_type: 'argument',
+        citations,
+        disclosures: [],
+        facts_needed: [],
+      },
+      created_at: '2026-07-24T20:00:01Z',
+    },
+    ai_answer: 'Article 10 addresses overtime distribution by seniority.',
+    answer_type: 'argument',
+    citations,
+    disclosures: [],
+    facts_needed: [],
+    retrieval_status: retrievalStatus,
+    retrieval_error: false,
+    case_memory_update_status: 'not_applicable',
+    analysis_versions_created: 0,
+    grievance_draft_created: false,
+    timeline_events: [],
+    available_actions: [],
+    ...overrides,
+  }
+}
+
 export function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -304,9 +409,10 @@ export function installApiMock(
     input: RequestInfo | URL,
     init?: RequestInit,
   ) => Response | Promise<Response>,
-  options: { autoHealth?: boolean } = {},
+  options: { autoHealth?: boolean; autoEmptyMessages?: boolean } = {},
 ) {
   const autoHealth = options.autoHealth !== false
+  const autoEmptyMessages = options.autoEmptyMessages !== false
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
@@ -317,6 +423,15 @@ export function installApiMock(
             : input.url
       if (autoHealth && url.includes('/health')) {
         return jsonResponse({ status: 'healthy', service: 'GrievanceHub' })
+      }
+      if (
+        autoEmptyMessages &&
+        url.includes('/messages') &&
+        (!init?.method || init.method === 'GET')
+      ) {
+        const match = url.match(/\/cases\/([^/]+)\/messages/)
+        const caseUuid = match?.[1] ?? SAMPLE_CASE_UUID
+        return jsonResponse(makeMessagesResponse([], { case_uuid: caseUuid }))
       }
       return handler(input, init)
     },

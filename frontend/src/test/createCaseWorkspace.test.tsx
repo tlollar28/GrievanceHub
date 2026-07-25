@@ -143,7 +143,9 @@ describe('W6 M2 Create Case and Workspace Restoration', () => {
     })
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/cases/${SAMPLE_CASE_UUID}`)
+      expect(router.state.location.pathname).toBe(
+        `/cases/${SAMPLE_CASE_UUID}/conversation`,
+      )
     })
 
     expect(
@@ -284,7 +286,7 @@ describe('W6 M2 Create Case and Workspace Restoration', () => {
       screen.getByRole('heading', { name: 'Known facts' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/Conversation and retrieval arrive in W6 M3/i),
+      await screen.findByRole('heading', { name: 'Conversation' }),
     ).toBeInTheDocument()
   })
 
@@ -560,7 +562,7 @@ describe('W6 M2 Create Case and Workspace Restoration', () => {
     expect(screen.queryByText('Case Alpha')).not.toBeInTheDocument()
   })
 
-  it('does not call chat or interactions endpoints during M2 workspace flows', async () => {
+  it('does not call analysis, grievance, or artifact endpoints on workspace open', async () => {
     const fetchMock = installApiMock((input) => {
       const url = String(input)
       if (url.includes(`/cases/${SAMPLE_CASE_UUID}/workspace`)) {
@@ -571,13 +573,18 @@ describe('W6 M2 Create Case and Workspace Restoration', () => {
 
     renderApp({ initialEntries: [`/cases/${SAMPLE_CASE_UUID}`] })
     await screen.findByRole('heading', { name: 'Overtime dispute' })
+    await screen.findByRole('heading', { name: 'Conversation' })
 
-    for (const [request] of fetchMock.mock.calls) {
+    for (const [request, init] of fetchMock.mock.calls) {
       const url = String(request)
+      const method = init?.method ?? 'GET'
       expect(url).not.toMatch(/\/interactions/)
-      expect(url).not.toMatch(/\/messages/)
       expect(url).not.toMatch(/\/reports\//)
       expect(url).not.toMatch(/\/grievances\//)
+      expect(url).not.toMatch(/\/artifacts/)
+      if (url.includes('/messages')) {
+        expect(method).toBe('GET')
+      }
     }
   })
 })

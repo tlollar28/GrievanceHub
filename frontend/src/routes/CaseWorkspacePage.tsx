@@ -1,14 +1,19 @@
 import { useEffect, useRef } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, Outlet, useParams } from 'react-router-dom'
 import { ApiError } from '../api/client'
+import type { CaseWorkspace } from '../api/types/workspace'
 import { CaseWorkspaceShell } from '../components/workspace/CaseWorkspaceShell'
 import { useCaseWorkspaceQuery } from '../features/cases/useCaseWorkspaceQuery'
 import styles from './CaseWorkspacePage.module.css'
 
+export type CaseWorkspaceOutletContext = {
+  workspace: CaseWorkspace
+}
+
 /**
- * Durable workspace restoration for /cases/:caseUuid.
+ * Durable workspace restoration layout for /cases/:caseUuid/*.
  * Uses cached open/reopen payload when present, then authoritative
- * GET /cases/{uuid}/workspace.
+ * GET /cases/{uuid}/workspace. Child routes render in the shell main region.
  */
 export function CaseWorkspacePage() {
   const { caseUuid = '' } = useParams()
@@ -105,7 +110,14 @@ export function CaseWorkspacePage() {
 
   return (
     <div aria-busy={query.isFetching || undefined}>
-      <CaseWorkspaceShell workspace={workspace} />
+      <CaseWorkspaceShell workspace={workspace}>
+        <Outlet context={{ workspace } satisfies CaseWorkspaceOutletContext} />
+      </CaseWorkspaceShell>
     </div>
   )
+}
+
+/** Default /cases/:caseUuid → conversation. */
+export function CaseWorkspaceIndexRedirect() {
+  return <Navigate to="conversation" replace />
 }

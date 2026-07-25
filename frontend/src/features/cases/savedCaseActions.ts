@@ -45,3 +45,13 @@ export const workspaceKeys = {
   all: ['caseWorkspace'] as const,
   detail: (caseUuid: string) => [...workspaceKeys.all, caseUuid] as const,
 }
+
+/** TanStack Query keys for GET /cases/{uuid}/messages */
+export const messageKeys = {
+  all: ['caseMessages'] as const,
+  lists: () => [...messageKeys.all, 'list'] as const,
+  list: (
+    caseUuid: string,
+    pagination: { limit: number; offset: number; order: string },
+  ) => [...messageKeys.lists(), caseUuid, pagination] as const,
+}

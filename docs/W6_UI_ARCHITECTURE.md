@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0–M2 complete (Foundations, Saved Cases, Create/Restore)
+**Status:** W6 in progress — M0–M3 complete (Foundations, Saved Cases, Create/Restore, Conversation)
 **Date:** 2026-07-24
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -14,7 +14,7 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | **M0 — Foundations** | **Complete** — `frontend/` Vite/React/TS shell, design tokens, AppShell, typed apiClient, `/api` proxy, health ConnectionStatus, accessibility foundations, Vitest coverage |
 | **M1 — Saved cases** | **Complete** — Dashboard + Cases list against `GET /cases/saved`, URL filters/search/pagination, open/reopen, `/cases/:caseUuid` entry |
 | **M2 — Create + workspace restore** | **Complete** — Create Case form; durable `GET /cases/{uuid}/workspace` restore; `CaseWorkspaceShell` + Case Rail; overview/memory/facts; facts `PATCH` |
-| M3 — Conversation | Planned |
+| **M3 — Conversation** | **Complete** — `/cases/:caseUuid/conversation`; `GET .../messages` + `POST .../interactions`; retrieval statuses; citations/research panel; disclosures; facts-needed; no artifacts from chat |
 | M4 — Evidence | Planned |
 | M5 — Analysis | Planned |
 | M6 — Grievance | Planned |
@@ -506,7 +506,8 @@ On browser refresh:
 
 - Enter sends (Shift+Enter newline) on desktop.
 - Block empty sends.
-- Allow attaching existing case assets as `upload_refs` (picker of uploaded documents).
+- Attaching existing case assets as `upload_refs` is deferred to M4 Evidence (M3
+  sends text-only interactions with `source: "manual_ui"`).
 - Optional `fact_updates` advanced mode collapsed by default (power users); default fact edits go through Facts panel `PATCH`.
 
 ---
@@ -1214,7 +1215,7 @@ Each milestone is independently testable against the live W5 API.
 | **M0 — Foundations** | Vite/React/TS app, design tokens, AppShell, apiClient, proxy, health | Shell loads; `/health` indicator works |
 | **M1 — Saved cases** | Dashboard + Cases list + filters + open/reopen | Steward opens/reopens case into workspace shell |
 | **M2 — Create + workspace restore** | Create case; CaseWorkspaceShell; left rail overview/facts/step | New case appears; workspace restores memory/overview |
-| **M3 — Conversation** | Messages + interactions + citations + retrieval states | Chat with citations end-to-end; no artifacts created |
+| **M3 — Conversation** | **Complete** — Messages + interactions + citations + retrieval states | Chat with citations end-to-end; no artifacts created |
 | **M4 — Evidence** | UploadPanel + upload_refs in composer | Upload and reference in chat |
 | **M5 — Analysis** | Generate preview → Save / Save and Print → versions | Temporary vs saved clearly distinct; Official Case Record updates on Save |
 | **M6 — Grievance** | Generate draft → edit → validate → Save / Save and Print → Step 1/2 PDF | Official forms preview/download |

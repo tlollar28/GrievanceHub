@@ -119,9 +119,11 @@ export function KnownFactsEditor({
 
   return (
     <section
+      id="known-facts-editor"
       className={styles.section}
       aria-labelledby={headingId}
       aria-busy={busy || undefined}
+      tabIndex={-1}
     >
       <h3 id={headingId} className={styles.heading}>
         Known facts

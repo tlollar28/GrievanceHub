@@ -154,7 +154,9 @@ describe('Saved Cases M1', () => {
     await user.click(screen.getByRole('button', { name: 'Open' }))
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/cases/${SAMPLE_CASE_UUID}`)
+      expect(router.state.location.pathname).toBe(
+        `/cases/${SAMPLE_CASE_UUID}/conversation`,
+      )
     })
 
     expect(
@@ -213,7 +215,9 @@ describe('Saved Cases M1', () => {
     await user.click(screen.getByRole('button', { name: 'Reopen' }))
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/cases/${CLOSED_CASE_UUID}`)
+      expect(router.state.location.pathname).toBe(
+        `/cases/${CLOSED_CASE_UUID}/conversation`,
+      )
     })
   })
 
@@ -289,7 +293,9 @@ describe('Saved Cases M1', () => {
 
     await waitFor(() => {
       expect(reopenCalled).toBe(true)
-      expect(router.state.location.pathname).toBe(`/cases/${SAMPLE_CASE_UUID}`)
+      expect(router.state.location.pathname).toBe(
+        `/cases/${SAMPLE_CASE_UUID}/conversation`,
+      )
     })
   })
 

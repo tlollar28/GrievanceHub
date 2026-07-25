@@ -1,7 +1,7 @@
 # GrievanceHub Architecture
 
 Technical system design for the current GrievanceHub backend through W5, plus the
-W6 M0–M2 frontend steward shell now present on `main`.
+W6 M0–M3 frontend steward shell now present on `main`.
 
 For a concise product overview, see [`README.md`](../README.md). For the
 canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md). For the W6
@@ -28,7 +28,7 @@ React steward shell (frontend/) / API client / /ui shell
         └─► Local filesystem storage (case assets, generated reports)
 ```
 
-### Frontend steward shell (W6 M0–M2)
+### Frontend steward shell (W6 M0–M3)
 
 `frontend/` is a Vite + React + TypeScript application. Implemented:
 
@@ -41,11 +41,26 @@ React steward shell (frontend/) / API client / /ui shell
   restore (`GET /cases/{uuid}/workspace`), reusable `CaseWorkspaceShell` with
   Case context header and left Case Rail (overview, Case Memory, workflow,
   timeline/upload summaries), known-facts editing (`PATCH /cases/{uuid}/facts`)
+- **M3:** Case conversation on `/cases/:caseUuid/conversation` (default child of
+  the workspace layout). Message history via `GET /cases/{uuid}/messages`
+  (paginated; default `limit=50`, `order=oldest_first`). Turns via
+  `POST /cases/{uuid}/interactions` with `{ message, source: "manual_ui" }`
+  (request/response only — no SSE/WebSocket). Retrieval statuses
+  `ok | empty | failed | skipped`, citation chips + research panel (FollowUpCitation
+  shape), disclosures, and facts-needed CTAs into the Known Facts editor.
+  Interaction cache reconciliation merges persisted `user_message` /
+  `assistant_message` by id; Case Memory / workspace queries invalidate only when
+  `case_memory_update_status === "updated"`. Normal chat does not create reports,
+  grievances, or artifacts. Evidence remains M4; Analysis remains M5.
 
-Query ownership for workspace data uses TanStack Query key
-`["caseWorkspace", caseUuid]`. Open/reopen may seed that cache; the workspace
-route refetches on mount and treats the server response as authoritative.
-Conversation remains M3 — M2 does not call `/interactions` or `/messages`.
+Query ownership:
+
+- Workspace: `["caseWorkspace", caseUuid]`
+- Messages: `["caseMessages", "list", caseUuid, { limit, offset, order }]`
+
+Open/reopen may seed the workspace cache; the workspace layout refetches on mount
+and treats the server response as authoritative. Message history is loaded when
+the Conversation panel mounts and is not embedded in the lean workspace payload.
 
 The W6 browser must not receive source API secrets
 (`GRIEVANCEHUB_API_KEY` / `GRIEVANCEHUB_ADMIN_API_KEY`). Sources UI remains
@@ -411,7 +426,7 @@ portfolio repository.
 | Source processing lifecycle metadata | Implemented |
 | Bounded retrieval-agent architecture | Implemented |
 | Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Interactive steward workspace | In progress (W6; M0–M2 complete, M3–M10 not started) |
+| Interactive steward workspace | In progress (W6; M0–M3 complete, M4–M10 not started) |
 | Formal RAG evaluation / quality gates | Planned (W7) |
 | Multi-agent authority workflow | Planned (W8) |
 | Application identity / governance | Planned (W9) |
@@ -439,8 +454,9 @@ UI → Arbitration/LMOU → Deployment) is superseded.
 
 - **W6 — Interactive Steward Workspace (in progress):** usable end-to-end steward UI as
   a vertical slice; continuous RAG and generation validation through realistic
-  workflows. **M0–M2 are complete** (Foundations, Saved Cases, Create Case +
-  workspace restore). **M3 Conversation is next.** M3–M10 are not started.
+  workflows. **M0–M3 are complete** (Foundations, Saved Cases, Create Case +
+  workspace restore, Conversation + retrieval). **M4 Evidence is next.**
+  M4–M10 are not started.
 - **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
   citation/faithfulness metrics, and approved quality thresholds before
   multi-agent complexity.
