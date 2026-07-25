@@ -36,6 +36,13 @@ import type {
   SaveAndPrintResponse,
 } from '../api/types/reports'
 import type {
+  CaseArchiveResponse,
+  CaseCloseResponse,
+  CaseSettleResponse,
+  RecordStepOutcomeResponse,
+  WorkflowStateView,
+} from '../api/types/workflow'
+import type {
   ArtifactCompareResponse,
   CaseHistoryContextResponse,
   CaseHistoryItem,
@@ -1133,6 +1140,190 @@ export function makeCompareResponse(
     version_delta: 1,
     retrieval_note:
       'Both official versions were retrieved automatically from the case record.',
+    ...overrides,
+  }
+}
+
+export function makeWorkflowStateView(
+  overrides: Partial<WorkflowStateView> = {},
+): WorkflowStateView {
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    explicit_state: 'step_1_official',
+    current_grievance_step: 'step_1_initial',
+    case_status: 'open',
+    inferred: false,
+    inference_confidence: 'confirmed',
+    permitted_next_states: [
+      'step_1_awaiting_management_response',
+      'step_1_decision_required',
+      'step_1_resolved',
+    ],
+    updated_at: '2026-07-25T12:00:00Z',
+    ...overrides,
+  }
+}
+
+export function makeOutcomeResponse(
+  overrides: Partial<RecordStepOutcomeResponse> = {},
+): RecordStepOutcomeResponse {
+  const workflow =
+    (overrides.workflow as WorkflowStateView | undefined) ??
+    makeWorkflowStateView({
+      explicit_state: 'step_2_analysis',
+      current_grievance_step: 'step_2_appeal',
+      permitted_next_states: ['step_2_draft', 'step_2_decision_required'],
+    })
+  const workspace =
+    (overrides.workspace as CaseWorkspace | undefined) ??
+    makeWorkspace({
+      case_overview: {
+        ...makeWorkspace().case_overview,
+        current_step: 'step_2_appeal',
+        explicit_workflow_state: 'step_2_analysis',
+      },
+      workspace_summary: {
+        ...makeWorkspace().workspace_summary,
+        current_step_type: 'step_2_appeal',
+      },
+      step_progression: {
+        has_step_progression: true,
+        workspace_status: 'open',
+        current_step_type: 'step_2_appeal',
+        steps: [
+          {
+            step_type: 'step_1_initial',
+            status: 'appealed_to_next_step',
+            is_closed: true,
+          },
+          {
+            step_type: 'step_2_appeal',
+            status: 'open',
+            is_closed: false,
+          },
+        ],
+      },
+    })
+
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    outcome: {
+      outcome_id: 'outcome-1',
+      step_type: 'step_1_initial',
+      outcome_type: 'denied',
+      decision_summary: 'Management denied Step 1',
+      decision_date: '2026-07-25',
+      decision_maker_name: null,
+      decision_maker_title: null,
+      decision_document_refs: [],
+      steward_notes: null,
+      step_closed: true,
+      case_closed: false,
+      appeal_requested: true,
+      next_step_target: 'step_2_appeal',
+      recorded_at: '2026-07-25T13:00:00Z',
+    },
+    step: {
+      step_type: 'step_1_initial',
+      step_number: 1,
+      status: 'appealed_to_next_step',
+      is_closed: true,
+      outcomes: [],
+    },
+    workflow,
+    case_overview: workspace.case_overview as unknown as Record<string, unknown>,
+    workspace,
+    ...overrides,
+  }
+}
+
+export function makeCloseResponse(
+  overrides: Partial<CaseCloseResponse> = {},
+): CaseCloseResponse {
+  const workspace =
+    (overrides.workspace as CaseWorkspace | undefined) ??
+    makeWorkspace({
+      status: 'closed',
+      workspace_summary: {
+        ...makeWorkspace().workspace_summary,
+        status: 'closed',
+        workspace_status: 'closed',
+      },
+      case_overview: {
+        ...makeWorkspace().case_overview,
+        current_status: 'closed',
+        explicit_workflow_state: 'closed',
+      },
+    })
+  return {
+    case: makeSummary({
+      workspace_status: 'closed',
+      legacy_case_status: 'closed',
+    }),
+    action_taken: 'closed',
+    message: 'Case closed; permanent record retained.',
+    closure: { outcome: 'Resolved at Step 1' },
+    workspace,
+    ...overrides,
+  }
+}
+
+export function makeSettleResponse(
+  overrides: Partial<CaseSettleResponse> = {},
+): CaseSettleResponse {
+  const workspace =
+    (overrides.workspace as CaseWorkspace | undefined) ??
+    makeWorkspace({
+      status: 'settled',
+      workspace_summary: {
+        ...makeWorkspace().workspace_summary,
+        status: 'settled',
+        workspace_status: 'settled',
+      },
+      case_overview: {
+        ...makeWorkspace().case_overview,
+        current_status: 'settled',
+        explicit_workflow_state: 'settled',
+      },
+    })
+  return {
+    case: makeSummary({
+      workspace_status: 'settled',
+      legacy_case_status: 'settled',
+    }),
+    action_taken: 'settled',
+    message: 'Case settled; permanent record retained.',
+    settlement: { settlement_notes: 'Settled locally' },
+    workspace,
+    ...overrides,
+  }
+}
+
+export function makeArchiveResponse(
+  overrides: Partial<CaseArchiveResponse> = {},
+): CaseArchiveResponse {
+  const workspace =
+    (overrides.workspace as CaseWorkspace | undefined) ??
+    makeWorkspace({
+      status: 'archived',
+      workspace_summary: {
+        ...makeWorkspace().workspace_summary,
+        status: 'archived',
+        workspace_status: 'archived',
+      },
+      case_overview: {
+        ...makeWorkspace().case_overview,
+        current_status: 'archived',
+      },
+    })
+  return {
+    case: makeSummary({
+      workspace_status: 'archived',
+      legacy_case_status: 'archived',
+    }),
+    action_taken: 'archived',
+    message: 'Case archived; permanent record retained.',
+    workspace,
     ...overrides,
   }
 }

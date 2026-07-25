@@ -152,6 +152,11 @@ export function CaseRail({ workspace, factsReadOnly = false }: Props) {
               </div>
             ) : null}
           </dl>
+          <p className={styles.empty}>
+            <Link to={`/cases/${workspace.case_uuid}/workflow`}>
+              Open Workflow
+            </Link>
+          </p>
         </section>
 
         <section

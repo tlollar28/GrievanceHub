@@ -48,6 +48,14 @@ export function WorkspaceSectionNav({ caseUuid }: Props) {
       >
         Artifacts & History
       </NavLink>
+      <NavLink
+        to={`/cases/${caseUuid}/workflow`}
+        className={({ isActive }) =>
+          `${styles.link}${isActive ? ` ${styles.active}` : ''}`
+        }
+      >
+        Workflow
+      </NavLink>
     </nav>
   )
 }

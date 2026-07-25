@@ -1,0 +1,363 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--font-size-section);
+  font-weight: 650;
+}
+
+.subhead {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  max-width: 52rem;
+}
+
+.disclosure {
+  margin: 0;
+  border-left: 3px solid var(--accent);
+  padding-left: var(--space-3);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  max-width: 52rem;
+}
+
+.warningDisclosure {
+  margin: 0;
+  border-left: 3px solid var(--warning);
+  padding-left: var(--space-3);
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  max-width: 52rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-4);
+}
+
+.sectionHeading {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: 650;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.metaItem dt {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.metaItem dd {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+}
+
+.rawValue {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.milestoneList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.milestone {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  align-items: start;
+  border: 1px solid var(--border);
+  padding: var(--space-3);
+  background: var(--bg-subtle);
+}
+
+.milestoneCurrent {
+  border-color: var(--accent);
+  background: var(--bg-surface);
+}
+
+.milestoneCompleted {
+  opacity: 0.95;
+}
+
+.milestoneFuture,
+.milestoneUnavailable {
+  opacity: 0.75;
+}
+
+.statusTag {
+  font-size: var(--font-size-meta);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  min-width: 6.5rem;
+}
+
+.milestoneBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.milestoneLabel {
+  margin: 0;
+  font-weight: 650;
+}
+
+.milestoneDetail {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.transitionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.transitionChip {
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.55rem;
+  font-size: var(--font-size-meta);
+  background: var(--bg-surface);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 40rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fieldLabel {
+  font-size: var(--font-size-meta);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.input,
+.select,
+.textarea {
+  font: inherit;
+  font-size: var(--font-size-body);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 0.4rem 0.7rem;
+}
+
+.textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.checkboxRow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.checkboxRow input {
+  margin-top: 0.25rem;
+}
+
+.effectBox {
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  padding: var(--space-3);
+  font-size: var(--font-size-body);
+}
+
+.errorSummary {
+  border: 1px solid var(--danger);
+  background: var(--bg-surface);
+  padding: var(--space-3);
+  color: var(--text-primary);
+}
+
+.errorSummary ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.button,
+.secondaryButton,
+.dangerButton {
+  font: inherit;
+  font-size: var(--font-size-body);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+}
+
+.button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.dangerButton {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.button:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled,
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible,
+.button:focus-visible,
+.secondaryButton:focus-visible,
+.dangerButton:focus-visible,
+.checkboxRow input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.lifecycleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-3);
+}
+
+.lifecycleCard {
+  border: 1px solid var(--border);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--bg-surface);
+}
+
+.lifecycleCard p {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.statusBanner {
+  border: 1px solid var(--border);
+  padding: var(--space-3);
+  background: var(--bg-subtle);
+}
+
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(27, 36, 48, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  padding: var(--space-4);
+}
+
+.dialog {
+  width: min(32rem, 100%);
+  max-height: min(90vh, 40rem);
+  overflow: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .secondaryButton,
+  .dangerButton,
+  .dialogBackdrop,
+  .dialog {
+    transition: none;
+  }
+}

@@ -12,14 +12,14 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M7 complete (Foundations through Artifacts & History) |
-| Next milestone | W6 M8 — Workflow outcomes |
+| Current implementation state | W6 in progress — M0–M8 complete (Foundations through Workflow outcomes) |
+| Next milestone | W6 M9 — Sources research |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Interactive Steward Workspace | In progress (M0–M7 complete; M8–M10 not started) |
+| W6 — Interactive Steward Workspace | In progress (M0–M8 complete; M9–M10 not started) |
 | W6 M0 — Frontend Foundations | Complete and committed |
 | W6 M1 — Saved Cases | Complete and committed |
 | W6 M2 — Create Case + workspace restore | Complete and committed |
@@ -27,7 +27,8 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 | W6 M4 — Evidence uploads + asset references | Complete and committed |
 | W6 M5 — Analysis generate / preview / save | Complete and committed |
 | W6 M6 — Grievance generate / edit / validate / save | Complete and committed |
-| W6 M7 — Artifacts and History | Complete (implementation validated; commit pending) |
+| W6 M7 — Artifacts and History | Complete and committed |
+| W6 M8 — Workflow outcomes | Complete and committed |
 | W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
@@ -109,8 +110,15 @@ from ordinary steward case work.
   broader timeline (`GET /cases/saved/{uuid}/timeline`), jump-to-context
   (`GET /cases/{uuid}/history/{event_id}/context`), and compatible artifact
   comparison (`POST /cases/{uuid}/artifacts/compare`). Browsing/compare/context
-  create no artifacts. M8 workflow outcomes and Sources administration remain
-  out of scope.
+  create no artifacts.
+- W6 M8 Workflow & outcomes workspace (`/cases/:caseUuid/workflow`) with current
+  workflow/step display, progression visualization, Record Outcome
+  (`POST /cases/{uuid}/outcomes`), same-case appeal progression, and explicit
+  close / settle / archive / reopen via saved-case lifecycle routes. Outcome and
+  lifecycle actions do not create analysis or grievance artifacts. Official
+  form generation remains Step 1/2 only; Step 3 may appear as workflow tracking
+  with an unsupported-form disclosure. Sources administration remains out of
+  scope.
 
 ## Normal chat vs analysis
 
@@ -167,6 +175,7 @@ Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
 | W6 M5 | Analysis generate / temporary preview / Save / Save and Print / versions |
 | W6 M6 | Grievance Generate → Edit → Validate → Save / Save and Print (Step 1/2) |
 | W6 M7 | Artifact Library, Official Case Record, timeline, compare, jump-to-context |
+| W6 M8 | Workflow outcomes, same-case appeal, close/settle/archive/reopen UI |
 | CrossCraft retirement | Obsolete SPBS/cross-craft surface removed |
 
 The historical phase labels remain visible in Git history. They represent the
@@ -188,7 +197,7 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 | Phase | Status |
 |-------|--------|
 | W5 — Knowledge Foundation | Complete |
-| W6 — Interactive Steward Workspace | In progress (M0–M7 complete) |
+| W6 — Interactive Steward Workspace | In progress (M0–M8 complete) |
 | W7 — RAG Evaluation and Output Quality | Planned |
 | W8 — Multi-Agent Authority Workflow | Planned |
 | W9 — Security and Governance | Planned |
@@ -197,14 +206,14 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 W5 retrieval components are retrieval infrastructure. They are not completion of
 W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
-completion of W9 application security. W6 M0–M7 cover shell foundations, Saved
+completion of W9 application security. W6 M0–M8 cover shell foundations, Saved
 Cases entry, Create Case, durable workspace restore, case conversation with
 retrieval/citations, evidence uploads with `upload_refs`, Analysis
 generate/preview/save, Grievance Generate → Edit → Validate → Save / Save and
-Print for official Step 1 and Step 2 forms only, and Artifacts & History
-browsing (library, Official Case Record, timeline, compare, jump-to-context).
-Workflow outcomes (M8) and later screens remain later milestones. Case evidence
-uploads are not indexed into the authority corpus.
+Print for official Step 1 and Step 2 forms only, Artifacts & History browsing,
+and Workflow outcomes / case lifecycle controls. Sources research (M9) and polish
+(M10) remain later milestones. Case evidence uploads are not indexed into the
+authority corpus.
 
 ## Related documentation
 
@@ -221,4 +230,5 @@ uploads are not indexed into the authority corpus.
 - [`docs/temp/W6_M5_ANALYSIS_REPORT.md`](docs/temp/W6_M5_ANALYSIS_REPORT.md)
 - [`docs/temp/W6_M6_GRIEVANCE_REPORT.md`](docs/temp/W6_M6_GRIEVANCE_REPORT.md)
 - [`docs/temp/W6_M7_ARTIFACTS_HISTORY_REPORT.md`](docs/temp/W6_M7_ARTIFACTS_HISTORY_REPORT.md)
+- [`docs/temp/W6_M8_WORKFLOW_OUTCOMES_REPORT.md`](docs/temp/W6_M8_WORKFLOW_OUTCOMES_REPORT.md)
 - [`README.md`](README.md)

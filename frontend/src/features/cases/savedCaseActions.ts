@@ -125,3 +125,9 @@ export const artifactKeys = {
     selection: { left: string; right: string },
   ) => [...artifactKeys.compares(), caseUuid, selection] as const,
 }
+
+/** TanStack Query keys for GET /cases/{uuid}/workflow */
+export const workflowKeys = {
+  all: ['caseWorkflow'] as const,
+  detail: (caseUuid: string) => [...workflowKeys.all, caseUuid] as const,
+}

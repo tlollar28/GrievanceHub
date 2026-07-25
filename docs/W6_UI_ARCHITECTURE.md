@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0–M7 complete (Foundations through Artifacts & History)
+**Status:** W6 in progress — M0–M8 complete (Foundations through Workflow outcomes)
 **Date:** 2026-07-25
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -18,8 +18,8 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | **M4 — Evidence** | **Complete** — `/cases/:caseUuid/evidence`; `GET/POST .../assets`; metadata detail; Conversation `upload_refs` picker; no case-file RAG; no analysis/grievance/artifact side effects |
 | **M5 — Analysis** | **Complete** — `/cases/:caseUuid/analysis`; Generate temporary preview; Cancel/no-persist; Save / Save and Print; versions; HTML/PDF export; idempotency + `saved_pdf_failed` handling |
 | **M6 — Grievance** | **Complete** — `/cases/:caseUuid/grievance`; Generate → Edit → Validate → Save / Save and Print for Step 1/2 official forms only; temporary local React draft state; limited saved `grievance_form` list/detail/PDF |
-| **M7 — Artifacts & history** | **Complete** — `/cases/:caseUuid/artifacts`; Artifact Library (analysis + grievance), read-only detail/PDF, Official Case Record, timeline, compare, jump-to-context; no generation workflows; no M8 outcomes |
-| M8 — Workflow outcomes | Planned |
+| **M7 — Artifacts & history** | **Complete** — `/cases/:caseUuid/artifacts`; Artifact Library (analysis + grievance), read-only detail/PDF, Official Case Record, timeline, compare, jump-to-context; no generation workflows |
+| **M8 — Workflow outcomes** | **Complete** — `/cases/:caseUuid/workflow`; workflow/step display, progression, Record Outcome, same-case appeal, close/settle/archive/reopen; no artifact creation; Step 3 form generation unsupported |
 | M9 — Sources research | Planned |
 | M10 — Polish & a11y | Planned |
 
@@ -1269,7 +1269,7 @@ Each milestone is independently testable against the live W5 API.
 | **M5 — Analysis** | **Complete** — Generate preview → Save / Save and Print → versions | Temporary vs saved clearly distinct; Official Case Record updates on Save |
 | **M6 — Grievance** | **Complete** — Generate → Edit → Validate → Save / Save and Print → Step 1/2 PDF | Official Step 1/2 forms only; limited saved grievance list/detail/PDF |
 | **M7 — Artifacts & history** | **Complete** — Library, detail, compare, Official Case Record, jump-to-context | Browse versions; download PDFs |
-| **M8 — Workflow outcomes** | Record outcome, close/settle/archive, workflow view | Lifecycle without DB edits |
+| **M8 — Workflow outcomes** | **Complete** — Record outcome, close/settle/archive, workflow view | Lifecycle without DB edits |
 | **M9 — Sources research** | Source list/search/ask via approved safe boundary | Corpus inspection for RAG debugging (no browser API secrets) |
 | **M10 — Polish & a11y** | Empty/error states, keyboard, print routes, regression hooks | Exit criteria checklist green |
 
@@ -1372,10 +1372,10 @@ Estimates assume the W5 API remains stable; any backend gaps found during M3–M
 | Item | Value |
 |------|-------|
 | Path | `docs/W6_UI_ARCHITECTURE.md` |
-| Phase | W6 Interactive Steward Workspace — M0–M7 complete |
-| Implementation | M0–M7 complete (Foundations through Artifacts & History); M8–M10 planned |
+| Phase | W6 Interactive Steward Workspace — M0–M8 complete |
+| Implementation | M0–M8 complete (Foundations through Workflow outcomes); M9–M10 planned |
 | Supersedes | None (complements `saved_cases_ui_contract.md`) |
-| Next step | M8 Workflow outcomes |
+| Next step | M9 Sources research |
 
 ---
 

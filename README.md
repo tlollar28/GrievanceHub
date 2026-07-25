@@ -72,7 +72,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
-frontend/         # W6 React/TypeScript steward workspace (M0–M7)
+frontend/         # W6 React/TypeScript steward workspace (M0–M8)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -172,8 +172,13 @@ generation ends at Step 2. The grievance route can list/detail/PDF saved Step
 `analysis_report` and `grievance_form`, read-only detail and PDF preview,
 Official Case Record and timeline browsing, compatible artifact comparison, and
 read-only jump-to-context. Browsing, comparing, and opening context do not
-create artifacts. Workflow outcomes (M8) and Sources administration remain out
-of scope.
+create artifacts. M8 adds Workflow & outcomes on `/cases/:caseUuid/workflow`:
+current workflow/step display, progression visualization, Record Outcome
+(`POST /cases/{uuid}/outcomes`) with same-case appeal, and explicit close /
+settle / archive / reopen via saved-case lifecycle routes. Outcome and lifecycle
+actions do not create analysis or grievance artifacts. Official form generation
+remains Step 1/2 only; Step 3 may appear as workflow tracking with an
+unsupported-form disclosure. Sources administration (M9) remains out of scope.
 
 ```bash
 cd frontend
