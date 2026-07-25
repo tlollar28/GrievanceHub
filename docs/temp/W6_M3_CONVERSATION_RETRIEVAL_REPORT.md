@@ -123,26 +123,94 @@
 37. **Backend test results:** PASS — 36 passed
 38. **Direct FastAPI health:** `GET http://127.0.0.1:8000/health` → 200 `{"status":"healthy","service":"GrievanceHub"}`
 39. **Vite proxy result:** `GET http://127.0.0.1:5173/api/health` → 200 same body
-40. **Live interaction result:** PASS — created `W6 M3 local conversation smoke test` (`dbc043b3-8b4b-4c8e-99f2-8ba8c0d26782`); `POST .../interactions` → `status=completed`, `retrieval_status=empty`, answer length 104, `analysis_versions_created=0`
-41. **Live citation result:** NOT APPLICABLE for this live turn (`retrieval_status=empty`, 0 citations). Citation UI covered by frontend unit tests with fixtures shaped like FollowUpCitation.
-42. **Refresh restoration result:** Second messages GET returned total=2 (`user,assistant`) for the same case UUID
+40. **Live interaction result (initial M3 smoke):** created case titled `W6 M3 local conversation smoke test` (`dbc043b3-8b4b-4c8e-99f2-8ba8c0d26782`); `POST .../interactions` with that same non-authority string → `status=completed`, `retrieval_status=empty`, citations=`[]`, `analysis_versions_created=0`. This was an invalid RAG smoke query, not a corpus/retrieval outage (see reopen section below).
+41. **Live citation result (initial M3 smoke):** NOT demonstrated — empty retrieval from the non-authority smoke string. Citation UI remained covered by frontend unit tests only until reopen validation.
+42. **Refresh restoration result (initial M3 smoke):** Second messages GET returned total=2 (`user,assistant`) for the same case UUID
 43. **Case-switch isolation result:** Second case messages total=0; UUID distinct — PASS
-44. **Verification that no artifact/report/grievance was created:** Live workspace `analysis_report_count=0`, `official_grievance_count=0`, `official_artifacts=[]`; interaction `grievance_draft_created=false`
+44. **Verification that no artifact/report/grievance was created:** Live workspace `report_versions=[]`, `official_artifacts=[]`; interaction `grievance_draft_created=false`, `analysis_versions_created=0`
 45. **Final npm audit result:** exit 1 — 2 high (React Router RSC CSRF advisory GHSA-qwww-vcr4-c8h2); **did not** run `npm audit fix --force`
 46. **React Router advisory status:** Unchanged classification from M0–M2 — Data Mode SPA only; no RSC / Framework Mode / unstable RSC APIs introduced
 47. **Documentation updates:** `PROJECT_STATE.md`, `README.md`, `docs/ARCHITECTURE.md`, `docs/W6_UI_ARCHITECTURE.md`, this report
-48. **Files deliberately excluded:** `docs/temp/_explain_embedding.py`, `_pytest_run1.txt` … `_pytest_run3b.txt`
+48. **Files deliberately excluded:** `docs/temp/_explain_embedding.py`, `_pytest_run1.txt` … `_pytest_run3b.txt`, live reopen helper artifacts (`_m3_live_*`)
 49. **Known non-blocking limitations**
     - Messages OpenAPI response schema gap
     - Interaction citation OpenAPI typed as free dicts
-    - Live smoke corpus returned `retrieval_status=empty` (no citations in that environment turn)
     - React Router advisory remains (accepted; no force fix)
     - `upload_refs` attachment UI deferred to M4
+    - `article_or_section` may be empty on some CIM chunks even when page is present (page shown when available)
 50. **M4 handoff items**
     - Evidence upload UI and asset listing
     - Optional `upload_refs` in conversation composer when architecture requires
     - Do not start analysis/grievance from Evidence milestone
-51. **Final verdict before commit:** **PASS WITH NON-BLOCKING FINDINGS**
-    - Non-blocking: React Router advisory; OpenAPI schema gaps; live empty retrieval (citation UI unit-tested)
+51. **Initial M3 commit verdict:** **PASS WITH NON-BLOCKING FINDINGS** (later superseded for retrieval by reopen validation below)
+    - Non-blocking at commit time: React Router advisory; OpenAPI schema gaps; live citation path not yet proven with an authority query
 
-**Commit message:** `feat(w6): implement case conversation and retrieval`
+**Initial commit message:** `feat(w6): implement case conversation and retrieval`
+
+---
+
+## Live retrieval reopen validation (post-M3)
+
+52. **Reopen date:** 2026-07-24
+53. **M4 status:** Not started
+54. **Root cause of prior `retrieval_status=empty` / `citations=[]`**
+    - The initial live smoke sent the interaction message `W6 M3 local conversation smoke test` (same string used as the create-case `question`).
+    - That string has no indexed authority match; the orchestrator correctly returned empty results.
+    - Indexed corpus was present and queryable. Direct retrieval with the known-good backend-test query succeeds.
+    - Not a frontend citation bug, not an empty corpus, not a Vite proxy failure.
+55. **Indexed source inventory (live DB at reopen)**
+    - CONTRACT `NPMHU National Agreement 2022-2025` (id=1): 325 embedded chunks (`processing_status=pending`, admitted via ContractAgent legacy pre-W5 arm)
+    - CIM `NPMHU-USPS Contract Interpretation Manual v6` (id=6): 1002 embedded chunks
+    - ELM: 42 embedded; SUPERVISOR_MANUAL (EL-921 / EL-801 / F-21): 49+101+383 embedded (`processing_status=completed`)
+    - Total embedded chunks: **1902**
+    - Known authority passage used: CIM Article 10 / page 137 leave-cancellation Q&A (also CONTRACT Article 10.5 / page 44 advance-commitment language present)
+56. **Known-good source used:** `NPMHU-USPS Contract Interpretation Manual v6` (CIM)
+57. **Exact question:** `Can management cancel approved leave?`
+    - Same question used throughout backend chat/retrieval tests (`tests/test_chat_source_retrieval.py`, `tests/test_case_api.py`, `tests/test_follow_up_chat.py`, etc.)
+58. **Direct backend retrieval result**
+    - `FollowUpChatService.retrieve_indexed_source_passages(...)` → `retrieval_status=ok`, `passage_count=4`, top hit CIM p.137, provenance `retrieved_passage`
+59. **Direct backend / Vite-proxy interaction result**
+    - Case `e2f86d84-66fc-4a17-be92-644939c09335`
+    - `POST /api/cases/{uuid}/interactions` via Vite proxy → `status=completed`, `retrieval_status=ok`, **citation_count=1**, `analysis_versions_created=0`, `grievance_draft_created=false`
+60. **Live UI retrieval result** (Playwright against real Vite UI + proxy; no frontend mocks)
+    - Case `4c5543a3-20ca-43cd-b697-3eda953a3f06`
+    - Composer sent the known-good question through `/cases/{uuid}/conversation`
+    - Interaction response: `retrieval_status=ok`, citation_count=1
+    - UI showed retrieval banner: “matched authorities available for this answer.”
+    - Citation chip `CIM` opened Research panel
+61. **Citation count:** **1**
+62. **Citation document and location**
+    - Document: `NPMHU-USPS Contract Interpretation Manual v6`
+    - Type: `CIM`
+    - Page: **137**
+    - Article/section field: empty string on this chunk (page available and shown)
+63. **Grounded status:** `grounded=true`
+64. **Grounding provenance:** `retrieved_passage`
+65. **Grounded source quote:** `management should give reasonable consideration to requests for annual leave cancellation, unless otherwise provided in the Local Memorandum of Understanding.`
+66. **Refresh-persistence result:** PASS
+    - Browser reload restored assistant turn with citation chip
+    - Research panel again showed document, page 137, grounded status, `retrieved_passage`, and source excerpt
+    - `GET .../messages` assistant `metadata.citations` retained 1 citation with the same fields
+67. **No report / grievance / artifact created:** confirmed
+    - Interaction: `analysis_versions_created=0`, `grievance_draft_created=false`
+    - Workspace: `report_versions=[]`, `official_artifacts=[]`, `latest_report=null`
+    - DB: `case_report_versions` count=0 for the UI case; messages=2
+68. **Code changes:** none required — empty result was caused by the prior non-authority smoke query
+69. **Exact tests / commands run during reopen**
+    ```bash
+    # inventory + leave-passage probes via SessionLocal SQL
+    # direct retrieval:
+    .\venv\Scripts\python.exe -c "FollowUpChatService.retrieve_indexed_source_passages(...)"
+    # health + proxy interaction with known-good query
+    # Playwright live UI script against http://127.0.0.1:5173 (real proxy)
+    ```
+    - FastAPI health: 200
+    - Vite `/api/health` proxy: 200
+    - Direct retrieval: `ok` / 4 passages
+    - Proxy interaction: `ok` / 1 citation
+    - Live UI + refresh: PASS (`pass=true`)
+    - No defect found → no new backend regression test added; no frontend suite re-run required for a code fix
+70. **Revised final verdict:** **PASS**
+    - Live RAG + citation rendering demonstrated through the Vite UI/proxy
+    - Remaining non-blocking items: React Router advisory; OpenAPI schema gaps; optional empty `article_or_section` when page is present
+71. **Follow-up commit message (report correction only):** `fix(w6): verify live retrieval and citations`
