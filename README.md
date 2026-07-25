@@ -13,8 +13,12 @@ This repository does not include production credentials, private case data, or o
 - Case Memory projected from domain events
 - Finite-state workflow tracking
 - Explicit analysis-report generation (temporary preview → Save / Save and Print)
-- Explicit grievance draft generation with official Step 1 and Step 2 AcroForm PDF fill
-- Artifacts library and Official Case Record for saved work
+- Explicit grievance generation: Generate → Edit → Validate → Save / Save and Print
+  for official Step 1 and Step 2 forms only (AcroForm PDF fill/export)
+- Official grievance generation ends at Step 2 — Step 3 official forms are not
+  generated in the product
+- Versioned saved artifacts and Official Case Record on the backend (general
+  Artifact Library browsing is not yet exposed in the React steward UI)
 - Case asset uploads
 - Analysis report HTML and PDF export
 - Indexed labor-reference corpus management, including contract sources and Supervisor Manual materials
@@ -68,7 +72,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
-frontend/         # W6 React/TypeScript steward workspace (M0–M5)
+frontend/         # W6 React/TypeScript steward workspace (M0–M6)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -156,8 +160,15 @@ context only — it is not authority-corpus RAG. M5 adds Analysis on
 Cancel (no version) or Save / Save and Print (`prepare_pdf` false/true,
 idempotency keys, `saved` / `saved_pdf_failed` / `idempotent_replay`), plus
 saved-version list/detail and HTML/PDF export with official-versus-working-draft
-labels. Grievance drafting and general artifact-library screens are not
-implemented yet.
+labels. M6 adds Grievance on `/cases/:caseUuid/grievance`: explicit Generate
+(`POST /cases/{uuid}/actions` with `{ action: "generate_grievance" }`) → Edit →
+Validate → Save / Save and Print
+(`POST /cases/{uuid}/grievances/save-and-print`, `prepare_pdf` false/true) for
+official Step 1 (`official_grievance_worksheet_step_1`) and Step 2
+(`official_standard_grievance_form_step_2`) forms only. Official grievance
+generation ends at Step 2. The grievance route can list/detail/PDF saved Step
+1/2 `grievance_form` artifacts for that case; a general Artifact Library /
+Official Case Record browser is not implemented yet (M7).
 
 ```bash
 cd frontend

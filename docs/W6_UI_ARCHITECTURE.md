@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0–M5 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence, Analysis)
+**Status:** W6 in progress — M0–M6 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence, Analysis, Grievance)
 **Date:** 2026-07-24
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -17,7 +17,7 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | **M3 — Conversation** | **Complete** — `/cases/:caseUuid/conversation`; `GET .../messages` + `POST .../interactions`; retrieval statuses; citations/research panel; disclosures; facts-needed; no artifacts from chat |
 | **M4 — Evidence** | **Complete** — `/cases/:caseUuid/evidence`; `GET/POST .../assets`; metadata detail; Conversation `upload_refs` picker; no case-file RAG; no analysis/grievance/artifact side effects |
 | **M5 — Analysis** | **Complete** — `/cases/:caseUuid/analysis`; Generate temporary preview; Cancel/no-persist; Save / Save and Print; versions; HTML/PDF export; idempotency + `saved_pdf_failed` handling |
-| M6 — Grievance | Planned |
+| **M6 — Grievance** | **Complete** — `/cases/:caseUuid/grievance`; Generate → Edit → Validate → Save / Save and Print for Step 1/2 official forms only; temporary local React draft state; limited saved `grievance_form` list/detail/PDF (full Artifact Library is M7) |
 | M7 — Artifacts & history | Planned |
 | M8 — Workflow outcomes | Planned |
 | M9 — Sources research | Planned |
@@ -55,7 +55,7 @@ Do not treat an architecture-document route as implemented merely because it is 
 - Public internet exposure
 - Ingestion of private operational grievance data
 - Case-file RAG over uploaded documents (uploads are metadata/`upload_refs` context only)
-- Step 3 grievance generation / official form (not implemented in backend)
+- Step 3 grievance generation / official form (out of scope for W6 steward UI; official generation ends at Step 2)
 
 ### Steward controls that must NOT appear
 
@@ -78,7 +78,7 @@ Do not render as steward buttons:
 | Framework | **React 19 + TypeScript + Vite** | No SPA exists today; Vite gives a clean client app against FastAPI without Next.js SSR complexity. Desktop workspace UX is client-heavy. |
 | Routing | **React Router v7 (data-aware routes)** | Nested case workspace routes, loaders for workspace restore, clear URL ↔ case context. |
 | Server state | **TanStack Query v5** | Cases, messages, artifacts, history, sources are remote resources with cache, invalidation, retries, and stale-while-revalidate. |
-| Client/ephemeral state | **Zustand** | Temporary analysis preview, grievance draft edits, panel collapse, citation selection, toast queue — not server truth. |
+| Client/ephemeral state | **Local React state and/or Zustand** | Temporary analysis preview and grievance draft (M5/M6 use local state); panel collapse, citation selection, toast queue — not server truth. |
 | Forms | **React Hook Form + Zod** | Grievance field editing, case create, fact edits; Zod schemas mirrored from Pydantic. |
 | Styling | **CSS variables + CSS Modules (or Tailwind with custom tokens only)** | Enterprise control over density/contrast; avoid default AI purple/cream themes. |
 | Icons | **Lucide** (outline, consistent stroke) | Neutral enterprise iconography. |
@@ -208,7 +208,7 @@ Do not build a mobile-first chatbot layout.
 │   ├── /cases/:caseUuid/conversation   # Chat-focused (same shell, center = chat)
 │   ├── /cases/:caseUuid/evidence       # Uploads / assets focused
 │   ├── /cases/:caseUuid/analysis       # Analysis review / versions
-│   ├── /cases/:caseUuid/grievance      # Grievance draft / official forms
+│   ├── /cases/:caseUuid/grievance      # Grievance draft / Step 1–2 official forms
 │   ├── /cases/:caseUuid/artifacts      # Artifact library
 │   ├── /cases/:caseUuid/history        # Official Case Record
 │   ├── /cases/:caseUuid/memory         # Case Memory / overview (read-mostly)
@@ -356,7 +356,7 @@ Route-driven:
 | `/cases/:id` and `/conversation` | `ConversationPanel` |
 | `/evidence` | `UploadPanel` + asset table |
 | `/analysis` | Saved versions list + latest report body or empty state with Generate CTA |
-| `/grievance` | Draft editor or latest official grievance; Generate CTA |
+| `/grievance` | Step 1/2 draft editor or saved Step 1/2 grievance; Generate when backend returns a supported template |
 | `/artifacts` | Grouped artifact library |
 | `/history` | Full Official Case Record |
 | `/memory` | Structured Case Memory viewer |
@@ -607,30 +607,35 @@ Do not call `POST .../reports/regenerate` from W6 UI (legacy immediate version c
 
 ---
 
-## 8. Grievance workflow
+## 8. Grievance workflow (M6 — Complete)
+
+**Status:** Complete. Official grievance generation currently ends at Step 2.
+The backend workflow FSM may still track Step 3 and later case states; the
+steward UI must not expose unsupported official grievance forms (no Step 3
+placeholder/unavailable cards). Offer Generate only when the backend returns one
+of the two supported templates below.
 
 ```text
 Generate Grievance
       ↓
-Temporary editable draft (field_values)
+Temporary editable draft (field_values) — local React state
       ↓
 Field editing + client validation
-      ↓
-Preview (field list / future PDF preview)
       ↓
   ┌───┴────────────────────────┐
   │                            │
 Cancel                      Save / Save and Print
 (discard)                      ↓
-                        Official grievance artifact
+                        Official grievance_form artifact (Step 1 / Step 2)
                                ↓
-                        AcroForm PDF (Step 1 / Step 2)
+                        AcroForm PDF when prepare_pdf
                                ↓
-                        Official Case Record
+                        Official Case Record (on Save)
 ```
 
 ### 8.1 Generate
 
+**Route:** `/cases/:caseUuid/grievance`
 **API:** `POST /cases/{uuid}/actions`
 ```json
 { "action": "generate_grievance" }
@@ -641,36 +646,44 @@ Use `WorkspaceActionResponse.grievance_generation`:
 - `editable: true`
 - `field_values: { ... }`
 - `template_id`, `step_type`, `draft_status`
-- `snapshot` provenance metadata
 
-Store in `useGrievanceDraftStore`. Mark dirty on edits.
+Hold the temporary draft in **local React component state** (same pattern as M5
+analysis preview — not required to be Zustand). Discard on Cancel / case switch.
+If `template_id` is not one of the two supported IDs, show a concise unsupported
+notice and do **not** open an editor or later-step placeholder UI.
 
 ### 8.2 Field editing
 
-`GrievanceEditor` renders fields from template mapping when available; at minimum edit `field_values` keys returned by generate.
+`GrievanceDraftEditor` renders fields from the Step 1 / Step 2 template mapping
+(`templateFields`); edit the flat `field_values` map returned by Generate.
 
 Rules:
 
-- **Never-invent / protected fields** — empty by default; steward must fill; show `ProtectedNeverInventWarning` styling.
-- **Required fields** — block Save and Print when missing; Save-only may still be allowed if backend accepts — **follow backend validation errors**; surface `missing_required_field_ids`.
-- Track `steward_override_field_ids` for fields the steward changed.
-- Show provenance source when draft includes rich field objects; if API returns flat string map, show “Generated draft value” vs “Steward edited”.
+- **Never-invent / protected fields** — empty by default; steward must fill; show protected-field warning styling.
+- **Required fields** — client validation surfaces `missing_required_field_ids`; backend remains authoritative on Save.
+- Track `steward_override_field_ids` for fields the steward changed after Generate.
+- Provenance: “Generated draft value” vs “Steward edited” from `generated_field_values` vs overrides.
 
 ### 8.3 Validation
 
 Client-side pre-check + server authority on save:
 
 1. Required non-empty
-2. Protected fields flagged
-3. Template availability for current step (`template_unavailable` / `template_deferred` / Step 3 not implemented)
+2. Protected blank fields flagged for steward attention
+3. Supported-template gate: only
+   `official_grievance_worksheet_step_1` and
+   `official_standard_grievance_form_step_2`
 
-Step 3: show clear empty state — “Step 3 official form generation is not available yet.”
+Do not add empty-state cards for later official forms. Prerequisites from
+`available_actions` / `missing_prerequisites` (for example `template_unavailable`,
+`case_closed_requires_reopen`) disable or explain Generate without inventing
+Step 3 UI.
 
-### 8.4 Preview
+### 8.4 Preview / PDF
 
-- In-app field preview (always)
-- PDF preview after save via `GET .../artifacts/{id}/pdf` or export path
-- Working draft PDF only when backend supports and flags allow
+- In-app field editor is the temporary-draft review surface
+- After Save, PDF via `GET .../artifacts/{artifactUuid}/pdf` when `pdf_status` allows
+- Handle `saved_pdf_failed` without losing the official artifact
 
 ### 8.5 Save / Save and Print
 
@@ -689,18 +702,24 @@ Step 3: show clear empty state — “Step 3 official form generation is not ava
 }
 ```
 
-Official templates (W5):
+| Button | `prepare_pdf` |
+|--------|---------------|
+| Save | `false` |
+| Save and Print | `true` |
+
+Official templates supported by the W6 steward UI:
 
 | template_id | Form |
 |-------------|------|
 | `official_grievance_worksheet_step_1` | Step 1 worksheet |
 | `official_standard_grievance_form_step_2` | Step 2 standard form |
 
-### 8.6 Version history
+### 8.6 Saved grievance browsing (M6-limited)
 
-Browse via artifacts group `grievances` and compare:
-
-`POST /cases/{uuid}/artifacts/compare` with UUIDs or type + version numbers.
+M6 lists/details/PDFs saved Step 1/2 `grievance_form` artifacts on the grievance
+route (`GET .../artifacts?artifact_type=grievance_form`, detail + PDF). This is
+**not** the general Artifact Library, Official Case Record browser, or artifact
+compare experience — those remain **M7**.
 
 ---
 
@@ -794,14 +813,14 @@ Case chat already performs retrieval — Sources pages are for corpus inspection
 |------------|------|----------|
 | URL / routing | React Router | caseUuid, tab, filters |
 | Server resources | TanStack Query | workspace, messages, artifacts, saved cases |
-| Ephemeral workflow | Zustand | analysisPreview, grievanceDraft, dirty flags |
+| Ephemeral workflow | Local React state (M5/M6) or Zustand | analysis preview, grievance draft, dirty flags |
 | Local UI | Zustand or component state | panel collapsed, selected citation id, toast queue |
 
 ### 12.2 Why this split
 
 - **Routing as source of case identity** prevents “chat without a case” and enables refresh restore.
 - **TanStack Query** matches REST resources with explicit invalidation after Save/Upload/Outcome — better than global Redux mirrors of the server.
-- **Zustand for previews/drafts** because temporary Generate payloads are intentionally **not** server resources until Save.
+- **Ephemeral local state (or Zustand) for previews/drafts** because temporary Generate payloads are intentionally **not** server resources until Save. M5 analysis preview and M6 grievance draft use local React state.
 - Avoid optimistic Save for artifacts (versioning/Official Case Record must be server-authoritative). Optimistic UI is appropriate for chat steward messages and fact text edits with rollback.
 
 ### 12.3 Caching and invalidation
@@ -811,10 +830,10 @@ Case chat already performs retrieval — Sources pages are for corpus inspection
 | Interaction success | messages (append), available_actions, memory/overview if updated |
 | Facts patch | workspace, memory, overview |
 | Upload | assets, workspace |
-| Generate analysis | none (client store only) |
+| Generate analysis | none (client state only) |
 | Save analysis | versions, artifacts, history, workspace, overview |
-| Generate grievance | none (client store) |
-| Save grievance | artifacts, history, workspace, workflow |
+| Generate grievance | none (client state only) |
+| Save grievance | grievance artifact list/detail, workspace, workflow |
 | Open/reopen/close/settle | saved list + workspace |
 | Outcome / workflow transition | workflow, memory, workspace, saved summary |
 
@@ -857,9 +876,9 @@ src/
     artifacts/
     sources/
   stores/
-    analysisPreviewStore.ts
-    grievanceDraftStore.ts
+    analysisPreviewStore.ts   # optional; M5 used local React state
     uiShellStore.ts
+  # M6 grievance temporary draft: local React state in GrievancePanel (not a required Zustand store)
 ```
 
 ### Source administration and browser secrets
@@ -955,14 +974,17 @@ variables (including any `VITE_*` key).
 | `GET .../export/preview` | HTML preview | Error panel |
 | `GET .../export/pdf?working_draft=` | PDF rules | `409` mapped to steward copy |
 
-### 13.9 Grievance generate / save
+### 13.9 Grievance generate / save (M6 — Step 1/2 only)
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST .../actions` `{generate_grievance}` | Editable draft |
-| `POST .../grievances/save-and-print` | Official artifact + PDF |
+| `POST .../actions` `{ "action": "generate_grievance" }` | Temporary editable draft |
+| `POST .../grievances/save-and-print` | Official artifact + optional PDF |
+| `GET .../artifacts?artifact_type=grievance_form` | M6 saved Step 1/2 list (filter client-side to supported templates) |
+| `GET .../artifacts/{id}` | Saved grievance detail |
+| `GET .../artifacts/{id}/pdf` | Saved grievance PDF |
 
-Prerequisites surfaced via `available_actions` / `missing_prerequisites` (`template_unavailable`, `case_closed_requires_reopen`, etc.).
+Prerequisites surfaced via `available_actions` / `missing_prerequisites` (`template_unavailable`, `case_closed_requires_reopen`, etc.). Official generation ends at Step 2.
 
 ### 13.10 Artifacts / history / memory / workflow
 
@@ -1077,14 +1099,15 @@ Reusable components (**design only for later milestones**). Planned inventory: *
 - `CitationValidationSummary`
 - `SaveArtifactDialog` (Save vs Save and Print)
 
-### 14.7 Grievance
+### 14.7 Grievance (M6)
 
-- `GrievanceEditor`
-- `GrievanceFieldInput`
-- `NeverInventCallout`
+- `GrievancePanel`
+- `GrievanceDraftEditor`
 - `DraftValidationSummary`
-- `OfficialFormPreview`
-- `TemplateUnavailableState`
+- `GrievanceSaveActions`
+- `GrievanceArtifactList`
+- `GrievanceArtifactDetail`
+- `GrievancePdfActions`
 
 ### 14.8 Artifacts / history
 
@@ -1207,7 +1230,7 @@ Use labels and left-border color coding consistently.
 | Missing sources / corpus | Sources page empty state; chat disclosures |
 | Generate analysis failure | Modal error; keep prior saved versions intact |
 | Generate grievance prerequisites | Disable + list missing prerequisites |
-| Template unavailable / Step 3 | Explicit unavailable state |
+| Unsupported grievance template (not Step 1/2) | Concise notice; do not open editor or later-step placeholder cards |
 | Invalid export / PDF 409 | Explain Save and Print requirement; offer working_draft preview when appropriate |
 | `saved_pdf_failed` | Artifact exists; show PDF retry |
 | Upload validation | Inline field/file errors from API |
@@ -1229,7 +1252,7 @@ Each milestone is independently testable against the live W5 API.
 | **M3 — Conversation** | **Complete** — Messages + interactions + citations + retrieval states | Chat with citations end-to-end; no artifacts created |
 | **M4 — Evidence** | **Complete** — UploadPanel + asset table/detail + upload_refs in composer | Upload and reference in chat; not authority RAG |
 | **M5 — Analysis** | **Complete** — Generate preview → Save / Save and Print → versions | Temporary vs saved clearly distinct; Official Case Record updates on Save |
-| **M6 — Grievance** | Generate draft → edit → validate → Save / Save and Print → Step 1/2 PDF | Official forms preview/download |
+| **M6 — Grievance** | **Complete** — Generate → Edit → Validate → Save / Save and Print → Step 1/2 PDF | Official Step 1/2 forms only; limited saved grievance list/detail/PDF |
 | **M7 — Artifacts & history** | Library, detail, compare, Official Case Record, jump-to-context | Browse versions; download PDFs |
 | **M8 — Workflow outcomes** | Record outcome, close/settle/archive, workflow view | Lifecycle without DB edits |
 | **M9 — Sources research** | Source list/search/ask via approved safe boundary | Corpus inspection for RAG debugging (no browser API secrets) |
@@ -1255,7 +1278,7 @@ W5 already provides a coherent workspace API: restore, interact, generate, save-
 | Temporary preview lost on refresh without warning | `beforeunload` when draft/preview present; amber unsaved badges |
 | Treating uploads as searchable case RAG | Explicit disclosure; no fake “searching your PDF” copy |
 | Calling legacy endpoints | Lint/code review checklist against §13.14 |
-| Step 3 / overlay assumptions | Template availability gating from API |
+| Step 3 / later-form assumptions | Gate Generate on supported Step 1/2 `template_id` only; no placeholder later-step UI |
 | Premature auth work | No login UI in W6; no browser-held source API keys |
 | UI-complete but RAG-untested | M3 early; capture fixtures for W7 |
 | Over-fetching full transcripts into client state | Paginate messages; workspace stays lean |
@@ -1286,7 +1309,7 @@ W5 already provides a coherent workspace API: restore, interact, generate, save-
 
 1. Start M0–M3 quickly to exercise retrieval daily.
 2. Mirror TS types from `case_workspace_action_schema.py`, `saved_case_schema.py`, `case_saved_artifact_schema.py` first.
-3. Put temporary preview/draft exclusively in Zustand; never write them into Query cache as “versions.”
+3. Put temporary preview/draft exclusively in ephemeral client state (local React state is fine; Zustand optional); never write them into Query cache as “versions.”
 4. Centralize action availability rendering from `available_actions`.
 5. Add Playwright flows for: open case → chat → generate analysis → save → generate grievance → save and print.
 6. Keep `/ui` shell for backend verification until M7.
@@ -1321,7 +1344,7 @@ Estimates assume the W5 API remains stable; any backend gaps found during M3–M
 | Retrieval in normal workflow | M3 interactions + citation panel |
 | Citations visible/traceable | Citation chips + detail + analysis authorities |
 | Analysis separated from sources | Design taxonomy §15.5 + AnalysisPreview structure |
-| Grievance preview/generate | M6 GrievanceEditor + official forms |
+| Grievance preview/generate | M6 GrievancePanel / GrievanceDraftEditor + Step 1/2 official forms |
 | Official forms from workflow | Save and Print → PDF frame |
 | Failures without stack traces | §17 mapping |
 | Regression tests for defects | M10 + ongoing |
@@ -1334,10 +1357,10 @@ Estimates assume the W5 API remains stable; any backend gaps found during M3–M
 | Item | Value |
 |------|-------|
 | Path | `docs/W6_UI_ARCHITECTURE.md` |
-| Phase | W6 Interactive Steward Workspace — M0 complete |
-| Implementation | M0 Foundations and M1 Saved Cases complete; M2–M10 planned |
+| Phase | W6 Interactive Steward Workspace — M0–M6 complete |
+| Implementation | M0–M6 complete (Foundations through Grievance Step 1/2); M7–M10 planned |
 | Supersedes | None (complements `saved_cases_ui_contract.md`) |
-| Next step | M2 Create Case + workspace restore shell |
+| Next step | M7 Artifacts and History |
 
 ---
 

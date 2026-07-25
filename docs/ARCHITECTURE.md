@@ -1,7 +1,7 @@
 # GrievanceHub Architecture
 
 Technical system design for the current GrievanceHub backend through W5, plus the
-W6 M0–M5 frontend steward shell now present on `main`.
+W6 M0–M6 frontend steward shell now present on `main`.
 
 For a concise product overview, see [`README.md`](../README.md). For the
 canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md). For the W6
@@ -28,7 +28,7 @@ React steward shell (frontend/) / API client / /ui shell
         └─► Local filesystem storage (case assets, generated reports)
 ```
 
-### Frontend steward shell (W6 M0–M5)
+### Frontend steward shell (W6 M0–M6)
 
 `frontend/` is a Vite + React + TypeScript application. Implemented:
 
@@ -72,6 +72,22 @@ React steward shell (frontend/) / API client / /ui shell
   with official PDF requiring prior Save and Print (`409` otherwise;
   `working_draft=true` for non-official preview). Legacy
   `POST .../reports/regenerate` is not used by the W6 UI.
+- **M6:** Grievance on `/cases/:caseUuid/grievance`. Explicit Generate is owned
+  by `POST /cases/{uuid}/actions` with `{ action: "generate_grievance" }`, which
+  returns a temporary editable field-value draft (`grievance_generation`) held
+  only in ephemeral React state (not persisted until Save). Cancel discards the
+  draft. Persistence uses `POST /cases/{uuid}/grievances/save-and-print` with
+  `template_id`, `field_values`, `steward_override_field_ids`, client validation
+  fields, `idempotency_key`, and `prepare_pdf: false` (Save) or `true` (Save and
+  Print). Official steward UI generation supports Step 1 and Step 2 templates
+  only (`official_grievance_worksheet_step_1`,
+  `official_standard_grievance_form_step_2`); Generate is offered when the
+  backend returns one of those templates — later-step official forms are not
+  exposed as UI placeholders. Protected / never-invent fields stay blank unless
+  the steward fills them; steward edits are tracked in
+  `steward_override_field_ids`. The route lists/details/PDFs saved Step 1/2
+  `grievance_form` artifacts for the case; the general Artifact Library remains
+  **M7**.
 
 Query ownership:
 
@@ -81,6 +97,8 @@ Query ownership:
   `["caseAssets", "detail", caseUuid, assetUuid]`
 - Analysis versions: `["analysisVersions", "list", caseUuid]` /
   `["analysisVersion", caseUuid, versionNumber]`
+- Grievance artifacts (M6, Step 1/2 `grievance_form` filter): grievance list/detail
+  keys scoped by `caseUuid` / `artifactUuid`
 
 Open/reopen may seed the workspace cache; the workspace layout refetches on mount
 and treats the server response as authoritative. Message history is loaded when
@@ -384,7 +402,31 @@ Versioning begins at Save.
 
 ## 14. Grievance drafts
 
-Generate Grievance returns a temporary editable field-value draft independent of analysis-report existence. Save / Save and Print create official grievance artifacts. Official USPS Step 1 and Step 2 AcroForm PDFs are filled through the W5 export path; Step 3 generation is not implemented.
+Generate Grievance is an explicit steward action, independent of analysis-report
+existence. Ownership and persistence:
+
+| Stage | Behavior |
+|-------|----------|
+| Generate | `POST /cases/{uuid}/actions` `{ action: "generate_grievance" }` → temporary editable draft (`grievance_generation.field_values`, `template_id`, `step_type`, `draft_status`). No official artifact or Official Case Record event until Save. |
+| Temporary draft | Client-held only (W6 M6: local React state). Cancel / navigate away discards without persistence. |
+| Edit | Steward edits `field_values`; changed keys accumulate in `steward_override_field_ids`. |
+| Protected / never-invent | Mapped protected fields remain blank by default; the UI warns and does not invent values. Steward must supply them when needed. |
+| Validate | Client pre-check (required / protected-blank summaries); backend remains authoritative on Save. |
+| Save | `POST /cases/{uuid}/grievances/save-and-print` with `prepare_pdf: false` → official `grievance_form` artifact |
+| Save and Print | Same endpoint with `prepare_pdf: true` → artifact + AcroForm PDF when possible (`saved` / `saved_pdf_failed` / `idempotent_replay`) |
+
+Official templates supported by the steward product today:
+
+| `template_id` | Form |
+|---------------|------|
+| `official_grievance_worksheet_step_1` | Step 1 worksheet |
+| `official_standard_grievance_form_step_2` | Step 2 standard form |
+
+Official grievance generation **ends at Step 2**. The backend workflow FSM may
+still track Step 3 and later case states; the steward UI does not expose Step 3
+(or later) official form generation. General Artifact Library browsing remains
+**M7**; M6 only surfaces saved Step 1/2 `grievance_form` artifacts on the
+grievance route.
 
 ---
 
@@ -451,7 +493,7 @@ portfolio repository.
 | Source processing lifecycle metadata | Implemented |
 | Bounded retrieval-agent architecture | Implemented |
 | Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Interactive steward workspace | In progress (W6; M0–M5 complete, M6–M10 not started) |
+| Interactive steward workspace | In progress (W6; M0–M6 complete, M7–M10 not started) |
 | Formal RAG evaluation / quality gates | Planned (W7) |
 | Multi-agent authority workflow | Planned (W8) |
 | Application identity / governance | Planned (W9) |
@@ -479,10 +521,11 @@ UI → Arbitration/LMOU → Deployment) is superseded.
 
 - **W6 — Interactive Steward Workspace (in progress):** usable end-to-end steward UI as
   a vertical slice; continuous RAG and generation validation through realistic
-  workflows. **M0–M5 are complete** (Foundations, Saved Cases, Create Case +
+  workflows. **M0–M6 are complete** (Foundations, Saved Cases, Create Case +
   workspace restore, Conversation + retrieval, Evidence uploads +
-  `upload_refs`, Analysis generate/preview/save). **M6 Grievance is next.**
-  M6–M10 are not started.
+  `upload_refs`, Analysis generate/preview/save, Grievance Generate → Edit →
+  Validate → Save / Save and Print for Step 1/2). **M7 Artifacts and History is
+  next.** M7–M10 are not started.
 - **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
   citation/faithfulness metrics, and approved quality thresholds before
   multi-agent complexity.

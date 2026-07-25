@@ -35,6 +35,13 @@ import type {
   GrievanceHubReportData,
   SaveAndPrintResponse,
 } from '../api/types/reports'
+import type {
+  CaseSavedArtifactDetail,
+  CaseSavedArtifactListResponse,
+  CaseSavedArtifactSummary,
+  GenerateGrievanceResponse,
+  GrievanceGenerationResult,
+} from '../api/types/grievances'
 
 export const SAMPLE_ASSET_UUID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
 export const OTHER_ASSET_UUID = 'ffffffff-1111-4222-8333-444444444444'
@@ -677,6 +684,219 @@ export function makeSaveResponse(
   }
 }
 
+export const SAMPLE_GRIEVANCE_ARTIFACT_UUID =
+  'cccccccc-dddd-4eee-8fff-000000000001'
+
+export function makeStep1FieldValues(
+  overrides: Record<string, string> = {},
+): Record<string, string> {
+  return {
+    form_date: '',
+    branch_grievance_number: '',
+    steward_name: '',
+    grievant_name: 'Carrier A',
+    grievant_name_or_class: 'Carrier A',
+    ssn_or_employee_id: '',
+    job_classification: 'Mail Handler',
+    grievant_phone: '',
+    home_address: '',
+    city: '',
+    state: '',
+    zip: '',
+    craft_seniority_date: '',
+    service_seniority_date: '',
+    duty_hours: '',
+    installation_name: 'Station A',
+    installation_station_branch: 'Station A',
+    installation_city: '',
+    installation_state: '',
+    installation_zip: '',
+    veteran_status: '',
+    off_days: '',
+    employment_status: '',
+    employee_level: '',
+    employee_step: '',
+    violation_national: 'Article 8',
+    violation_articles_citations: 'Article 8.5',
+    violation_local_mou: '',
+    violation_other_grounds: '',
+    facts_dates: '',
+    facts_time: '',
+    facts_location: '',
+    facts_what_happened: 'Denied overtime for tour 2.',
+    corrective_action_requested: 'Pay overtime as required.',
+    additional_sheet_attached: '',
+    facts_continued: '',
+    ...overrides,
+  }
+}
+
+export function makeStep2FieldValues(
+  overrides: Record<string, string> = {},
+): Record<string, string> {
+  return {
+    form_date: '',
+    branch_grievance_number: '',
+    usps_number: '',
+    installation_name: 'Station A',
+    installation_station_branch: 'Station A',
+    local_branch_number: '501',
+    installation_phone_office: '',
+    grievant_name: 'Carrier A',
+    grievant_name_or_class: 'Carrier A',
+    ssn_or_employee_id: '',
+    job_classification: 'Mail Handler',
+    grievant_phone: '',
+    home_address: '',
+    city: '',
+    state: '',
+    zip: '',
+    craft_seniority_date: '',
+    service_seniority_date: '',
+    duty_hours: '',
+    veteran_status: '',
+    off_days: '',
+    employment_status: '',
+    step1_meeting_datetime: '',
+    step1_usps_representative: '',
+    step1_grievant_or_steward: '',
+    step1_decision_by_name_title: '',
+    step1_decision_outcome: '',
+    step2_designee_name_title: '',
+    step2_union_rep: 'Steward Ada',
+    union_business_address: '',
+    union_rep_phone_office: '',
+    union_rep_phone_other: '',
+    violation_national: 'Article 8',
+    violation_articles_citations: 'Article 8.5',
+    violation_local_mou: '',
+    violation_other_grounds: '',
+    facts_what_happened: 'Denied overtime for tour 2.',
+    facts_datetime_location: '',
+    corrective_action_requested: 'Pay overtime as required.',
+    additional_sheet_attached: '',
+    employee_level: '',
+    employee_step: '',
+    ...overrides,
+  }
+}
+
+export function makeGrievanceGeneration(
+  overrides: Partial<GrievanceGenerationResult> = {},
+): GrievanceGenerationResult {
+  return {
+    draft_created: true,
+    editable: true,
+    official_artifact_created: false,
+    template_id: 'official_grievance_worksheet_step_1',
+    step_type: 'step_1_initial',
+    draft_status: 'pending_required_fields',
+    field_values: makeStep1FieldValues(),
+    message: 'Temporary editable draft only — not persisted until Save.',
+    ...overrides,
+  }
+}
+
+export function makeGenerateGrievanceResponse(
+  overrides: Partial<GenerateGrievanceResponse> = {},
+): GenerateGrievanceResponse {
+  const generation =
+    overrides.grievance_generation === null
+      ? null
+      : makeGrievanceGeneration(
+          (overrides.grievance_generation as
+            | Partial<GrievanceGenerationResult>
+            | undefined) ?? {},
+        )
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    action: 'generate_grievance',
+    status: 'completed',
+    message:
+      'Temporary editable grievance draft ready for review. Save creates the first grievance artifact/version.',
+    steward_action_label: 'Generate Grievance',
+    grievance_draft_created: true,
+    official_artifact_created: false,
+    grievance_generation: generation,
+    ...overrides,
+  }
+}
+
+export function makeGrievanceArtifactSummary(
+  overrides: Partial<CaseSavedArtifactSummary> = {},
+): CaseSavedArtifactSummary {
+  return {
+    artifact_uuid: SAMPLE_GRIEVANCE_ARTIFACT_UUID,
+    case_uuid: SAMPLE_CASE_UUID,
+    artifact_type: 'grievance_form',
+    title: 'Official Grievance Worksheet — Step 1 v1',
+    version_number: 1,
+    version_label: 'v1',
+    grievance_step: 'step_1_initial',
+    template_id: 'official_grievance_worksheet_step_1',
+    printed: false,
+    pdf_status: 'ready',
+    pdf_asset_uuid: null,
+    is_latest_official: true,
+    saved_by: 'Steward Ada',
+    saved_at: '2026-07-24T22:00:00Z',
+    ...overrides,
+  }
+}
+
+export function makeGrievanceArtifactList(
+  artifacts: CaseSavedArtifactSummary[] = [],
+  overrides: Partial<CaseSavedArtifactListResponse> = {},
+): CaseSavedArtifactListResponse {
+  const caseUuid = overrides.case_uuid ?? SAMPLE_CASE_UUID
+  return {
+    case_uuid: caseUuid,
+    count: artifacts.length,
+    artifacts,
+    groups: {
+      grievances: artifacts,
+      analysis_reports: [],
+      ...overrides.groups,
+    },
+    ...overrides,
+  }
+}
+
+export function makeGrievanceArtifactDetail(
+  overrides: Partial<CaseSavedArtifactDetail> = {},
+): CaseSavedArtifactDetail {
+  const summary = makeGrievanceArtifactSummary(overrides)
+  return {
+    ...summary,
+    content_json: overrides.content_json ?? {
+      template_id: summary.template_id,
+      field_values: makeStep1FieldValues(),
+    },
+    pdf_download_path:
+      overrides.pdf_download_path ??
+      `/cases/${summary.case_uuid}/artifacts/${summary.artifact_uuid}/pdf`,
+    ...overrides,
+  }
+}
+
+export function makeGrievanceSaveResponse(
+  overrides: Partial<SaveAndPrintResponse> = {},
+): SaveAndPrintResponse {
+  const artifact = makeGrievanceArtifactSummary({
+    ...overrides.artifact,
+  })
+  return {
+    case_uuid: SAMPLE_CASE_UUID,
+    status: 'saved',
+    message: 'Official grievance form saved.',
+    print_ready: artifact.pdf_status === 'ready',
+    pdf_error: null,
+    export_path: `/cases/${SAMPLE_CASE_UUID}/artifacts/${artifact.artifact_uuid}/pdf`,
+    ...overrides,
+    artifact,
+  }
+}
+
 export function binaryResponse(
   body: BlobPart,
   contentType: string,
@@ -720,12 +940,14 @@ export function installApiMock(
     autoEmptyMessages?: boolean
     autoEmptyAssets?: boolean
     autoEmptyVersions?: boolean
+    autoEmptyArtifacts?: boolean
   } = {},
 ) {
   const autoHealth = options.autoHealth !== false
   const autoEmptyMessages = options.autoEmptyMessages !== false
   const autoEmptyAssets = options.autoEmptyAssets !== false
   const autoEmptyVersions = options.autoEmptyVersions !== false
+  const autoEmptyArtifacts = options.autoEmptyArtifacts === true
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
@@ -763,6 +985,17 @@ export function installApiMock(
         const match = url.match(/\/cases\/([^/]+)\/versions/)
         const caseUuid = match?.[1] ?? SAMPLE_CASE_UUID
         return jsonResponse(makeVersionListResponse([], { case_uuid: caseUuid }))
+      }
+      if (
+        autoEmptyArtifacts &&
+        /\/cases\/[^/]+\/artifacts(?:\?|$)/.test(url) &&
+        (!init?.method || init.method === 'GET')
+      ) {
+        const match = url.match(/\/cases\/([^/]+)\/artifacts/)
+        const caseUuid = match?.[1] ?? SAMPLE_CASE_UUID
+        return jsonResponse(
+          makeGrievanceArtifactList([], { case_uuid: caseUuid }),
+        )
       }
       return handler(input, init)
     },

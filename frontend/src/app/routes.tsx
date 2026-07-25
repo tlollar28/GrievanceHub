@@ -4,6 +4,7 @@ import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
 import { CaseAnalysisPage } from '../routes/CaseAnalysisPage'
 import { CaseConversationPage } from '../routes/CaseConversationPage'
 import { CaseEvidencePage } from '../routes/CaseEvidencePage'
+import { CaseGrievancePage } from '../routes/CaseGrievancePage'
 import {
   CaseWorkspaceIndexRedirect,
   CaseWorkspacePage,
@@ -32,6 +33,7 @@ export const appRoutes: RouteObject[] = [
           { path: 'conversation', element: <CaseConversationPage /> },
           { path: 'evidence', element: <CaseEvidencePage /> },
           { path: 'analysis', element: <CaseAnalysisPage /> },
+          { path: 'grievance', element: <CaseGrievancePage /> },
         ],
       },
       { path: 'help', element: <HelpPage /> },

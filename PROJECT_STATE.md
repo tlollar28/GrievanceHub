@@ -12,20 +12,21 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M5 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence, Analysis) |
-| Next milestone | W6 M6 — Grievance |
+| Current implementation state | W6 in progress — M0–M6 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence, Analysis, Grievance) |
+| Next milestone | W6 M7 — Artifacts and History |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Interactive Steward Workspace | In progress (M0–M5 complete; M6–M10 not started) |
+| W6 — Interactive Steward Workspace | In progress (M0–M6 complete; M7–M10 not started) |
 | W6 M0 — Frontend Foundations | Complete and committed |
 | W6 M1 — Saved Cases | Complete and committed |
 | W6 M2 — Create Case + workspace restore | Complete and committed |
 | W6 M3 — Conversation + retrieval | Complete and committed |
 | W6 M4 — Evidence uploads + asset references | Complete and committed |
 | W6 M5 — Analysis generate / preview / save | Complete and committed |
+| W6 M6 — Grievance generate / edit / validate / save | Complete and committed |
 | W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
@@ -59,8 +60,12 @@ from ordinary steward case work.
 - Case Memory projected from domain events
 - Explicit Generate Analysis Report (temporary preview → Save / Save and Print)
 - Explicit Generate Grievance (editable field-value draft → Save / Save and Print)
+- Official grievance generation currently supports Step 1 and Step 2 only
+  (`official_grievance_worksheet_step_1`,
+  `official_standard_grievance_form_step_2`)
 - Official Step 1 and Step 2 AcroForm PDF fill/export
-- Artifacts library and Official Case Record for saved work
+- Artifacts library and Official Case Record for saved work (backend; general
+  React Artifact Library browsing is M7)
 - Case asset uploads
 - Analysis report HTML/PDF export
 - FastAPI steward verification shell at `/ui`
@@ -91,6 +96,12 @@ from ordinary steward case work.
   (`GET /cases/{uuid}/versions[/{n}]`), and HTML/PDF export controls with
   official-versus-working-draft labeling; normal conversation still creates no
   analysis version or artifact
+- W6 M6 Grievance workspace (`/cases/:caseUuid/grievance`) with Generate → Edit →
+  Validate → Save / Save and Print for Step 1 and Step 2 only
+  (`POST /cases/{uuid}/actions` `{ action: "generate_grievance" }` → temporary
+  client-held draft; `POST /cases/{uuid}/grievances/save-and-print` with
+  `prepare_pdf` false/true); limited list/detail/PDF for saved Step 1/2
+  `grievance_form` artifacts (full Artifact Library remains M7)
 
 ## Normal chat vs analysis
 
@@ -144,6 +155,8 @@ Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
 | W6 M2 | Create Case, durable workspace restore, CaseWorkspaceShell, Case Rail, facts editor |
 | W6 M3 | Case conversation, message restore, interactions, retrieval status, citations |
 | W6 M4 | Evidence uploads, asset list/detail, conversation upload_refs |
+| W6 M5 | Analysis generate / temporary preview / Save / Save and Print / versions |
+| W6 M6 | Grievance Generate → Edit → Validate → Save / Save and Print (Step 1/2) |
 | CrossCraft retirement | Obsolete SPBS/cross-craft surface removed |
 
 The historical phase labels remain visible in Git history. They represent the
@@ -165,7 +178,7 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 | Phase | Status |
 |-------|--------|
 | W5 — Knowledge Foundation | Complete |
-| W6 — Interactive Steward Workspace | In progress (M0–M4 complete) |
+| W6 — Interactive Steward Workspace | In progress (M0–M6 complete) |
 | W7 — RAG Evaluation and Output Quality | Planned |
 | W8 — Multi-Agent Authority Workflow | Planned |
 | W9 — Security and Governance | Planned |
@@ -174,12 +187,13 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 W5 retrieval components are retrieval infrastructure. They are not completion of
 W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
-completion of W9 application security. W6 M0–M5 cover shell foundations, Saved
+completion of W9 application security. W6 M0–M6 cover shell foundations, Saved
 Cases entry, Create Case, durable workspace restore, case conversation with
-retrieval/citations, evidence uploads with `upload_refs`, and Analysis
-generate/preview/save. Grievance (M6) and later artifact/workflow screens remain
-later milestones. Case evidence uploads are not indexed into the authority
-corpus.
+retrieval/citations, evidence uploads with `upload_refs`, Analysis
+generate/preview/save, and Grievance Generate → Edit → Validate → Save / Save
+and Print for official Step 1 and Step 2 forms only. Artifacts and History (M7)
+and later workflow screens remain later milestones. Case evidence uploads are
+not indexed into the authority corpus.
 
 ## Related documentation
 
@@ -194,4 +208,5 @@ corpus.
 - [`docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md`](docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md)
 - [`docs/temp/W6_M4_EVIDENCE_REPORT.md`](docs/temp/W6_M4_EVIDENCE_REPORT.md)
 - [`docs/temp/W6_M5_ANALYSIS_REPORT.md`](docs/temp/W6_M5_ANALYSIS_REPORT.md)
+- [`docs/temp/W6_M6_GRIEVANCE_REPORT.md`](docs/temp/W6_M6_GRIEVANCE_REPORT.md)
 - [`README.md`](README.md)

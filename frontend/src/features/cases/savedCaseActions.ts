@@ -78,3 +78,13 @@ export const analysisKeys = {
   detail: (caseUuid: string, versionNumber: number) =>
     [...analysisKeys.details(), caseUuid, versionNumber] as const,
 }
+
+/** TanStack Query keys for saved grievance artifacts */
+export const grievanceKeys = {
+  all: ['grievanceArtifacts'] as const,
+  lists: () => [...grievanceKeys.all, 'list'] as const,
+  list: (caseUuid: string) => [...grievanceKeys.lists(), caseUuid] as const,
+  details: () => ['grievanceArtifact'] as const,
+  detail: (caseUuid: string, artifactUuid: string) =>
+    [...grievanceKeys.details(), caseUuid, artifactUuid] as const,
+}
