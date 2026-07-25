@@ -82,6 +82,47 @@ async function parseErrorBody(
   }
 }
 
+export type ApiMultipartRequestOptions = {
+  method?: string
+  formData: FormData
+  signal?: AbortSignal
+  headers?: Record<string, string>
+}
+
+async function handleApiResponse<T>(
+  response: Response,
+  path: string,
+): Promise<T> {
+  if (!response.ok) {
+    const parsed = await parseErrorBody(response)
+    throw new ApiError({
+      status: response.status,
+      path,
+      code: parsed.code,
+      message: safeErrorMessage(response.status, parsed.message),
+    })
+  }
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.includes('application/json')) {
+    const text = await response.text()
+    if (!text) {
+      return undefined as T
+    }
+    throw new ApiError({
+      status: response.status,
+      path,
+      message: 'The API returned a non-JSON response.',
+    })
+  }
+
+  return (await response.json()) as T
+}
+
 export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
@@ -118,34 +159,47 @@ export async function apiRequest<T>(
     })
   }
 
-  if (!response.ok) {
-    const parsed = await parseErrorBody(response)
-    throw new ApiError({
-      status: response.status,
-      path,
-      code: parsed.code,
-      message: safeErrorMessage(response.status, parsed.message),
+  return handleApiResponse<T>(response, path)
+}
+
+/**
+ * Multipart upload helper. Does not set Content-Type so the browser can
+ * supply the multipart boundary.
+ */
+export async function apiMultipartRequest<T>(
+  path: string,
+  options: ApiMultipartRequestOptions,
+): Promise<T> {
+  const baseUrl = getApiBaseUrl()
+  const url = joinPath(baseUrl, path)
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...options.headers,
+  }
+  // Intentionally omit Content-Type for FormData.
+  delete headers['Content-Type']
+  delete headers['content-type']
+
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: options.method ?? 'POST',
+      headers,
+      body: options.formData,
+      signal: options.signal,
     })
-  }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  const contentType = response.headers.get('content-type') ?? ''
-  if (!contentType.includes('application/json')) {
-    const text = await response.text()
-    if (!text) {
-      return undefined as T
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error
     }
     throw new ApiError({
-      status: response.status,
+      status: 0,
       path,
-      message: 'The API returned a non-JSON response.',
+      message: 'Unable to reach the API.',
     })
   }
 
-  return (await response.json()) as T
+  return handleApiResponse<T>(response, path)
 }
 
 export function getConfiguredApiBaseUrl(): string {

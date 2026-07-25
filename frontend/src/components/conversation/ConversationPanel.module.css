@@ -287,6 +287,121 @@
   color: var(--text-secondary);
 }
 
+.attachmentBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.attachmentDisclosure {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+  border-left: 3px solid var(--accent);
+  padding-left: var(--space-2);
+}
+
+.attachmentToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.attachButton,
+.removeAttachment {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-meta);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+.attachButton:focus-visible,
+.removeAttachment:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-ring);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.attachButton:disabled,
+.removeAttachment:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.attachmentCount {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.selectedAttachments,
+.attachmentChoices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.selectedAttachments li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  font-size: var(--font-size-meta);
+}
+
+.attachmentPicker {
+  border: 1px solid var(--border);
+  background: var(--bg-app);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.attachmentPickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.attachmentPickerHeading {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: 650;
+}
+
+.attachmentStatus {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.attachmentChoice {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  font-size: var(--font-size-body);
+  cursor: pointer;
+}
+
+.attachmentMeta {
+  color: var(--text-secondary);
+  font-size: var(--font-size-meta);
+}
+
 .liveRegion {
   position: absolute;
   width: 1px;

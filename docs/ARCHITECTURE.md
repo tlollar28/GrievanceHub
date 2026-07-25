@@ -1,7 +1,7 @@
 # GrievanceHub Architecture
 
 Technical system design for the current GrievanceHub backend through W5, plus the
-W6 M0–M3 frontend steward shell now present on `main`.
+W6 M0–M4 frontend steward shell now present on `main`.
 
 For a concise product overview, see [`README.md`](../README.md). For the
 canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md). For the W6
@@ -28,7 +28,7 @@ React steward shell (frontend/) / API client / /ui shell
         └─► Local filesystem storage (case assets, generated reports)
 ```
 
-### Frontend steward shell (W6 M0–M3)
+### Frontend steward shell (W6 M0–M4)
 
 `frontend/` is a Vite + React + TypeScript application. Implemented:
 
@@ -51,16 +51,27 @@ React steward shell (frontend/) / API client / /ui shell
   Interaction cache reconciliation merges persisted `user_message` /
   `assistant_message` by id; Case Memory / workspace queries invalidate only when
   `case_memory_update_status === "updated"`. Normal chat does not create reports,
-  grievances, or artifacts. Evidence remains M4; Analysis remains M5.
+  grievances, or artifacts.
+- **M4:** Evidence on `/cases/:caseUuid/evidence` with case-scoped asset list
+  (`GET /cases/{uuid}/assets`), multipart upload (`POST /cases/{uuid}/assets`
+  with `file`, `category=uploaded_document`, `source=manual_ui`, optional
+  `uploaded_by`), and metadata detail (`GET /cases/{uuid}/assets/{asset_uuid}`).
+  Conversation composer can attach current-case asset UUIDs as `upload_refs`.
+  Uploaded evidence is stored as a case asset reference (`content_embedded=false`
+  in continuity); it is not indexed, embedded, or searched as authority-corpus
+  RAG. Storage paths from the API are never rendered. Analysis remains M5.
 
 Query ownership:
 
 - Workspace: `["caseWorkspace", caseUuid]`
 - Messages: `["caseMessages", "list", caseUuid, { limit, offset, order }]`
+- Assets: `["caseAssets", "list", caseUuid, { category }]` /
+  `["caseAssets", "detail", caseUuid, assetUuid]`
 
 Open/reopen may seed the workspace cache; the workspace layout refetches on mount
 and treats the server response as authoritative. Message history is loaded when
 the Conversation panel mounts and is not embedded in the lean workspace payload.
+Asset lists are case-scoped and invalidated only for the affected case after upload.
 
 The W6 browser must not receive source API secrets
 (`GRIEVANCEHUB_API_KEY` / `GRIEVANCEHUB_ADMIN_API_KEY`). Sources UI remains
@@ -426,7 +437,7 @@ portfolio repository.
 | Source processing lifecycle metadata | Implemented |
 | Bounded retrieval-agent architecture | Implemented |
 | Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Interactive steward workspace | In progress (W6; M0–M3 complete, M4–M10 not started) |
+| Interactive steward workspace | In progress (W6; M0–M4 complete, M5–M10 not started) |
 | Formal RAG evaluation / quality gates | Planned (W7) |
 | Multi-agent authority workflow | Planned (W8) |
 | Application identity / governance | Planned (W9) |
@@ -454,9 +465,9 @@ UI → Arbitration/LMOU → Deployment) is superseded.
 
 - **W6 — Interactive Steward Workspace (in progress):** usable end-to-end steward UI as
   a vertical slice; continuous RAG and generation validation through realistic
-  workflows. **M0–M3 are complete** (Foundations, Saved Cases, Create Case +
-  workspace restore, Conversation + retrieval). **M4 Evidence is next.**
-  M4–M10 are not started.
+  workflows. **M0–M4 are complete** (Foundations, Saved Cases, Create Case +
+  workspace restore, Conversation + retrieval, Evidence uploads +
+  `upload_refs`). **M5 Analysis is next.** M5–M10 are not started.
 - **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
   citation/faithfulness metrics, and approved quality thresholds before
   multi-agent complexity.

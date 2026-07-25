@@ -39,6 +39,7 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
   const messagesQuery = useCaseMessagesQuery(caseUuid)
   const mutation = useSubmitInteractionMutation()
   const [draft, setDraft] = useState('')
+  const [selectedAssetUuids, setSelectedAssetUuids] = useState<string[]>([])
   const [pending, setPending] = useState<PendingTurn | null>(null)
   const [selected, setSelected] = useState<SelectedCitation | null>(null)
   const [liveAnnouncement, setLiveAnnouncement] = useState('')
@@ -47,10 +48,13 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
   const lastChipRef = useRef<HTMLButtonElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const caseUuidRef = useRef(caseUuid)
+  const selectedAssetsRef = useRef<string[]>([])
 
   useEffect(() => {
     caseUuidRef.current = caseUuid
     setDraft('')
+    setSelectedAssetUuids([])
+    selectedAssetsRef.current = []
     setPending(null)
     setSelected(null)
     setLiveAnnouncement('')
@@ -59,6 +63,10 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
     abortRef.current = null
     chipRefs.current.clear()
   }, [caseUuid])
+
+  useEffect(() => {
+    selectedAssetsRef.current = selectedAssetUuids
+  }, [selectedAssetUuids])
 
   useEffect(() => {
     if (!pending || pending.status !== 'pending') {
@@ -105,13 +113,14 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
   const terminal = isTerminalStatus(caseStatus)
   const submitting = pending?.status === 'pending' || mutation.isPending
 
-  async function sendMessage(text: string) {
+  async function sendMessage(text: string, uploadRefs: string[]) {
     const trimmed = text.trim()
     if (!trimmed || submitting || terminal) {
       return
     }
 
     const clientId = `pending-${Date.now()}`
+    const refsForRequest = [...uploadRefs]
     setPending({ clientId, content: trimmed, status: 'pending' })
     setDraft('')
     abortRef.current?.abort()
@@ -125,6 +134,9 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
         request: {
           message: trimmed,
           source: 'manual_ui',
+          ...(refsForRequest.length > 0
+            ? { upload_refs: refsForRequest }
+            : {}),
         },
         signal: controller.signal,
       })
@@ -134,6 +146,8 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
       }
 
       setPending(null)
+      setSelectedAssetUuids([])
+      selectedAssetsRef.current = []
       const assistantId = result.response.assistant_message?.id
       if (assistantId != null && result.assistantExtras.citations.length > 0) {
         const first = result.assistantExtras.citations[0]
@@ -168,6 +182,9 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
         errorMessage: message,
       })
       setDraft(trimmed)
+      // Preserve attachment refs after recoverable failure.
+      setSelectedAssetUuids(refsForRequest)
+      selectedAssetsRef.current = refsForRequest
     }
   }
 
@@ -175,7 +192,7 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
     if (!pending || pending.status !== 'failed') {
       return
     }
-    void sendMessage(pending.content)
+    void sendMessage(pending.content, selectedAssetsRef.current)
   }
 
   function handleSelectCitation(
@@ -278,7 +295,9 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
         ) : null}
 
         <ConversationComposer
+          caseUuid={caseUuid}
           value={draft}
+          selectedAssetUuids={selectedAssetUuids}
           pending={submitting}
           readOnlyReason={
             terminal
@@ -286,8 +305,9 @@ export function ConversationPanel({ caseUuid, caseStatus }: Props) {
               : null
           }
           onChange={setDraft}
+          onSelectedAssetsChange={setSelectedAssetUuids}
           onSubmit={() => {
-            void sendMessage(draft)
+            void sendMessage(draft, selectedAssetUuids)
           }}
         />
       </section>

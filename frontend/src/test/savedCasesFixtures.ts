@@ -21,6 +21,14 @@ import type {
   ListCaseMessagesResponse,
 } from '../api/types/messages'
 import { MESSAGES_DEFAULT_LIMIT } from '../api/types/messages'
+import type {
+  CaseAssetListResponse,
+  CaseAssetMetadata,
+  CaseAssetUploadResponse,
+} from '../api/types/assets'
+
+export const SAMPLE_ASSET_UUID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee'
+export const OTHER_ASSET_UUID = 'ffffffff-1111-4222-8333-444444444444'
 
 export const SAMPLE_CASE_UUID = '11111111-1111-4111-8111-111111111111'
 export const CLOSED_CASE_UUID = '22222222-2222-4222-8222-222222222222'
@@ -394,6 +402,56 @@ export function makeInteractionResponse(
   }
 }
 
+export function makeAsset(
+  overrides: Partial<CaseAssetMetadata> = {},
+): CaseAssetMetadata {
+  const caseUuid = overrides.case_uuid ?? SAMPLE_CASE_UUID
+  const assetUuid = overrides.asset_uuid ?? SAMPLE_ASSET_UUID
+  return {
+    asset_uuid: assetUuid,
+    case_uuid: caseUuid,
+    asset_category: 'uploaded_document',
+    original_filename: 'evidence-note.txt',
+    stored_filename: `${assetUuid}_evidence-note.txt`,
+    stored_path: `data/case_assets/${caseUuid}/${assetUuid}_evidence-note.txt`,
+    mime_type: 'text/plain',
+    file_size: 42,
+    sha256: 'a'.repeat(64),
+    uploaded_by: 'Steward Ada',
+    source: 'manual_ui',
+    version_number: 1,
+    status: 'active',
+    created_at: '2026-07-24T18:00:00Z',
+    updated_at: '2026-07-24T18:00:00Z',
+    ...overrides,
+  }
+}
+
+export function makeAssetListResponse(
+  assets: CaseAssetMetadata[] = [],
+  overrides: Partial<CaseAssetListResponse> = {},
+): CaseAssetListResponse {
+  const caseUuid = overrides.case_uuid ?? SAMPLE_CASE_UUID
+  return {
+    case_uuid: caseUuid,
+    count: assets.length,
+    assets,
+    ...overrides,
+  }
+}
+
+export function makeUploadResponse(
+  asset: CaseAssetMetadata = makeAsset(),
+  overrides: Partial<CaseAssetUploadResponse> = {},
+): CaseAssetUploadResponse {
+  return {
+    case_uuid: asset.case_uuid,
+    asset,
+    message: 'Case asset uploaded successfully.',
+    ...overrides,
+  }
+}
+
 export function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -409,10 +467,15 @@ export function installApiMock(
     input: RequestInfo | URL,
     init?: RequestInit,
   ) => Response | Promise<Response>,
-  options: { autoHealth?: boolean; autoEmptyMessages?: boolean } = {},
+  options: {
+    autoHealth?: boolean
+    autoEmptyMessages?: boolean
+    autoEmptyAssets?: boolean
+  } = {},
 ) {
   const autoHealth = options.autoHealth !== false
   const autoEmptyMessages = options.autoEmptyMessages !== false
+  const autoEmptyAssets = options.autoEmptyAssets !== false
   const fetchMock = vi.fn(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url =
@@ -432,6 +495,15 @@ export function installApiMock(
         const match = url.match(/\/cases\/([^/]+)\/messages/)
         const caseUuid = match?.[1] ?? SAMPLE_CASE_UUID
         return jsonResponse(makeMessagesResponse([], { case_uuid: caseUuid }))
+      }
+      if (
+        autoEmptyAssets &&
+        /\/cases\/[^/]+\/assets(?:\?|$)/.test(url) &&
+        (!init?.method || init.method === 'GET')
+      ) {
+        const match = url.match(/\/cases\/([^/]+)\/assets/)
+        const caseUuid = match?.[1] ?? SAMPLE_CASE_UUID
+        return jsonResponse(makeAssetListResponse([], { case_uuid: caseUuid }))
       }
       return handler(input, init)
     },

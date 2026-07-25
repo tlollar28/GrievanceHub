@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0–M3 complete (Foundations, Saved Cases, Create/Restore, Conversation)
+**Status:** W6 in progress — M0–M4 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence)
 **Date:** 2026-07-24
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -15,7 +15,7 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | **M1 — Saved cases** | **Complete** — Dashboard + Cases list against `GET /cases/saved`, URL filters/search/pagination, open/reopen, `/cases/:caseUuid` entry |
 | **M2 — Create + workspace restore** | **Complete** — Create Case form; durable `GET /cases/{uuid}/workspace` restore; `CaseWorkspaceShell` + Case Rail; overview/memory/facts; facts `PATCH` |
 | **M3 — Conversation** | **Complete** — `/cases/:caseUuid/conversation`; `GET .../messages` + `POST .../interactions`; retrieval statuses; citations/research panel; disclosures; facts-needed; no artifacts from chat |
-| M4 — Evidence | Planned |
+| **M4 — Evidence** | **Complete** — `/cases/:caseUuid/evidence`; `GET/POST .../assets`; metadata detail; Conversation `upload_refs` picker; no case-file RAG; no analysis/grievance/artifact side effects |
 | M5 — Analysis | Planned |
 | M6 — Grievance | Planned |
 | M7 — Artifacts & history | Planned |
@@ -506,8 +506,10 @@ On browser refresh:
 
 - Enter sends (Shift+Enter newline) on desktop.
 - Block empty sends.
-- Attaching existing case assets as `upload_refs` is deferred to M4 Evidence (M3
-  sends text-only interactions with `source: "manual_ui"`).
+- Attaching existing case assets as `upload_refs` is implemented (M4): composer
+  “Attach case evidence” selects current-case asset UUIDs only. Message-only
+  submissions still send `{ message, source: "manual_ui" }` without
+  `upload_refs`. Uploaded evidence is case context, not authority-corpus RAG.
 - Optional `fact_updates` advanced mode collapsed by default (power users); default fact edits go through Facts panel `PATCH`.
 
 ---
@@ -746,12 +748,21 @@ Jump-to-context: `GET /cases/{uuid}/history/{event_id}/context` opens bounded wi
 | Upload | `POST /cases/{uuid}/assets` multipart: `file`, `category=uploaded_document`, `uploaded_by?`, `source=manual_ui` |
 | Metadata | `GET /cases/{uuid}/assets/{assetUuid}` |
 
-UI notes:
+Verified backend constraints (W3/M4):
 
-- Only `uploaded_document` is executable; reject other categories in the picker.
-- Show filename, size, mime, sha256, uploaded_by, created_at.
-- **No case-file RAG:** disclose “Uploads are attached as case context references; they are not full-text searched like the indexed authority corpus.”
-- After upload, asset UUID can be attached to the next chat turn via `upload_refs`.
+- Executable upload category: `uploaded_document` only (other categories 400 placeholder).
+- Max size: `CASE_ASSET_MAX_UPLOAD_BYTES` = 25 MiB; empty files rejected.
+- No MIME whitelist on the backend.
+- Response may include `stored_path` / `stored_filename` — **never render storage paths**.
+- `upload_refs` on interactions is `list[str]` of case asset UUIDs (multiple allowed).
+- Continuity marks evidence `content_embedded: false`; uploads are not corpus-ingested.
+
+UI notes (M4 complete):
+
+- Route `/cases/:caseUuid/evidence` under `CaseWorkspaceShell` with Conversation/Evidence nav.
+- Show filename, asset UUID, category, mime, size, sha256, uploaded_by, source, created_at, status.
+- **No case-file RAG:** disclose “Uploaded evidence is attached as case context. It is not full-text searched like the indexed authority corpus.”
+- After upload, asset UUID is available to the Conversation attachment picker via `upload_refs`.
 
 Source-processing status for the **authority corpus** lives under `/sources` (admin), not the case upload panel.
 
@@ -1216,7 +1227,7 @@ Each milestone is independently testable against the live W5 API.
 | **M1 — Saved cases** | Dashboard + Cases list + filters + open/reopen | Steward opens/reopens case into workspace shell |
 | **M2 — Create + workspace restore** | Create case; CaseWorkspaceShell; left rail overview/facts/step | New case appears; workspace restores memory/overview |
 | **M3 — Conversation** | **Complete** — Messages + interactions + citations + retrieval states | Chat with citations end-to-end; no artifacts created |
-| **M4 — Evidence** | UploadPanel + upload_refs in composer | Upload and reference in chat |
+| **M4 — Evidence** | **Complete** — UploadPanel + asset table/detail + upload_refs in composer | Upload and reference in chat; not authority RAG |
 | **M5 — Analysis** | Generate preview → Save / Save and Print → versions | Temporary vs saved clearly distinct; Official Case Record updates on Save |
 | **M6 — Grievance** | Generate draft → edit → validate → Save / Save and Print → Step 1/2 PDF | Official forms preview/download |
 | **M7 — Artifacts & history** | Library, detail, compare, Official Case Record, jump-to-context | Browse versions; download PDFs |

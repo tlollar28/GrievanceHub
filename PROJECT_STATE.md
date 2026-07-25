@@ -12,18 +12,19 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M3 complete (Foundations, Saved Cases, Create/Restore, Conversation) |
-| Next milestone | W6 M4 — Evidence |
+| Current implementation state | W6 in progress — M0–M4 complete (Foundations, Saved Cases, Create/Restore, Conversation, Evidence) |
+| Next milestone | W6 M5 — Analysis |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Interactive Steward Workspace | In progress (M0–M3 complete; M4–M10 not started) |
+| W6 — Interactive Steward Workspace | In progress (M0–M4 complete; M5–M10 not started) |
 | W6 M0 — Frontend Foundations | Complete and committed |
 | W6 M1 — Saved Cases | Complete and committed |
 | W6 M2 — Create Case + workspace restore | Complete and committed |
 | W6 M3 — Conversation + retrieval | Complete and committed |
+| W6 M4 — Evidence uploads + asset references | Complete and committed |
 | W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
@@ -77,6 +78,10 @@ from ordinary steward case work.
   `POST /cases/{uuid}/interactions`), retrieval-status UI, citation chips and
   research panel, disclosures / facts-needed; normal chat creates no analysis
   report, grievance, or artifact
+- W6 M4 Evidence workspace (`/cases/:caseUuid/evidence`) with case asset list,
+  multipart upload (`POST /cases/{uuid}/assets`), metadata detail, and
+  conversation `upload_refs` attachment selection; uploaded evidence is
+  case-context reference only and is not authority-corpus RAG
 
 ## Normal chat vs analysis
 
@@ -129,6 +134,7 @@ Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
 | W6 M1 | Saved Cases dashboard/list, filters/search/pagination, open/reopen, workspace-entry route |
 | W6 M2 | Create Case, durable workspace restore, CaseWorkspaceShell, Case Rail, facts editor |
 | W6 M3 | Case conversation, message restore, interactions, retrieval status, citations |
+| W6 M4 | Evidence uploads, asset list/detail, conversation upload_refs |
 | CrossCraft retirement | Obsolete SPBS/cross-craft surface removed |
 
 The historical phase labels remain visible in Git history. They represent the
@@ -150,7 +156,7 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 | Phase | Status |
 |-------|--------|
 | W5 — Knowledge Foundation | Complete |
-| W6 — Interactive Steward Workspace | In progress (M0–M3 complete) |
+| W6 — Interactive Steward Workspace | In progress (M0–M4 complete) |
 | W7 — RAG Evaluation and Output Quality | Planned |
 | W8 — Multi-Agent Authority Workflow | Planned |
 | W9 — Security and Governance | Planned |
@@ -159,10 +165,11 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 W5 retrieval components are retrieval infrastructure. They are not completion of
 W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
-completion of W9 application security. W6 M0–M3 cover shell foundations, Saved
-Cases entry, Create Case, durable workspace restore, and case conversation with
-retrieval/citations; Evidence (M4), analysis, and grievance screens remain later
-milestones.
+completion of W9 application security. W6 M0–M4 cover shell foundations, Saved
+Cases entry, Create Case, durable workspace restore, case conversation with
+retrieval/citations, and evidence uploads with `upload_refs`; Analysis (M5) and
+later grievance/artifact screens remain later milestones. Case evidence uploads
+are not indexed into the authority corpus.
 
 ## Related documentation
 
@@ -175,4 +182,5 @@ milestones.
 - [`docs/temp/W6_M1_SAVED_CASES_REPORT.md`](docs/temp/W6_M1_SAVED_CASES_REPORT.md)
 - [`docs/temp/W6_M2_CREATE_WORKSPACE_REPORT.md`](docs/temp/W6_M2_CREATE_WORKSPACE_REPORT.md)
 - [`docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md`](docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md)
+- [`docs/temp/W6_M4_EVIDENCE_REPORT.md`](docs/temp/W6_M4_EVIDENCE_REPORT.md)
 - [`README.md`](README.md)

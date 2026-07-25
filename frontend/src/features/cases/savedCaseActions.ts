@@ -55,3 +55,16 @@ export const messageKeys = {
     pagination: { limit: number; offset: number; order: string },
   ) => [...messageKeys.lists(), caseUuid, pagination] as const,
 }
+
+/** TanStack Query keys for GET /cases/{uuid}/assets */
+export const assetKeys = {
+  all: ['caseAssets'] as const,
+  lists: () => [...assetKeys.all, 'list'] as const,
+  list: (
+    caseUuid: string,
+    filters: { category?: string | null } = {},
+  ) => [...assetKeys.lists(), caseUuid, filters] as const,
+  details: () => [...assetKeys.all, 'detail'] as const,
+  detail: (caseUuid: string, assetUuid: string) =>
+    [...assetKeys.details(), caseUuid, assetUuid] as const,
+}

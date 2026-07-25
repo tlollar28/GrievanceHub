@@ -1,31 +1,39 @@
 import { useId, type KeyboardEvent } from 'react'
+import { AttachmentPicker } from './AttachmentPicker'
 import styles from './ConversationPanel.module.css'
 
 type Props = {
+  caseUuid: string
   value: string
+  selectedAssetUuids: string[]
   disabled?: boolean
   pending?: boolean
   readOnlyReason?: string | null
   onChange: (value: string) => void
+  onSelectedAssetsChange: (assetUuids: string[]) => void
   onSubmit: () => void
 }
 
 export function ConversationComposer({
+  caseUuid,
   value,
+  selectedAssetUuids,
   disabled = false,
   pending = false,
   readOnlyReason,
   onChange,
+  onSelectedAssetsChange,
   onSubmit,
 }: Props) {
   const labelId = useId()
   const helpId = useId()
   const busy = pending || disabled
+  const canSend = value.trim().length > 0
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      if (!busy && value.trim().length > 0) {
+      if (!busy && canSend) {
         onSubmit()
       }
     }
@@ -37,7 +45,7 @@ export function ConversationComposer({
       aria-busy={pending || undefined}
       onSubmit={(event) => {
         event.preventDefault()
-        if (!busy && value.trim().length > 0) {
+        if (!busy && canSend) {
           onSubmit()
         }
       }}
@@ -60,6 +68,14 @@ export function ConversationComposer({
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={handleKeyDown}
       />
+
+      <AttachmentPicker
+        caseUuid={caseUuid}
+        selectedAssetUuids={selectedAssetUuids}
+        disabled={busy || Boolean(readOnlyReason)}
+        onChange={onSelectedAssetsChange}
+      />
+
       <div className={styles.composerActions}>
         <p className={styles.composerHint}>
           Enter sends · Shift+Enter for a new line
@@ -67,7 +83,7 @@ export function ConversationComposer({
         <button
           type="submit"
           className={styles.sendButton}
-          disabled={busy || value.trim().length === 0 || Boolean(readOnlyReason)}
+          disabled={busy || !canSend || Boolean(readOnlyReason)}
           aria-label="Send message"
         >
           {pending ? 'Sending…' : 'Send'}

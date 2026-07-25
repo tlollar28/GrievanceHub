@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { CaseWorkspace } from '../../api/types/workspace'
 import { CaseContextHeader } from './CaseContextHeader'
 import { CaseRail } from './CaseRail'
+import { WorkspaceSectionNav } from './WorkspaceSectionNav'
 import styles from './CaseWorkspaceShell.module.css'
 
 type Props = {
@@ -31,6 +32,7 @@ export function CaseWorkspaceShell({
         <CaseRail workspace={workspace} factsReadOnly={factsReadOnly} />
         <div className={styles.main}>
           <div className={styles.mainInner}>
+            <WorkspaceSectionNav caseUuid={workspace.case_uuid} />
             {children}
           </div>
         </div>

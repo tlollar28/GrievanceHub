@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { CaseWorkspace } from '../../api/types/workspace'
 import { formatStepType } from '../../features/cases/savedCaseFilters'
 import { CaseMemoryPanel } from './CaseMemoryPanel'
@@ -222,6 +223,11 @@ export function CaseRail({ workspace, factsReadOnly = false }: Props) {
               ))}
             </ul>
           )}
+          <p className={styles.empty}>
+            <Link to={`/cases/${workspace.case_uuid}/evidence`}>
+              Open Evidence
+            </Link>
+          </p>
         </section>
 
         {artifacts.length > 0 ? (

@@ -2,6 +2,7 @@ import { Navigate, type RouteObject } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { RouteErrorBoundary } from '../components/RouteErrorBoundary'
 import { CaseConversationPage } from '../routes/CaseConversationPage'
+import { CaseEvidencePage } from '../routes/CaseEvidencePage'
 import {
   CaseWorkspaceIndexRedirect,
   CaseWorkspacePage,
@@ -28,6 +29,7 @@ export const appRoutes: RouteObject[] = [
         children: [
           { index: true, element: <CaseWorkspaceIndexRedirect /> },
           { path: 'conversation', element: <CaseConversationPage /> },
+          { path: 'evidence', element: <CaseEvidencePage /> },
         ],
       },
       { path: 'help', element: <HelpPage /> },

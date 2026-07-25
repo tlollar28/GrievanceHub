@@ -148,8 +148,11 @@ case-scoped conversation on `/cases/:caseUuid/conversation`
 (`GET /cases/{uuid}/messages`, `POST /cases/{uuid}/interactions`) with retrieval
 status, citation chips, a research/detail panel, disclosures, and facts-needed
 prompts. Normal conversation does not create an analysis report, grievance, or
-saved artifact. Evidence upload, analysis generation, grievance drafting, and
-artifact library screens are not implemented yet.
+saved artifact. M4 adds Evidence on `/cases/:caseUuid/evidence` (list/upload/
+metadata for `GET/POST /cases/{uuid}/assets`) and conversation attachment of
+current-case assets via verified `upload_refs`. Uploaded evidence is case
+context only — it is not authority-corpus RAG. Analysis generation, grievance
+drafting, and artifact library screens are not implemented yet.
 
 ```bash
 cd frontend
