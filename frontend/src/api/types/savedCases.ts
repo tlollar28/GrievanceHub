@@ -4,6 +4,8 @@
  * Verified against FastAPI route signatures and OpenAPI query enums.
  */
 
+import type { CaseWorkspace } from './workspace'
+
 export type StepType =
   | 'step_1_initial'
   | 'step_2_appeal'
@@ -94,7 +96,7 @@ export type OpenCaseResponse = {
   case: SavedCaseSummary
   action_taken: 'already_open' | 'opened' | 'closed_requires_reopen'
   message: string
-  workspace: CaseWorkspaceBootstrap | null
+  workspace: CaseWorkspace | null
 }
 
 export type ReopenCaseResponse = {
@@ -102,31 +104,11 @@ export type ReopenCaseResponse = {
   action_taken: 'reopened' | 'already_open'
   message: string
   source: ReopenSource
-  workspace: CaseWorkspaceBootstrap | null
+  workspace: CaseWorkspace | null
 }
 
-/** Lean subset of GET /cases/{uuid}/workspace used by the M1 entry route. */
-export type CaseWorkspaceBootstrap = {
-  case_uuid: string
-  title: string | null
-  status: string
-  message_count?: number
-  workspace_summary?: {
-    case_uuid: string
-    title: string | null
-    status: string
-    workspace_status?: string | null
-    current_step_type?: string | null
-    message_count?: number
-    asset_count?: number
-  }
-  overview?: {
-    case_uuid?: string
-    current_status?: string
-    issue?: string | null
-    title?: string | null
-  }
-}
+/** @deprecated Prefer CaseWorkspace — open/reopen return the full workspace aggregate. */
+export type CaseWorkspaceBootstrap = CaseWorkspace
 
 export type ListSavedCasesParams = {
   status?: SavedCaseStatusFilter

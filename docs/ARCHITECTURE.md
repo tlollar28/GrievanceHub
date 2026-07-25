@@ -1,7 +1,7 @@
 # GrievanceHub Architecture
 
 Technical system design for the current GrievanceHub backend through W5, plus the
-W6 M0 frontend foundation now present on `main`.
+W6 M0–M2 frontend steward shell now present on `main`.
 
 For a concise product overview, see [`README.md`](../README.md). For the
 canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md). For the W6
@@ -28,20 +28,24 @@ React steward shell (frontend/) / API client / /ui shell
         └─► Local filesystem storage (case assets, generated reports)
 ```
 
-### Frontend foundation (W6 M0)
+### Frontend steward shell (W6 M0–M2)
 
-`frontend/` is a Vite + React + TypeScript application shell. M0 implements:
+`frontend/` is a Vite + React + TypeScript application. Implemented:
 
-- Application shell (TopBar, SideNav, outlet)
-- Routing foundations (`/dashboard`, `/cases`, `/cases/new`, `/help`, not-found)
-- TanStack Query at the application root
-- Typed `fetch` API client with normalized `ApiError`
-- Non-blocking FastAPI health indicator via `GET /api/health` (Vite proxy → `/health`)
-- Design-system CSS custom properties and accessibility foundations
+- **M0:** Application shell (TopBar, SideNav, outlet), routing foundations,
+  TanStack Query, typed `fetch` API client, FastAPI health indicator via
+  `GET /api/health` (Vite proxy → `/health`), design tokens, a11y foundations
+- **M1:** Saved Cases dashboard/list (`GET /cases/saved`), URL filters/search/
+  pagination, open/reopen into `/cases/:caseUuid`
+- **M2:** Create Case (`POST /cases/` from `/cases/new`), durable workspace
+  restore (`GET /cases/{uuid}/workspace`), reusable `CaseWorkspaceShell` with
+  Case context header and left Case Rail (overview, Case Memory, workflow,
+  timeline/upload summaries), known-facts editing (`PATCH /cases/{uuid}/facts`)
 
-M0 does **not** implement Saved Cases, case creation, chat, analysis, grievances,
-artifacts, uploads, workflow management, or source administration. Those belong
-to later W6 milestones.
+Query ownership for workspace data uses TanStack Query key
+`["caseWorkspace", caseUuid]`. Open/reopen may seed that cache; the workspace
+route refetches on mount and treats the server response as authoritative.
+Conversation remains M3 — M2 does not call `/interactions` or `/messages`.
 
 The W6 browser must not receive source API secrets
 (`GRIEVANCEHUB_API_KEY` / `GRIEVANCEHUB_ADMIN_API_KEY`). Sources UI remains
@@ -224,17 +228,29 @@ Contracts live under `app/schemas/`.
 
 Case creation initializes step progression and Case Memory in the same transaction. It does not create an analysis report.
 
-`GET /cases/{case_uuid}/workspace` (also returned by open/reopen) restores:
+**Create (`POST /cases/`):** request fields are `question` (required), optional
+`user_name`, `local_number`, `known_facts`. Response is
+`{ case, report_version: null }` — case metadata/detail only, not a workspace
+payload. OpenAPI lists `limit_per_source` on the request model, but the create
+route does not pass it to `CaseService.create_case`.
 
-- Case identity, facts, and status
-- Case Memory and Case Overview
-- Saved analysis history
-- Assets and artifact groups
-- Official Case Record timeline slice
+**Workspace (`GET /cases/{case_uuid}/workspace`)** (also returned by open/reopen)
+restores:
+
+- Case identity, `known_facts`, and status
+- `case_memory` and `case_overview` (embedded; separate `/memory` and
+  `/overview` routes also exist)
+- Saved analysis history summaries
+- Assets / upload summary and artifact summaries when present
+- Timeline slice and Official Case Record history slice
 - Step progression and available actions
-- Bounded `ai_continuity_context`
+- Bounded `ai_continuity_context` (not rendered as chat UI in M2)
 
-Full transcript remains available via `GET /cases/{case_uuid}/messages`. Workspace restore does not embed the entire conversation into every AI call.
+**Facts (`PATCH /cases/{case_uuid}/facts`):** body `{ known_facts: dict }`
+replaces the full facts object and returns a case list summary (not workspace).
+
+Full transcript remains available via `GET /cases/{case_uuid}/messages`.
+Workspace restore does not embed the entire conversation (`messages: []`).
 
 ---
 
@@ -395,7 +411,7 @@ portfolio repository.
 | Source processing lifecycle metadata | Implemented |
 | Bounded retrieval-agent architecture | Implemented |
 | Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Interactive steward workspace | In progress (W6; M0–M1 complete, M2–M10 not started) |
+| Interactive steward workspace | In progress (W6; M0–M2 complete, M3–M10 not started) |
 | Formal RAG evaluation / quality gates | Planned (W7) |
 | Multi-agent authority workflow | Planned (W8) |
 | Application identity / governance | Planned (W9) |
@@ -423,8 +439,8 @@ UI → Arbitration/LMOU → Deployment) is superseded.
 
 - **W6 — Interactive Steward Workspace (in progress):** usable end-to-end steward UI as
   a vertical slice; continuous RAG and generation validation through realistic
-  workflows. **M0 Frontend Foundations and M1 Saved Cases are complete.** M2–M10
-  are not started.
+  workflows. **M0–M2 are complete** (Foundations, Saved Cases, Create Case +
+  workspace restore). **M3 Conversation is next.** M3–M10 are not started.
 - **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
   citation/faithfulness metrics, and approved quality thresholds before
   multi-agent complexity.

@@ -1,6 +1,5 @@
 import { apiRequest } from './client'
 import type {
-  CaseWorkspaceBootstrap,
   ListSavedCasesParams,
   OpenCaseRequest,
   OpenCaseResponse,
@@ -9,6 +8,8 @@ import type {
   SavedCaseListResponse,
   SavedCaseSummary,
 } from './types/savedCases'
+
+export { getCaseWorkspace } from './workspace'
 
 function buildListQuery(params: ListSavedCasesParams = {}): string {
   const searchParams = new URLSearchParams()
@@ -66,16 +67,6 @@ export function reopenSavedCase(
   return apiRequest<ReopenCaseResponse>(`/cases/saved/${caseUuid}/reopen`, {
     method: 'POST',
     body,
-    signal,
-  })
-}
-
-/** GET /cases/{case_uuid}/workspace — lean bootstrap when open/reopen cache miss. */
-export function getCaseWorkspace(
-  caseUuid: string,
-  signal?: AbortSignal,
-): Promise<CaseWorkspaceBootstrap> {
-  return apiRequest<CaseWorkspaceBootstrap>(`/cases/${caseUuid}/workspace`, {
     signal,
   })
 }

@@ -1,0 +1,133 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--font-size-section);
+  font-weight: 650;
+}
+
+.help {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: var(--space-2);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.field input,
+.field textarea {
+  font: inherit;
+  font-size: var(--font-size-body);
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-ring);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.removeButton,
+.addButton,
+.saveButton,
+.cancelButton {
+  appearance: none;
+  font: inherit;
+  font-size: var(--font-size-body);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.removeButton:focus-visible,
+.addButton:focus-visible,
+.saveButton:focus-visible,
+.cancelButton:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-ring);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.saveButton {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.saveButton:disabled,
+.cancelButton:disabled,
+.addButton:disabled,
+.removeButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.dirty {
+  font-size: var(--font-size-meta);
+  color: var(--warning);
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--font-size-body);
+}
+
+.success {
+  margin: 0;
+  color: var(--success);
+  font-size: var(--font-size-body);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+}

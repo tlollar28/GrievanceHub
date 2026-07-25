@@ -40,7 +40,8 @@ export const savedCaseKeys = {
     [...savedCaseKeys.details(), caseUuid] as const,
 }
 
+/** TanStack Query keys for GET /cases/{uuid}/workspace */
 export const workspaceKeys = {
-  all: ['workspace'] as const,
+  all: ['caseWorkspace'] as const,
   detail: (caseUuid: string) => [...workspaceKeys.all, caseUuid] as const,
 }

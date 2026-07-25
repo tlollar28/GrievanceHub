@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0 Foundations and M1 Saved Cases complete
+**Status:** W6 in progress — M0–M2 complete (Foundations, Saved Cases, Create/Restore)
 **Date:** 2026-07-24
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -12,8 +12,8 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | Milestone | Status |
 |-----------|--------|
 | **M0 — Foundations** | **Complete** — `frontend/` Vite/React/TS shell, design tokens, AppShell, typed apiClient, `/api` proxy, health ConnectionStatus, accessibility foundations, Vitest coverage |
-| **M1 — Saved cases** | **Complete** — Dashboard + Cases list against `GET /cases/saved`, URL filters/search/pagination, open/reopen, minimal `/cases/:caseUuid` workspace-entry route |
-| M2 — Create + workspace restore | Planned |
+| **M1 — Saved cases** | **Complete** — Dashboard + Cases list against `GET /cases/saved`, URL filters/search/pagination, open/reopen, `/cases/:caseUuid` entry |
+| **M2 — Create + workspace restore** | **Complete** — Create Case form; durable `GET /cases/{uuid}/workspace` restore; `CaseWorkspaceShell` + Case Rail; overview/memory/facts; facts `PATCH` |
 | M3 — Conversation | Planned |
 | M4 — Evidence | Planned |
 | M5 — Analysis | Planned |
@@ -286,13 +286,23 @@ Use the same resolution logic as `app/clients/saved_case_client.py` (`resolve_ca
 ### 4.3 Create case
 
 **Route:** `/cases/new`
-**API:** `POST /cases/` with `{ question, user_name?, local_number?, known_facts?, limit_per_source? }`
+**API:** `POST /cases/` with `{ question, user_name?, local_number?, known_facts? }`
+
+Verified notes (M2):
+
+- OpenAPI also lists `limit_per_source` on `CreateCaseRequest`, but the create
+  route does **not** pass it into `CaseService.create_case` — omit from the
+  steward form.
+- Response is `{ case, report_version: null }` (case detail/summary), **not** a
+  workspace payload. Navigate to `/cases/{uuid}` and restore via
+  `GET /cases/{uuid}/workspace` (or cached open/reopen workspace).
 
 Behavior:
 
 - Creates case **without** auto-analysis (`report_version: null`)
-- On success, navigate to `/cases/{uuid}` with chat ready
-- Initial `question` becomes the first steward context; UI may optionally send it as the first interaction or leave it as case title/question field — **prefer:** show question in Case Overview and let steward send the first chat turn explicitly (avoids surprise AI spend). Document choice in implementation milestone M2.
+- On success, navigate to `/cases/{uuid}` and restore the workspace shell
+- Initial `question` is shown in Case Overview / identity; M2 does **not** send
+  the first chat interaction (avoids surprise AI spend). Conversation is M3.
 
 ---
 
@@ -325,7 +335,7 @@ Owns durable case identity and navigation within the case.
 | Section | Content | API |
 |---------|---------|-----|
 | Identity | Title, case number, UUID (copy), status, step | workspace / overview |
-| Case Overview | Employee, issue, recommendation, open questions, counts | `overview` in workspace or `GET .../overview` |
+| Case Overview | Employee, issue, recommendation, open questions, counts | `case_overview` in workspace (or `GET .../overview`) |
 | Facts | Editable `known_facts` key/value | `PATCH .../facts` |
 | Issues | Outstanding issues / open questions from memory | memory/overview |
 | Step progression | Current step, permitted transitions, outcome CTA | workflow + outcomes |

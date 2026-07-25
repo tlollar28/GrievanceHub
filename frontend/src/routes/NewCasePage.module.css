@@ -1,0 +1,152 @@
+.page {
+  max-width: 40rem;
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-title);
+}
+
+.intro {
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--font-size-body);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field label {
+  font-weight: 600;
+  font-size: var(--font-size-body);
+}
+
+.required {
+  color: var(--danger);
+}
+
+.help {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.field input,
+.field textarea {
+  font: inherit;
+  font-size: var(--font-size-body);
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-primary);
+}
+
+.field input:focus-visible,
+.field textarea:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-ring);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.fieldError {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--font-size-meta);
+}
+
+.factsBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+}
+
+.factRow {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: var(--space-2);
+}
+
+@media (max-width: 720px) {
+  .factRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.submit {
+  appearance: none;
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--font-size-body);
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cancel {
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.cancel:hover {
+  text-decoration: underline;
+}
+
+.submit:focus-visible,
+.cancel:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-ring);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.alert {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--font-size-body);
+}
+
+.note {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+  border-left: 3px solid var(--accent);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-size: var(--font-size-meta);
+}
+
+.secondaryButton {
+  appearance: none;
+  font: inherit;
+  font-size: var(--font-size-body);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  cursor: pointer;
+}
