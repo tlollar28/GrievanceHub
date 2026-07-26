@@ -426,7 +426,7 @@ class CaseService:
         from app.services.case_step_progression_persistence_service import (
             CaseStepProgressionPersistenceService,
         )
-        from app.services.case_step_progression_service import (
+        from app.services.case_step_progression_errors import (
             CaseStepProgressionNotFoundError,
         )
         from app.services.case_workspace_action_service import CaseWorkspaceActionService
@@ -1949,7 +1949,7 @@ class CaseService:
         from app.services.case_step_progression_persistence_service import (
             CaseStepProgressionPersistenceService,
         )
-        from app.services.case_step_progression_service import (
+        from app.services.case_step_progression_errors import (
             CaseStepProgressionNotFoundError,
         )
 

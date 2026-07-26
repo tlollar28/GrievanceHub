@@ -54,11 +54,11 @@ from app.services.case_asset_service import CaseAssetService
 from app.services.case_step_progression_persistence_service import (
     CaseStepProgressionPersistenceService,
 )
-from app.services.case_step_progression_service import (
+from app.services.case_step_progression_errors import (
     CaseStepNotFoundError,
     CaseStepProgressionNotFoundError,
-    CaseStepProgressionService,
 )
+from app.services.case_step_progression_rules import get_step_template_availability
 from app.services.follow_up_chat_service import (
     CHAT_RETRIEVAL_LIMIT_PER_SOURCE,
     FollowUpChatService,
@@ -657,9 +657,7 @@ class CaseWorkspaceActionService:
         step_type = inspection.current_step_type or "step_1_initial"
         template_id = inspection.template_id
         if template_id is None and step_type in {"step_1_initial", "step_2_appeal"}:
-            template_id = CaseStepProgressionService.get_step_template_availability(
-                step_type
-            ).template_id
+            template_id = get_step_template_availability(step_type).template_id
 
         if template_id is not None and step_type in {
             "step_1_initial",
@@ -1140,7 +1138,7 @@ class CaseWorkspaceActionService:
         step_type = inspection.current_step_type
         template_status = inspection.template_availability_status
         fallback_template = (
-            CaseStepProgressionService.get_step_template_availability(step_type)
+            get_step_template_availability(step_type)
             if step_type is not None
             else None
         )
@@ -1216,9 +1214,7 @@ class CaseWorkspaceActionService:
 
         if progression_state is not None:
             current_step_type = progression_state.current_step_type
-            availability = CaseStepProgressionService.get_step_template_availability(
-                current_step_type
-            )
+            availability = get_step_template_availability(current_step_type)
             template_id = availability.template_id
             template_status = availability.availability_status
             template_available = availability.template_available

@@ -142,7 +142,7 @@ def test_saved_cases_list_newest_first(db_session, synthetic_case, progression, 
     persistence = CaseStepProgressionPersistenceService(db_session)
     persistence.close_case(
         SYNTHETIC_CASE_UUID,
-        event_timestamp=base_time + timedelta(hours=1),
+        event_timestamp=datetime.now(UTC),
     )
 
     case_b_uuid = "00000000-0000-4000-8000-000000000402"
@@ -165,7 +165,11 @@ def test_saved_cases_list_newest_first(db_session, synthetic_case, progression, 
     db_session.add(older)
     db_session.commit()
 
-    result = SavedCaseService.list_saved_cases(db_session, newest_first=True)
+    result = SavedCaseService.list_saved_cases(
+        db_session,
+        newest_first=True,
+        search="00000000-0000-4000-8000-00000000040",
+    )
     uuids = [item.case_uuid for item in result.cases]
     assert SYNTHETIC_CASE_UUID in uuids
     assert case_b_uuid in uuids

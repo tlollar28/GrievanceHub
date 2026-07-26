@@ -34,7 +34,7 @@ from app.services.case_service import CaseNotFoundError, CaseService, ReportVers
 from app.services.case_step_progression_persistence_service import (
     CaseStepProgressionPersistenceService,
 )
-from app.services.case_step_progression_service import CaseStepProgressionNotFoundError
+from app.services.case_step_progression_errors import CaseStepProgressionNotFoundError
 from app.services.grievance_pdf_export_service import GrievancePdfExportService
 from app.services.idempotency_conflict_utils import (
     CASE_FORM_DRAFT_RECORDS_IDEMPOTENCY_INDEX,

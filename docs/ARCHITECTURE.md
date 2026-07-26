@@ -293,6 +293,8 @@ Contracts live under `app/schemas/`.
 | Case Memory | `case_memory_service.py` |
 | Domain events | `case_domain_event_service.py` |
 | Workflow FSM | `case_workflow_service.py` |
+| Persisted step/outcome/timeline records | `case_step_progression_persistence_service.py` |
+| Stateless step template/draft rules | `case_step_progression_rules.py` |
 | Saved artifacts | `case_saved_artifact_service.py` |
 | Case assets | `case_asset_service.py` |
 | Indexed retrieval | `knowledge_retrieval_service.py` |
@@ -359,6 +361,12 @@ leading composite index matching their actual query/order-by shape
 `CaseSavedArtifact`, and `CaseAsset` were already covered by a pre-existing
 `case_id`-leading composite index via the leftmost-prefix rule, so no
 additional index was added for them.
+
+Scoped ORM metadata also explicitly mirrors the migrated unique constraints
+and indexes for case asset/event/draft/artifact/outcome/timeline UUIDs and
+`case_memories`. This avoids unstable Alembic autogenerate output from combined
+`unique=True, index=True` column flags. The live migrated schema was already
+correct; the reconciliation required no migration or DDL.
 
 ---
 
@@ -450,7 +458,16 @@ Domain events are persisted in `case_domain_events`, applied in-process (no exte
 
 ## 12. Workflow engine
 
-`CaseWorkflowService` enforces an explicit finite-state machine for case open, Step 1/2/3 progression, management response, decision, appeal, settle, close, and reopen. State is mirrored on Case Memory. Artifact Save may advance the case into an official step state. The FSM does not require an analysis report before grievance drafting.
+`CaseWorkflowService` enforces the authoritative explicit finite-state machine
+for case open, Step 1/2/3 progression, management response, decision, appeal,
+settle, close, and reopen. State is mirrored on Case Memory.
+`CaseStepProgressionPersistenceService` separately stores step, outcome,
+timeline, and draft-history records; it is not a second workflow FSM. Stateless
+template availability and draft construction live in
+`case_step_progression_rules.py`. The former in-memory
+`CaseStepProgressionService` was removed so it cannot be wired into a request
+path accidentally. Artifact Save may advance the case into an official step
+state. The FSM does not require an analysis report before grievance drafting.
 
 ---
 

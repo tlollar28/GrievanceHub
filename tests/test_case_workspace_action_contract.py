@@ -15,7 +15,7 @@ from app.schemas.case_workspace_action_schema import (
     WorkspaceInteractionPayload,
 )
 from app.services.case_service import CaseNotFoundError, CaseService
-from app.services.case_step_progression_service import CaseStepProgressionNotFoundError
+from app.services.case_step_progression_errors import CaseStepProgressionNotFoundError
 from app.services.case_workspace_action_service import (
     CaseWorkspaceActionService,
     _WorkspaceInspection,

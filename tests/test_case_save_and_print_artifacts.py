@@ -466,7 +466,7 @@ def test_workspace_marks_automatic_context_restore():
         assets=[],
     )
     db = MagicMock()
-    from app.services.case_step_progression_service import CaseStepProgressionNotFoundError
+    from app.services.case_step_progression_errors import CaseStepProgressionNotFoundError
 
     with (
         patch.object(CaseService, "get_case_for_workspace", return_value=case),

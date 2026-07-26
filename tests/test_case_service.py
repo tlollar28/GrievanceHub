@@ -261,7 +261,7 @@ def test_get_case_workspace_aggregate_shape():
             "app.services.case_step_progression_persistence_service."
             "CaseStepProgressionPersistenceService.get_progression",
             side_effect=__import__(
-                "app.services.case_step_progression_service",
+                "app.services.case_step_progression_errors",
                 fromlist=["CaseStepProgressionNotFoundError"],
             ).CaseStepProgressionNotFoundError("workspace-case"),
         ),

@@ -12,8 +12,8 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M9 complete; production-readiness Batches 1–2 complete |
-| Next milestone | W6 production-readiness Batch 3 |
+| Current implementation state | W6 in progress — M0–M9 complete; production-readiness Batches 1–3 complete |
+| Next milestone | W6 Batch 4 / M10 — Polish & a11y |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
@@ -32,7 +32,7 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 | W6 M9 — Sources research | Complete and committed |
 | W6 production-readiness Batch 1 | Complete — `4ab328d` |
 | W6 production-readiness Batch 2 | Complete — `1111b4e` |
-| W6 production-readiness Batch 3 | Approved — ARCH-2/MAINT-1 + Alembic metadata reconciliation |
+| W6 production-readiness Batch 3 | Complete — step-progression cleanup + Alembic metadata reconciliation |
 | W6 production-readiness Batch 4 | W6 M10 — planned, not started |
 | W6 M10 — Polish & a11y | Batch 4 — planned, not started |
 | W7 — RAG Evaluation and Output Quality | Planned — not started; begins only after W6 |
@@ -160,7 +160,16 @@ Frontend (W6): React, TypeScript, Vite, React Router, TanStack Query, Vitest.
   `CaseReportVersion`, `CaseStepOutcome`, `CaseTimelineEventRecord`, and
   `CaseFormDraftRecord`; `CaseStep`, `CaseSavedArtifact`, and `CaseAsset`
   were already covered by an existing composite index
+- The dead in-memory `CaseStepProgressionService` was removed. Active
+  template/draft behavior is stateless in `case_step_progression_rules.py`;
+  SQLAlchemy-backed step records remain in
+  `CaseStepProgressionPersistenceService`, while `CaseWorkflowService` remains
+  the authoritative explicit workflow FSM.
+- ORM metadata now explicitly describes the existing migrated unique
+  constraints/indexes for scoped UUID columns and `case_memories`; no migration
+  or DDL was required, and `alembic check` is clean.
 - Details: [`docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_2_REPORT.md`](docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_2_REPORT.md),
+  [`docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_3_REPORT.md`](docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_3_REPORT.md),
   [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §7.1
 
 ## Security status
@@ -253,7 +262,7 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 | Phase | Status |
 |-------|--------|
 | W5 — Knowledge Foundation | Complete |
-| W6 — Interactive Steward Workspace | In progress (M0–M9 + remediation Batches 1–2 complete) |
+| W6 — Interactive Steward Workspace | In progress (M0–M9 + remediation Batches 1–3 complete) |
 | W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned |
 | W9 — Security and Governance | Planned |
@@ -288,4 +297,5 @@ authority corpus.
 - [`docs/temp/W6_M7_ARTIFACTS_HISTORY_REPORT.md`](docs/temp/W6_M7_ARTIFACTS_HISTORY_REPORT.md)
 - [`docs/temp/W6_M8_WORKFLOW_OUTCOMES_REPORT.md`](docs/temp/W6_M8_WORKFLOW_OUTCOMES_REPORT.md)
 - [`docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md`](docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md)
+- [`docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_3_REPORT.md`](docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_3_REPORT.md)
 - [`README.md`](README.md)

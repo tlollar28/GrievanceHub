@@ -36,11 +36,11 @@ from app.schemas.saved_case_schema import (
 )
 from app.schemas.case_step_progression_schema import StepType
 from app.services.case_service import CaseNotFoundError, CaseService
+from app.services.case_step_progression_errors import CaseStepProgressionNotFoundError
 from app.services.case_step_progression_persistence_service import (
-    CaseStepProgressionNotFoundError,
     CaseStepProgressionPersistenceService,
 )
-from app.services.case_step_progression_service import CaseStepProgressionService
+from app.services.case_step_progression_rules import get_step_template_availability
 
 logger = logging.getLogger(__name__)
 
@@ -222,9 +222,7 @@ class SavedCaseService:
             reopened_at = _aware_utc(current_step_row.reopened_at)
 
         if current_step_type is not None:
-            availability = CaseStepProgressionService.get_step_template_availability(
-                current_step_type
-            )
+            availability = get_step_template_availability(current_step_type)
             template_info = SavedCaseTemplateAvailability(
                 step_type=current_step_type,
                 template_available=availability.template_available,
@@ -521,11 +519,7 @@ class SavedCaseService:
             )
             template_info = SavedCaseTemplateAvailability()
             if current_step_type is not None:
-                availability = (
-                    CaseStepProgressionService.get_step_template_availability(
-                        current_step_type
-                    )
-                )
+                availability = get_step_template_availability(current_step_type)
                 template_info = SavedCaseTemplateAvailability(
                     step_type=current_step_type,
                     template_available=availability.template_available,
