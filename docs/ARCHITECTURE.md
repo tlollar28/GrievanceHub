@@ -321,6 +321,44 @@ Contracts live under `app/schemas/`.
 | `e6f7a8b9c0d1_...` | `case_saved_artifacts`, draft fields |
 | `f7a8b9c0d1e2_...` | `case_memories` |
 | `g8b9c0d1e2f3_...` | `case_domain_events`, `workflow_state` |
+| `h9c0d1e2f3a4_...` | Source processing provenance metadata (W5) |
+| `i0j1k2l3m4n5_...` | Five `case_id`-leading query indexes (W6 production-readiness hardening, §7.1) |
+
+### 7.1 Idempotency uniqueness and query indexes (W6 production-readiness hardening)
+
+`CaseDomainEvent`, `CaseFormDraftRecord`, and `CaseSavedArtifact` each accept
+a caller-supplied `idempotency_key` (see §5, §11). All three are backed by a
+**database** unique index — not just an application-level check-then-insert —
+scoped to `(case_uuid, idempotency_key)`, with `idempotency_key` nullable and
+unrestricted when null (`ix_case_domain_events_case_idempotency`,
+`ix_case_form_draft_records_idempotency`, `ix_case_saved_artifacts_idempotency`;
+all three predate this hardening pass, added in the migrations that created
+each table — this pass reconciled `models.py` ORM metadata to match and
+added the service-layer race handling described next).
+
+`CaseDomainEventService.publish_payload` and
+`CaseSavedArtifactService.save_and_print_report` /
+`save_and_print_grievance` each wrap their contested insert in a
+`db.begin_nested()` savepoint. Two requests racing on the same key both pass
+the initial existence check, but only one insert survives the unique index;
+the loser's `IntegrityError` is classified by constraint name
+(`app/services/idempotency_conflict_utils.py`) and, only if it matches the
+expected idempotency index, resolved by re-fetching and returning the
+winner's row (the same response shape as a normal replay) instead of
+propagating an error. Any other `IntegrityError` is re-raised unchanged. The
+outer transaction/session remains usable either way.
+
+`CaseMessage`, `CaseReportVersion`, `CaseStepOutcome`,
+`CaseTimelineEventRecord`, and `CaseFormDraftRecord` each have a `case_id`-
+leading composite index matching their actual query/order-by shape
+(`ix_case_messages_case_id_created_at`,
+`ix_case_report_versions_case_id_version`,
+`ix_case_step_outcomes_case_id_recorded_at`,
+`ix_case_timeline_events_case_id_event_timestamp`,
+`ix_case_form_draft_records_case_id_created_at`). `CaseStep`,
+`CaseSavedArtifact`, and `CaseAsset` were already covered by a pre-existing
+`case_id`-leading composite index via the leftmost-prefix rule, so no
+additional index was added for them.
 
 ---
 
@@ -406,7 +444,7 @@ Chat retrieval uses `KnowledgeRetrievalService.search_all` with existing relevan
 
 Case Memory is a modular JSON projection stored in `case_memories`. It is updated synchronously from domain events such as conversation meaning, evidence upload, analysis save, grievance save, close, settle, and reopen.
 
-Domain events are persisted in `case_domain_events`, applied in-process (no external broker), and support idempotency keys. Ordinary chat meaning updates Case Memory without appending Official Case Record noise.
+Domain events are persisted in `case_domain_events`, applied in-process (no external broker), and support idempotency keys. Ordinary chat meaning updates Case Memory without appending Official Case Record noise. Idempotency keys are enforced by a database unique index, not just an application-level check — see §7.1.
 
 ---
 

@@ -1,6 +1,6 @@
 # GrievanceHub Engineering Status
 
-Last updated: 2026-07-25
+Last updated: 2026-07-26
 
 Concise public engineering status for the current working tree. Detailed system
 design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The canonical
@@ -143,6 +143,21 @@ from ordinary steward case work.
 Python 3, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16 + pgvector, OpenAI
 embeddings and chat, Jinja2 + WeasyPrint, pypdf AcroForm fill, pytest.
 Frontend (W6): React, TypeScript, Vite, React Router, TanStack Query, Vitest.
+
+## Data integrity and performance hardening
+
+- `CaseDomainEvent`, `CaseFormDraftRecord`, and `CaseSavedArtifact`
+  idempotency keys are enforced by a database unique index (scoped to
+  `case_uuid` + key, nullable-safe), not only an application-level check;
+  the service layer resolves concurrent same-key requests via a savepoint +
+  `IntegrityError` classification, returning the winning row instead of
+  duplicating artifacts, domain events, or timeline entries
+- Justified `case_id`-leading query indexes added for `CaseMessage`,
+  `CaseReportVersion`, `CaseStepOutcome`, `CaseTimelineEventRecord`, and
+  `CaseFormDraftRecord`; `CaseStep`, `CaseSavedArtifact`, and `CaseAsset`
+  were already covered by an existing composite index
+- Details: [`docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_2_REPORT.md`](docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_2_REPORT.md),
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §7.1
 
 ## Security status
 

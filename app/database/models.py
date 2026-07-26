@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Boolean, JSON
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, Boolean, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.session import Base
@@ -188,6 +188,17 @@ class CaseDomainEvent(Base):
     """
 
     __tablename__ = "case_domain_events"
+    __table_args__ = (
+        # Enforces the replay contract in CaseDomainEventService.publish_payload:
+        # a given case may publish a given idempotency_key at most once. NULL
+        # keys are unrestricted (standard SQL unique-index NULL semantics).
+        Index(
+            "ix_case_domain_events_case_idempotency",
+            "case_uuid",
+            "idempotency_key",
+            unique=True,
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     event_id: Mapped[str] = mapped_column(
@@ -224,6 +235,11 @@ class CaseMessage(Base):
     """Conversation history within a grievance case."""
 
     __tablename__ = "case_messages"
+    __table_args__ = (
+        # Serves CaseService recent/paginated message reads, which always
+        # filter by case_id and order by (created_at, id).
+        Index("ix_case_messages_case_id_created_at", "case_id", "created_at", "id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
@@ -242,6 +258,16 @@ class CaseReportVersion(Base):
     """
 
     __tablename__ = "case_report_versions"
+    __table_args__ = (
+        # Serves the dashboard ROW_NUMBER() OVER (PARTITION BY case_id
+        # ORDER BY version_number DESC, id DESC) query in saved_case_service.
+        Index(
+            "ix_case_report_versions_case_id_version",
+            "case_id",
+            "version_number",
+            "id",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
@@ -266,6 +292,11 @@ class CaseStep(Base):
     """One grievance step/stage within a saved case workspace (Phase 1.4D)."""
 
     __tablename__ = "case_steps"
+    __table_args__ = (
+        # Already covers plain case_id lookups via the leftmost-prefix rule;
+        # no separate single-column case_id index is needed.
+        Index("ix_case_steps_case_id_step_type", "case_id", "step_type"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     case_id: Mapped[int] = mapped_column(ForeignKey("grievance_cases.id"), nullable=False)
@@ -322,6 +353,17 @@ class CaseStepOutcome(Base):
     """Management decision/outcome for a grievance step (Phase 1.4D)."""
 
     __tablename__ = "case_step_outcomes"
+    __table_args__ = (
+        # Serves saved_case_service's per-case outcome lookups and the
+        # dashboard ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY
+        # recorded_at DESC, id DESC) window query.
+        Index(
+            "ix_case_step_outcomes_case_id_recorded_at",
+            "case_id",
+            "recorded_at",
+            "id",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     outcome_uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
@@ -353,6 +395,24 @@ class CaseTimelineEventRecord(Base):
     """Timestamped case workspace history event (Phase 1.4D)."""
 
     __tablename__ = "case_timeline_events"
+    __table_args__ = (
+        # Serves case_history_context_service's case_uuid + event_timestamp
+        # window lookups (existing).
+        Index(
+            "ix_case_timeline_events_case_uuid_event_timestamp",
+            "case_uuid",
+            "event_timestamp",
+        ),
+        # Serves saved_case_service's per-case_id status/last-activity scans
+        # and the ROW_NUMBER() OVER (PARTITION BY case_id ORDER BY
+        # event_timestamp DESC, id DESC) dashboard window query (new).
+        Index(
+            "ix_case_timeline_events_case_id_event_timestamp",
+            "case_id",
+            "event_timestamp",
+            "id",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     event_uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
@@ -393,6 +453,21 @@ class CaseFormDraftRecord(Base):
     """Editable working draft and official grievance form versions."""
 
     __tablename__ = "case_form_draft_records"
+    __table_args__ = (
+        # Enforces the replay contract in
+        # CaseSavedArtifactService.save_and_print_grievance: a given case may
+        # save one official grievance draft per idempotency_key. NULL keys
+        # (working/unofficial drafts) are unrestricted.
+        Index(
+            "ix_case_form_draft_records_idempotency",
+            "case_uuid",
+            "idempotency_key",
+            unique=True,
+        ),
+        # Serves case_step_progression_persistence_service's per-case,
+        # created_at-ordered draft reads.
+        Index("ix_case_form_draft_records_case_id_created_at", "case_id", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     draft_uuid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
@@ -438,6 +513,21 @@ class CaseSavedArtifact(Base):
     """
 
     __tablename__ = "case_saved_artifacts"
+    __table_args__ = (
+        # Enforces the replay contract in CaseSavedArtifactService
+        # (save_and_print_report / save_and_print_grievance): one official
+        # artifact per case per idempotency_key. NULL keys are unrestricted.
+        Index(
+            "ix_case_saved_artifacts_idempotency",
+            "case_uuid",
+            "idempotency_key",
+            unique=True,
+        ),
+        # Already covers plain case_id lookups via the leftmost-prefix rule
+        # (_next_artifact_version, _clear_latest_flag); no separate
+        # single-column case_id index is needed.
+        Index("ix_case_saved_artifacts_case_type", "case_id", "artifact_type"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     artifact_uuid: Mapped[str] = mapped_column(
@@ -482,6 +572,12 @@ class CaseAsset(Base):
     """
 
     __tablename__ = "case_assets"
+    __table_args__ = (
+        # Already covers plain case_id lookups (selectinload(GrievanceCase.
+        # assets)) via the leftmost-prefix rule; no separate single-column
+        # case_id index is needed.
+        Index("ix_case_assets_case_id_category", "case_id", "asset_category"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     asset_uuid: Mapped[str] = mapped_column(
