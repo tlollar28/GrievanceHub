@@ -1,7 +1,7 @@
 # GrievanceHub Delivery Roadmap
 
 **Status:** Canonical post-W5 delivery plan  
-**Last updated:** 2026-07-24  
+**Last updated:** 2026-07-26
 **Supersedes:** The former post-W5 sequence (W6 Security → W7 Steward UI → W8
 Arbitration/LMOU → W9 Deployment)
 
@@ -15,10 +15,10 @@ This is the authoritative roadmap for remaining phases. Concise status lives in
 
 | Item | State |
 |------|--------|
-| Completed | W1 through W5 |
-| Current completed phase | **W5 — Knowledge Foundation** |
-| Next phase | **W6 — Interactive Steward Workspace** (not started) |
-| W6–W11 | Not started unless repository evidence proves otherwise |
+| Completed | W1 through W6 |
+| Current completed phase | **W6 — Interactive Steward Workspace** (M0–M10; Batches 1–4) |
+| Next phase | **W7 — RAG Evaluation and Output Quality** (planned, not started) |
+| W8–W11 | Planned, not started |
 
 W5 retrieval components are retrieval infrastructure. They are not completion of
 W8 multi-agent orchestration or W9 application security.
@@ -104,10 +104,11 @@ Readiness distinctions used throughout this roadmap:
 | W3 — Case Evidence and Asset Management | Case assets, uploads, metadata, and safe storage |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Workspace restore, Case Memory, events, FSM, Generate/Save, Official Case Record |
 | W5 — Knowledge Foundation | Official Step 1/Step 2 forms, Supervisor Manuals, source lifecycle, bounded retrieval agents, interim `/sources` API-key boundary |
+| W6 — Interactive Steward Workspace | End-to-end steward workspace, retrieval/citations, evidence, analysis/grievance workflows, artifacts/history, workflow outcomes, Sources Research, polish/accessibility, and PDF validation |
 
 ---
 
-## W6 — Interactive Steward Workspace
+## W6 — Interactive Steward Workspace (complete)
 
 ### Goal
 
@@ -220,7 +221,7 @@ W6 is not complete merely because screens render.
 
 ---
 
-## W7 — RAG Evaluation and Output Quality
+## W7 — RAG Evaluation and Output Quality (planned, not started)
 
 ### Goal
 

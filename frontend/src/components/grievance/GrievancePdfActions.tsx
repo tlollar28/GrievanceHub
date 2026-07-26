@@ -69,12 +69,12 @@ export function GrievancePdfActions({
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError(
-          'This official form PDF is not ready yet. Save and Print again, or wait until PDF status is ready.',
+          'This official form PDF is not ready. Opening PDF is read-only and does not regenerate or modify the saved grievance.',
         )
       } else if (err instanceof ApiError && err.status === 404) {
         setError(
           pdfStatus === 'failed'
-            ? 'PDF preparation failed for this saved grievance. The official artifact is still saved — retry Save and Print or contact support if the failure persists.'
+            ? 'PDF preparation failed for this saved grievance. The official artifact is still saved; PDF access does not create a replacement or duplicate.'
             : 'Official form PDF is not available for this artifact yet.',
         )
       } else if (err instanceof ApiError) {

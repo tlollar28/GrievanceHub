@@ -349,7 +349,7 @@ class CaseSavedArtifactService:
                     type(exc).__name__,
                 )
                 artifact.pdf_status = "failed"
-                pdf_error = f"PDF generation failed after save: {type(exc).__name__}"
+                pdf_error = "PDF generation failed after the artifact was saved."
 
         case.updated_at = now
         self.db.commit()
@@ -395,6 +395,16 @@ class CaseSavedArtifactService:
             or self._current_step_type(case_uuid)
             or "step_1_initial"
         )
+        if (
+            "step_3" in grievance_step
+            or not GrievancePdfExportService.supports_official_template(
+                request.template_id
+            )
+        ):
+            raise CaseSavedArtifactValidationError(
+                "Only Step 1 and Step 2 official grievance templates are supported. "
+                "Step 3 remains workflow tracking without an official form."
+            )
         step = self._require_or_ensure_step(case_uuid, grievance_step)
         now = datetime.utcnow()
         field_values = dict(request.field_values)
@@ -683,7 +693,7 @@ class CaseSavedArtifactService:
                 )
                 artifact.pdf_status = "failed"
                 draft.export_status = "pdf_failed"
-                pdf_error = f"PDF generation failed after save: {type(exc).__name__}"
+                pdf_error = "PDF generation failed after the artifact was saved."
 
         case.updated_at = now
         self.db.commit()

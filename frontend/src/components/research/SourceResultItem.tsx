@@ -33,8 +33,8 @@ export function SourceResultItem({ item, selected, onSelect }: Props) {
           </p>
         </div>
         <p className={styles.resultMeta}>
-          {item.source_type_label} ({item.source_type}) Â·{' '}
-          {locationParts.join(' Â· ')}
+          {item.source_type_label} ({item.source_type}) ·{' '}
+          {locationParts.join(' · ')}
         </p>
         <p className={styles.excerpt}>{item.excerpt || item.passage_text}</p>
         <p className={styles.resultMeta}>

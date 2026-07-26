@@ -2,6 +2,7 @@ import styles from './GrievancePanel.module.css'
 
 type Props = {
   busy: boolean
+  busyMode: 'save' | 'save_and_print' | null
   dirty: boolean
   onSave: () => void
   onSaveAndPrint: () => void
@@ -11,6 +12,7 @@ type Props = {
 
 export function GrievanceSaveActions({
   busy,
+  busyMode,
   dirty,
   onSave,
   onSaveAndPrint,
@@ -45,7 +47,7 @@ export function GrievanceSaveActions({
         aria-busy={busy}
         onClick={onSave}
       >
-        {busy ? 'Saving…' : 'Save'}
+        {busyMode === 'save' ? 'Saving grievance…' : 'Save'}
       </button>
       <button
         type="button"
@@ -54,7 +56,9 @@ export function GrievanceSaveActions({
         aria-busy={busy}
         onClick={onSaveAndPrint}
       >
-        {busy ? 'Saving…' : 'Save and Print'}
+        {busyMode === 'save_and_print'
+          ? 'Saving and preparing PDF…'
+          : 'Save and Print'}
       </button>
       <button
         type="button"

@@ -11,6 +11,7 @@ import { useGrievanceArtifactsQuery } from '../../features/cases/useGrievanceArt
 import { useSaveGrievanceMutation } from '../../features/cases/useSaveGrievanceMutation'
 import { validateTemporaryDraft } from '../../features/grievance/draftValidation'
 import { getTemplateFields } from '../../features/grievance/templateFields'
+import { useModalDialogFocus } from '../useModalDialogFocus'
 import { GrievanceArtifactDetail } from './GrievanceArtifactDetail'
 import { GrievanceArtifactList } from './GrievanceArtifactList'
 import { GrievanceDraftEditor } from './GrievanceDraftEditor'
@@ -74,6 +75,10 @@ export function GrievancePanel({
   const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const cancelDialogRef = useModalDialogFocus({
+    open: confirmCancel,
+    onClose: () => setConfirmCancel(false),
+  })
   const [highlightInvalid, setHighlightInvalid] = useState(false)
   const idempotencyKeyRef = useRef<string | null>(null)
   const pendingSaveModeRef = useRef<SaveMode | null>(null)
@@ -402,7 +407,7 @@ export function GrievancePanel({
         >
           <p>
             {saveFeedback.status === 'saved_pdf_failed'
-              ? 'Grievance saved successfully, but PDF preparation failed. The official artifact was not lost — retry PDF from the saved entry.'
+              ? 'Grievance saved successfully, but PDF preparation failed. The official artifact remains saved. PDF access is read-only and does not create another artifact.'
               : saveFeedback.status === 'idempotent_replay'
                 ? 'Save replayed safely — no duplicate grievance artifact was created.'
                 : saveFeedback.message}
@@ -438,6 +443,9 @@ export function GrievancePanel({
           draft={activeDraft}
           validation={validation}
           busy={saveMutation.isPending}
+          busyMode={
+            saveMutation.isPending ? pendingSaveModeRef.current : null
+          }
           highlightInvalid={highlightInvalid}
           onChangeField={handleFieldChange}
           onSave={() => {
@@ -494,10 +502,12 @@ export function GrievancePanel({
       {confirmCancel ? (
         <div className={styles.confirmOverlay}>
           <div
+            ref={cancelDialogRef}
             className={styles.confirmDialog}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="cancel-grievance-title"
+            tabIndex={-1}
           >
             <h3 id="cancel-grievance-title" className={styles.sectionHeading}>
               Discard unsaved grievance draft?

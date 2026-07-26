@@ -9,6 +9,7 @@ import type {
 import { useAnalysisVersionsQuery } from '../../features/cases/useAnalysisVersionsQuery'
 import { useGenerateAnalysisMutation } from '../../features/cases/useGenerateAnalysisMutation'
 import { useSaveAnalysisMutation } from '../../features/cases/useSaveAnalysisMutation'
+import { useModalDialogFocus } from '../useModalDialogFocus'
 import { AnalysisPreview } from './AnalysisPreview'
 import { AnalysisVersionDetail } from './AnalysisVersionDetail'
 import { AnalysisVersionList } from './AnalysisVersionList'
@@ -69,6 +70,10 @@ export function AnalysisPanel({
   const [saveFeedback, setSaveFeedback] = useState<SaveFeedback | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [confirmCancel, setConfirmCancel] = useState(false)
+  const cancelDialogRef = useModalDialogFocus({
+    open: confirmCancel,
+    onClose: () => setConfirmCancel(false),
+  })
   const [lastArtifactUuid, setLastArtifactUuid] = useState<string | null>(null)
   const idempotencyKeyRef = useRef<string | null>(null)
   const pendingSaveModeRef = useRef<SaveMode | null>(null)
@@ -296,7 +301,7 @@ export function AnalysisPanel({
         >
           <p>
             {saveFeedback.status === 'saved_pdf_failed'
-              ? 'Analysis saved successfully, but PDF generation failed. You can retry export from the saved version.'
+              ? 'Analysis saved successfully, but PDF generation failed. The official version remains saved. PDF access is read-only and does not create another artifact.'
               : saveFeedback.status === 'idempotent_replay'
                 ? 'Save replayed safely — no duplicate version was created.'
                 : saveFeedback.message}
@@ -331,6 +336,9 @@ export function AnalysisPanel({
         <AnalysisPreview
           preview={activePreview}
           busy={saveMutation.isPending}
+          busyMode={
+            saveMutation.isPending ? pendingSaveModeRef.current : null
+          }
           onSave={() => {
             void handleSave('save')
           }}
@@ -379,10 +387,12 @@ export function AnalysisPanel({
       {confirmCancel ? (
         <div className={styles.confirmOverlay}>
           <div
+            ref={cancelDialogRef}
             className={styles.confirmDialog}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="cancel-analysis-title"
+            tabIndex={-1}
           >
             <h3 id="cancel-analysis-title" className={styles.sectionHeading}>
               Discard temporary preview?

@@ -4,21 +4,29 @@ import styles from '../routes/pages.module.css'
 export function RouteErrorBoundary() {
   const error = useRouteError()
 
-  let title = 'Something went wrong'
-  let detail = 'An unexpected error occurred while rendering this page.'
+  let title = 'Page unavailable'
+  let detail =
+    'This page could not be displayed. Return to the dashboard and try again.'
 
   if (isRouteErrorResponse(error)) {
-    title = error.status === 404 ? 'Page not found' : `Error ${error.status}`
-    detail =
-      typeof error.data === 'string' && error.data.trim().length > 0
-        ? error.data
-        : error.statusText || detail
-  } else if (error instanceof Error && error.message) {
-    detail = error.message
+    if (error.status === 404) {
+      title = 'Page not found'
+      detail = 'The requested page does not exist or is no longer available.'
+    } else if (error.status === 403) {
+      title = 'Page unavailable'
+      detail = 'This page is not available for the current session.'
+    } else if (error.status >= 500) {
+      detail =
+        'The application could not load this page right now. Return to the dashboard and try again.'
+    }
   }
 
   return (
-    <section className={styles.page} aria-labelledby="route-error-heading">
+    <section
+      className={styles.page}
+      aria-labelledby="route-error-heading"
+      role="alert"
+    >
       <h1 id="route-error-heading">{title}</h1>
       <p>{detail}</p>
       <p>

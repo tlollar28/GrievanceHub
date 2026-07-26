@@ -15,6 +15,7 @@ type Props = {
   draft: TemporaryGrievanceDraft
   validation: DraftValidationView
   busy: boolean
+  busyMode: 'save' | 'save_and_print' | null
   highlightInvalid: boolean
   onChangeField: (fieldId: string, value: string) => void
   onSave: () => void
@@ -45,6 +46,7 @@ export function GrievanceDraftEditor({
   draft,
   validation,
   busy,
+  busyMode,
   highlightInvalid,
   onChangeField,
   onSave,
@@ -99,6 +101,7 @@ export function GrievanceDraftEditor({
 
       <GrievanceSaveActions
         busy={busy}
+        busyMode={busyMode}
         dirty={dirty}
         onSave={onSave}
         onSaveAndPrint={onSaveAndPrint}

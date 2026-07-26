@@ -15,7 +15,10 @@ from app.schemas.case_saved_artifact_schema import (
     SaveAndPrintGrievanceRequest,
     SaveAndPrintReportRequest,
 )
-from app.services.case_saved_artifact_service import CaseSavedArtifactService
+from app.services.case_saved_artifact_service import (
+    CaseSavedArtifactService,
+    CaseSavedArtifactValidationError,
+)
 from app.services.case_service import CaseService
 
 
@@ -121,6 +124,9 @@ def test_save_and_print_report_keeps_artifact_when_pdf_fails():
     assert result.status == "saved_pdf_failed"
     assert result.print_ready is False
     assert result.artifact is not None
+    assert result.pdf_error == "PDF generation failed after the artifact was saved."
+    assert "RuntimeError" not in result.pdf_error
+    assert "weasyprint" not in result.pdf_error
     db.commit.assert_called_once()
 
 
@@ -238,6 +244,87 @@ def test_save_and_print_idempotent_replay_does_not_duplicate():
             SaveAndPrintReportRequest(idempotency_key="same"),
         )
     assert result.status == "idempotent_replay"
+    db.commit.assert_not_called()
+
+
+def test_failed_pdf_idempotent_replay_does_not_duplicate_or_expose_internals():
+    db = MagicMock()
+    service = CaseSavedArtifactService(db)
+    existing = SimpleNamespace(
+        case_uuid="case-sp-1",
+        artifact_uuid="art-failed",
+        artifact_type="analysis_report",
+        title="Analysis Report v1",
+        version_number=1,
+        version_label="Analysis Report v1",
+        grievance_step="step_2_appeal",
+        template_id=None,
+        template_version=None,
+        printed=False,
+        pdf_status="failed",
+        pdf_asset_uuid=None,
+        is_latest_official=True,
+        saved_by="Steward A",
+        saved_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        source_report_version_number=2,
+        source_draft_record_uuid=None,
+        key_summary_json={"primary_issue": "Leave"},
+    )
+    with (
+        patch.object(CaseService, "_get_case_row", return_value=_case_row()),
+        patch.object(service, "_find_by_idempotency", return_value=existing),
+    ):
+        result = service.save_and_print_report(
+            "case-sp-1",
+            SaveAndPrintReportRequest(
+                idempotency_key="failed-pdf-retry",
+                prepare_pdf=True,
+            ),
+        )
+
+    assert result.status == "idempotent_replay"
+    assert result.artifact.artifact_uuid == "art-failed"
+    assert result.artifact.pdf_status == "failed"
+    assert result.print_ready is False
+    assert result.export_path is None
+    assert result.pdf_error is None
+    db.add.assert_not_called()
+    db.commit.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("template_id", "grievance_step"),
+    [
+        ("step_3_template_deferred", "step_3_arbitration"),
+        ("unknown_official_template", "step_1_initial"),
+    ],
+)
+def test_unsupported_grievance_template_is_rejected_before_persistence(
+    template_id, grievance_step
+):
+    db = MagicMock()
+    service = CaseSavedArtifactService(db)
+
+    with (
+        patch.object(CaseService, "_get_case_row", return_value=_case_row()),
+        patch.object(service, "_require_or_ensure_step") as ensure_step,
+        pytest.raises(
+            CaseSavedArtifactValidationError,
+            match="Only Step 1 and Step 2 official grievance templates",
+        ),
+    ):
+        service.save_and_print_grievance(
+            "case-sp-1",
+            SaveAndPrintGrievanceRequest(
+                template_id=template_id,
+                grievance_step=grievance_step,
+                field_values={},
+                prepare_pdf=False,
+            ),
+        )
+
+    ensure_step.assert_not_called()
+    db.add.assert_not_called()
     db.commit.assert_not_called()
 
 

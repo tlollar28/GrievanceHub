@@ -24,7 +24,7 @@ import {
   makeTimelineResponse,
   makeWorkspace,
 } from './savedCasesFixtures'
-import { renderApp } from './testUtils'
+import { renderApp, waitForWorkspaceReady } from './testUtils'
 
 type HandlerOptions = {
   artifacts?: ReturnType<typeof makeAnalysisArtifactSummary>[]
@@ -295,8 +295,9 @@ describe('W6 M7 Artifacts & History', () => {
       initialEntries: [`/cases/${SAMPLE_CASE_UUID}/artifacts`],
     })
 
+    await waitForWorkspaceReady({ heading: 'Artifacts & History' })
     expect(
-      await screen.findByRole('heading', { name: 'Artifacts & History' }),
+      screen.getByRole('heading', { name: 'Artifacts & History' }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('navigation', { name: 'Case workspace sections' }),
@@ -320,14 +321,16 @@ describe('W6 M7 Artifacts & History', () => {
     const first = renderApp({
       initialEntries: [`/cases/${SAMPLE_CASE_UUID}/artifacts`],
     })
-    expect(await screen.findByText('Analysis Report v1')).toBeInTheDocument()
+    await waitForWorkspaceReady({ text: 'Analysis Report v1' })
+    expect(screen.getByText('Analysis Report v1')).toBeInTheDocument()
     expect(await screen.findByText('Newer official save')).toBeInTheDocument()
     first.unmount()
 
     renderApp({
       initialEntries: [`/cases/${SAMPLE_CASE_UUID}/artifacts`],
     })
-    expect(await screen.findByText('Analysis Report v1')).toBeInTheDocument()
+    await waitForWorkspaceReady({ text: 'Analysis Report v1' })
+    expect(screen.getByText('Analysis Report v1')).toBeInTheDocument()
     expect(await screen.findByText('Newer official save')).toBeInTheDocument()
     expect(await screen.findByText('Analysis saved')).toBeInTheDocument()
   })

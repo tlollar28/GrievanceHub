@@ -88,6 +88,7 @@ function researchHandler(options: {
   searchStatus?: number
   searchErrorDetail?: string
   delayMs?: number
+  metaFailures?: number
 } = {}) {
   const workspace = makeWorkspace()
   const otherWorkspace = makeWorkspace({
@@ -100,6 +101,7 @@ function researchHandler(options: {
   const sourcesCalls: string[] = []
   const mutationCalls: string[] = []
   let searchCount = 0
+  let metaCount = 0
 
   const fetchMock = installApiMock(
     async (input, init) => {
@@ -210,6 +212,16 @@ function researchHandler(options: {
         })
       }
       if (url.includes('/research/meta')) {
+        metaCount += 1
+        if (metaCount <= (options.metaFailures ?? 0)) {
+          return jsonResponse(
+            {
+              detail:
+                'psycopg database driver failed at C:\\internal\\database.py',
+            },
+            503,
+          )
+        }
         return jsonResponse(makeMeta())
       }
       if (url.includes('/research/sources/') && method === 'GET') {
@@ -299,6 +311,9 @@ function researchHandler(options: {
     get searchCount() {
       return searchCount
     },
+    get metaCount() {
+      return metaCount
+    },
   }
 }
 
@@ -318,6 +333,8 @@ describe('W6 M9 Sources Research', () => {
     expect(
       within(panel).getByRole('heading', { name: 'Sources Research' }),
     ).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
     const nav = screen.getByRole('navigation', {
       name: 'Case workspace sections',
     })
@@ -332,6 +349,25 @@ describe('W6 M9 Sources Research', () => {
     ]) {
       expect(within(nav).getByRole('link', { name: label })).toBeTruthy()
     }
+  })
+
+  it('announces metadata failure safely and retries filter loading', async () => {
+    const user = userEvent.setup()
+    const api = researchHandler({ metaFailures: 1 })
+    renderApp({
+      initialEntries: [`/cases/${SAMPLE_CASE_UUID}/research`],
+    })
+
+    const panel = await screen.findByTestId('sources-research-panel')
+    const alert = await within(panel).findByRole('alert')
+    expect(alert).toHaveTextContent(/server error/i)
+    expect(alert).not.toHaveTextContent(/psycopg|database\.py|C:\\/i)
+    await user.click(within(alert).getByRole('button', { name: 'Retry' }))
+
+    expect(
+      await within(panel).findByRole('option', { name: 'National Agreement' }),
+    ).toBeInTheDocument()
+    expect(api.metaCount).toBe(2)
   })
 
   it('shows authority-versus-evidence distinction and no mutation controls', async () => {
@@ -439,7 +475,7 @@ describe('W6 M9 Sources Research', () => {
     await user2.type(within(panel2).getByLabelText('Query'), 'overtime')
     await user2.click(within(panel2).getByRole('button', { name: 'Search' }))
     expect(await within(panel2).findByRole('alert')).toHaveTextContent(
-      /temporarily unavailable|unable to complete/i,
+      /server error|unable to complete/i,
     )
   })
 
@@ -451,21 +487,25 @@ describe('W6 M9 Sources Research', () => {
     })
     const panel = await screen.findByTestId('sources-research-panel')
     await within(panel).findByText(/Article 16 governs overtime/)
-    await user.click(
-      within(panel).getByRole('button', {
-        name: /National Agreement Article Text/i,
-      }),
-    )
+    const resultButton = within(panel).getByRole('button', {
+      name: /National Agreement Article Text/i,
+    })
+    await user.click(resultButton)
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toHaveTextContent(/Read-only authority passage/i)
     expect(dialog).toHaveTextContent(/Article 16 governs overtime/)
     expect(dialog.textContent).not.toMatch(
       /embedding|local_path|postgresql|sk-/i,
     )
-    await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+    const close = within(dialog).getByRole('button', { name: 'Close' })
+    expect(close).toHaveFocus()
+    await user.tab()
+    expect(close).toHaveFocus()
+    await user.keyboard('{Escape}')
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull()
     })
+    expect(resultButton).toHaveFocus()
   })
 
   it('prevents duplicate pending submissions', async () => {

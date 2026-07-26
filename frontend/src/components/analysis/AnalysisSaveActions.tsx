@@ -3,6 +3,7 @@ import styles from './AnalysisPanel.module.css'
 type Props = {
   disabled: boolean
   busy: boolean
+  busyMode: 'save' | 'save_and_print' | null
   onSave: () => void
   onSaveAndPrint: () => void
   onCancel: () => void
@@ -11,6 +12,7 @@ type Props = {
 export function AnalysisSaveActions({
   disabled,
   busy,
+  busyMode,
   onSave,
   onSaveAndPrint,
   onCancel,
@@ -24,7 +26,7 @@ export function AnalysisSaveActions({
         aria-busy={busy}
         onClick={onSave}
       >
-        Save
+        {busyMode === 'save' ? 'Saving analysis…' : 'Save'}
       </button>
       <button
         type="button"
@@ -33,7 +35,9 @@ export function AnalysisSaveActions({
         aria-busy={busy}
         onClick={onSaveAndPrint}
       >
-        Save and Print
+        {busyMode === 'save_and_print'
+          ? 'Saving and preparing PDF…'
+          : 'Save and Print'}
       </button>
       <button
         type="button"

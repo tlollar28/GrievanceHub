@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef } from 'react'
+import { useId } from 'react'
 import { ApiError } from '../../api/client'
 import {
   artifactTypeLabel,
   formatTimestamp,
 } from '../../features/artifacts/artifactLibraryFilters'
 import { useHistoryContextQuery } from '../../features/cases/useHistoryContextQuery'
+import { useModalDialogFocus } from '../useModalDialogFocus'
 import styles from './ArtifactsPanel.module.css'
 
 type Props = {
@@ -35,33 +36,14 @@ export function HistoryContextDialog({
   onClose,
 }: Props) {
   const titleId = useId()
-  const closeRef = useRef<HTMLButtonElement>(null)
   const open = Boolean(eventId)
+  const dialogRef = useModalDialogFocus({ open, onClose })
   const contextQuery = useHistoryContextQuery(
     caseUuid,
     eventId,
     { conversation_window: 8 },
     open,
   )
-
-  useEffect(() => {
-    if (!open) return
-    const previous = document.activeElement as HTMLElement | null
-    closeRef.current?.focus()
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    }
-
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      previous?.focus?.()
-    }
-  }, [open, onClose])
 
   if (!open || !eventId) return null
 
@@ -80,17 +62,18 @@ export function HistoryContextDialog({
       }}
     >
       <div
+        ref={dialogRef}
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        tabIndex={-1}
       >
         <div className={styles.dialogHeader}>
           <h2 id={titleId} className={styles.dialogTitle}>
             Jump to context
           </h2>
           <button
-            ref={closeRef}
             type="button"
             className={styles.secondaryButton}
             onClick={onClose}
@@ -113,9 +96,18 @@ export function HistoryContextDialog({
 
         {contextQuery.isError && !data ? (
           <div className={styles.errorBox} role="alert">
-            {contextQuery.error instanceof ApiError
-              ? contextQuery.error.message
-              : 'Unable to load history context.'}
+            <p>
+              {contextQuery.error instanceof ApiError
+                ? contextQuery.error.message
+                : 'Unable to load history context.'}
+            </p>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => void contextQuery.refetch()}
+            >
+              Retry
+            </button>
           </div>
         ) : null}
 

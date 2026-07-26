@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import type { ResearchSearchRequest } from '../../api/types/research'
@@ -35,7 +35,6 @@ export function SourcesResearchPanel({ caseUuid }: Props) {
     limit: urlState.limit,
   })
   const [submitted, setSubmitted] = useState(Boolean(urlState.q))
-  const resultsHeadingRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setDraft({
@@ -143,7 +142,7 @@ export function SourcesResearchPanel({ caseUuid }: Props) {
   return (
     <div className={styles.panel} data-testid="sources-research-panel">
       <header className={styles.header}>
-        <h1 className={styles.heading}>Sources Research</h1>
+        <h2 className={styles.heading}>Sources Research</h2>
         <p className={styles.subhead}>
           Read-only inspection of the indexed authority corpus. This workspace
           section does not create messages, artifacts, workflow changes, or Case
@@ -151,6 +150,30 @@ export function SourcesResearchPanel({ caseUuid }: Props) {
         </p>
         <AuthorityEvidenceDistinctionNotice notice={notice} />
       </header>
+
+      {metaQuery.isFetching ? (
+        <p className={styles.status} role="status" aria-busy="true">
+          {metaQuery.data
+            ? 'Refreshing authority filter options…'
+            : 'Loading authority filter options…'}
+        </p>
+      ) : null}
+      {metaQuery.isError ? (
+        <div className={styles.statusAlert} role="alert">
+          <p>
+            {metaQuery.error instanceof ApiError
+              ? metaQuery.error.message
+              : 'Unable to load authority filter options.'}
+          </p>
+          <button
+            type="button"
+            className={styles.buttonSecondary}
+            onClick={() => void metaQuery.refetch()}
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       <SourceSearchForm
         values={draft}
@@ -161,7 +184,7 @@ export function SourcesResearchPanel({ caseUuid }: Props) {
         onClear={clearAll}
       />
 
-      <div ref={resultsHeadingRef}>
+      <div>
         <RetrievalStatusNotice
           status={searchQuery.data?.retrieval_status ?? null}
           loading={searchQuery.isFetching}
@@ -218,7 +241,6 @@ export function SourcesResearchPanel({ caseUuid }: Props) {
             }),
           )
         }}
-        returnFocusRef={resultsHeadingRef}
       />
     </div>
   )

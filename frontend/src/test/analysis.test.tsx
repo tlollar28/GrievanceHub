@@ -441,6 +441,37 @@ describe('W6 M5 Analysis Generate, Preview, Save, and Print', () => {
     ).toBeInTheDocument()
   })
 
+  it('traps dialog focus, closes on Escape, and restores focus', async () => {
+    const user = userEvent.setup()
+    analysisHandler()
+    renderApp({
+      initialEntries: [`/cases/${SAMPLE_CASE_UUID}/analysis`],
+    })
+    await user.click(
+      await screen.findByRole('button', { name: 'Generate Analysis' }),
+    )
+    const cancel = await screen.findByRole('button', {
+      name: 'Cancel temporary analysis preview',
+    })
+    await user.click(cancel)
+
+    const keep = screen.getByRole('button', { name: 'Keep preview' })
+    const discard = screen.getByRole('button', { name: 'Discard preview' })
+    expect(keep).toHaveFocus()
+    await user.tab()
+    expect(discard).toHaveFocus()
+    await user.tab()
+    expect(keep).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+    expect(
+      screen.queryByRole('alertdialog', {
+        name: 'Discard temporary preview?',
+      }),
+    ).not.toBeInTheDocument()
+    expect(cancel).toHaveFocus()
+  })
+
   it('case switch clears temporary preview', async () => {
     const user = userEvent.setup()
     analysisHandler()

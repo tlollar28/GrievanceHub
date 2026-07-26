@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef } from 'react'
+import { useId } from 'react'
+import { useModalDialogFocus } from '../useModalDialogFocus'
 import styles from './WorkflowPanel.module.css'
 
 type Props = {
@@ -24,26 +25,11 @@ export function ConfirmActionDialog({
 }: Props) {
   const titleId = useId()
   const descId = useId()
-  const cancelRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const previous = document.activeElement as HTMLElement | null
-    cancelRef.current?.focus()
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !busy) {
-        event.preventDefault()
-        onCancel()
-      }
-    }
-
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      previous?.focus?.()
-    }
-  }, [open, busy, onCancel])
+  const dialogRef = useModalDialogFocus({
+    open,
+    onClose: onCancel,
+    escapeDisabled: busy,
+  })
 
   if (!open) return null
 
@@ -56,11 +42,13 @@ export function ConfirmActionDialog({
       }}
     >
       <div
+        ref={dialogRef}
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
+        tabIndex={-1}
       >
         <h3 id={titleId} className={styles.sectionHeading}>
           {title}
@@ -68,7 +56,6 @@ export function ConfirmActionDialog({
         <p id={descId}>{description}</p>
         <div className={styles.dialogActions}>
           <button
-            ref={cancelRef}
             type="button"
             className={styles.secondaryButton}
             onClick={onCancel}

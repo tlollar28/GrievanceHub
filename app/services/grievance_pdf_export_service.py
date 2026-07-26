@@ -347,6 +347,13 @@ class GrievancePdfExportService:
         return _TEMPLATE_ALIASES.get(template_id, template_id)
 
     @classmethod
+    def supports_official_template(cls, template_id: str) -> bool:
+        return cls.resolve_template_id(template_id) in {
+            _STEP_1_TEMPLATE_ID,
+            _STEP_2_TEMPLATE_ID,
+        }
+
+    @classmethod
     def build_acroform_values(
         cls,
         template_id: str,

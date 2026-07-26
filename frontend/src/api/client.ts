@@ -37,9 +37,18 @@ function joinPath(base: string, path: string): string {
   return `${base}${normalizedPath}`
 }
 
+const INTERNAL_ERROR_PATTERN =
+  /traceback|stack trace|sqlalchemy|psycopg|database driver|\bselect\b.+\bfrom\b|\binsert\s+into\b|\bupdate\b.+\bset\b|\bdelete\s+from\b|[a-z]:\\|\/(?:home|users|var|tmp|etc)\/|api[_-]?key|process\.env|environment variable|password|secret|access[_-]?token/i
+
 function safeErrorMessage(status: number, fallback?: string): string {
-  if (fallback && fallback.trim().length > 0 && fallback.length < 300) {
-    return fallback.trim()
+  const candidate = fallback?.trim()
+  if (
+    status < 500 &&
+    candidate &&
+    candidate.length < 300 &&
+    !INTERNAL_ERROR_PATTERN.test(candidate)
+  ) {
+    return candidate
   }
   if (status >= 500) {
     return 'The API returned a server error.'

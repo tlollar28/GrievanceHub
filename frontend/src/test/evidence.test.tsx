@@ -20,7 +20,7 @@ import {
   makeUploadResponse,
   makeWorkspace,
 } from './savedCasesFixtures'
-import { renderApp } from './testUtils'
+import { renderApp, waitForWorkspaceReady } from './testUtils'
 
 function workspaceAssetsHandler(
   assets = [makeAsset()],
@@ -160,13 +160,17 @@ describe('W6 M4 Evidence Uploads and Case Asset References', () => {
       initialEntries: [`/cases/${SAMPLE_CASE_UUID}/evidence`],
     })
 
+    await waitForWorkspaceReady({
+      heading: 'Overtime dispute',
+      text: 'approval.txt',
+    })
     expect(
-      await screen.findByRole('heading', { name: 'Overtime dispute' }),
+      screen.getByRole('heading', { name: 'Overtime dispute' }),
     ).toBeInTheDocument()
     expect(
-      await screen.findByRole('heading', { name: 'Evidence' }),
+      screen.getByRole('heading', { name: 'Evidence' }),
     ).toBeInTheDocument()
-    expect(await screen.findByText('approval.txt')).toBeInTheDocument()
+    expect(screen.getByText('approval.txt')).toBeInTheDocument()
     expect(
       screen.getByRole('navigation', { name: 'Case workspace sections' }),
     ).toBeInTheDocument()
@@ -178,19 +182,21 @@ describe('W6 M4 Evidence Uploads and Case Asset References', () => {
 
   it('supports direct navigation and browser-style refresh restore', async () => {
     workspaceAssetsHandler([makeAsset()])
+    const user = userEvent.setup()
 
-    const { router } = renderApp({
+    renderApp({
       initialEntries: [`/cases/${SAMPLE_CASE_UUID}/evidence`],
     })
 
-    expect(await screen.findByText('evidence-note.txt')).toBeInTheDocument()
+    await waitForWorkspaceReady({ text: 'evidence-note.txt' })
+    expect(screen.getByText('evidence-note.txt')).toBeInTheDocument()
 
-    await router.navigate(`/cases/${SAMPLE_CASE_UUID}/conversation`)
+    await user.click(screen.getByRole('link', { name: 'Conversation' }))
     expect(
       await screen.findByRole('heading', { name: 'Conversation' }),
     ).toBeInTheDocument()
 
-    await router.navigate(`/cases/${SAMPLE_CASE_UUID}/evidence`)
+    await user.click(screen.getByRole('link', { name: 'Evidence' }))
     expect(await screen.findByText('evidence-note.txt')).toBeInTheDocument()
   })
 
@@ -543,7 +549,8 @@ describe('W6 M4 Evidence Uploads and Case Asset References', () => {
     await user.type(screen.getByLabelText('Message'), 'With one attachment')
     await user.click(screen.getByRole('button', { name: 'Send message' }))
 
-    expect(await screen.findByText('Temporary failure')).toBeInTheDocument()
+    const failure = await screen.findByText(/server error/i)
+    expect(failure).not.toHaveTextContent('Temporary failure')
     expect(
       screen.getByText(/1 evidence reference selected/i),
     ).toBeInTheDocument()
@@ -552,8 +559,9 @@ describe('W6 M4 Evidence Uploads and Case Asset References', () => {
     })
 
     await router.navigate(`/cases/${OTHER_CASE_UUID}/conversation`)
+    await waitForWorkspaceReady({ heading: 'Other case' })
     expect(
-      await screen.findByRole('heading', { name: 'Other case' }),
+      screen.getByRole('heading', { name: 'Other case' }),
     ).toBeInTheDocument()
     expect(screen.getByText(/No evidence attached/i)).toBeInTheDocument()
 

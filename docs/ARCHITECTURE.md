@@ -1,7 +1,7 @@
 # GrievanceHub Architecture
 
-Technical system design for the current GrievanceHub backend through W5, plus the
-W6 M0–M9 frontend steward shell now present on `main`.
+Technical system design for the current GrievanceHub backend and the completed
+W6 M0–M10 frontend steward workspace now present on `main`.
 
 For a concise product overview, see [`README.md`](../README.md). For the
 canonical post-W5 delivery plan, see [`docs/ROADMAP.md`](ROADMAP.md). For the W6
@@ -28,7 +28,7 @@ React steward shell (frontend/) / API client / /ui shell
         └─► Local filesystem storage (case assets, generated reports)
 ```
 
-### Frontend steward shell (W6 M0–M9)
+### Frontend steward shell (W6 M0–M10 complete)
 
 `frontend/` is a Vite + React + TypeScript application. Implemented:
 
@@ -123,6 +123,15 @@ React steward shell (frontend/) / API client / /ui shell
   was excluded (legacy `GET /sources/ask/` would duplicate Conversation). This
   boundary does not satisfy W9 production authentication; protected `/sources`
   admin routes remain API-key gated.
+- **M10:** Steward UI polish and accessibility foundations. Route changes focus
+  the page-level case heading; modal workflows share Tab containment, Escape,
+  initial focus, and trigger-focus restoration. API/route errors use safe
+  steward copy; Sources Research exposes metadata/detail loading and retry
+  states with corrected punctuation. Analysis/grievance Save and Save-and-Print
+  pending labels are distinct, and failed PDF states state that the official
+  artifact remains saved and PDF access is read-only. Backend grievance saves
+  reject unsupported/Step 3 official templates before persistence, while
+  `pdf_error` responses omit implementation details.
 
 Query ownership:
 
@@ -547,13 +556,13 @@ Saved analysis versions export through Jinja2 HTML and WeasyPrint PDF. Export co
 
 ---
 
-## 18. Steward UI shell and future frontend
+## 18. Steward UI shells
 
-The FastAPI shell at `/ui` provides dashboard and case-workspace verification
-surfaces. It is not a production frontend. The interactive steward workspace is
-planned for **W6** and can integrate against the existing case and saved-case
-APIs; see [`docs/saved_cases_ui_contract.md`](saved_cases_ui_contract.md). W6 is
-a vertical slice: UI work and RAG/generation validation happen together.
+The FastAPI shell at `/ui` remains a backend verification surface; it is not a
+production frontend. The completed W6 interactive React steward workspace in
+`frontend/` consumes the existing case, saved-case, research, artifact, and
+export APIs. W6 was delivered as a vertical slice with UI work and
+RAG/generation validation exercised together.
 
 ---
 
@@ -590,8 +599,8 @@ portfolio repository.
 | Source processing lifecycle metadata | Implemented |
 | Bounded retrieval-agent architecture | Implemented |
 | Interim `/sources` API-key auth | Temporary W5 safety boundary |
-| Interactive steward workspace | In progress (W6; M0–M9 complete, M10 not started) |
-| Formal RAG evaluation / quality gates | Planned (W7) |
+| Interactive steward workspace | Implemented (W6 complete; M0–M10) |
+| Formal RAG evaluation / quality gates | Next phase; planned, not started (W7) |
 | Multi-agent authority workflow | Planned (W8) |
 | Application identity / governance | Planned (W9) |
 | LMOU and arbitration corpus expansion | Planned (W10) |
@@ -616,24 +625,25 @@ Future implementation follows the canonical roadmap in
 [`docs/ROADMAP.md`](ROADMAP.md). The former post-W5 sequence (Security → Steward
 UI → Arbitration/LMOU → Deployment) is superseded.
 
-- **W6 — Interactive Steward Workspace (in progress):** usable end-to-end steward UI as
+- **W6 — Interactive Steward Workspace (complete):** usable end-to-end steward UI as
   a vertical slice; continuous RAG and generation validation through realistic
-  workflows. **M0–M9 are complete** (Foundations, Saved Cases, Create Case +
+  workflows. **M0–M10 are complete** (Foundations, Saved Cases, Create Case +
   workspace restore, Conversation + retrieval, Evidence uploads +
   `upload_refs`, Analysis generate/preview/save, Grievance Generate → Edit →
   Validate → Save / Save and Print for Step 1/2, Artifacts & History library /
   Official Case Record / timeline / compare / jump-to-context, and Workflow
-  outcomes / case lifecycle, and Sources Research). Production-readiness Batch
-  3 covers step-progression dead-code/naming cleanup and safe Alembic
-  ORM/schema metadata reconciliation. **Batch 4 is M10 Polish & a11y**:
-  workspace empty/loading/error states, keyboard navigation and accessibility,
-  print-route polish, realistic analysis/grievance PDF live validation, and
-  final W6 regression/exit review. Batch 4/M10 is not started. Global
+  outcomes / case lifecycle, Sources Research, and final UI-state,
+  accessibility, safe-error, and PDF polish). Production-readiness Batch 3
+  completed step-progression dead-code/naming cleanup and safe Alembic
+  ORM/schema metadata reconciliation. **Batch 4/M10 is complete** with
+  workspace state polish, keyboard/accessibility foundations, print/PDF UX,
+  realistic analysis/grievance PDF live validation, and the final W6
+  regression/exit review. Global
   TypeScript strict mode, `datetime.utcnow()` cleanup, React Router remediation,
   and `case_service.py` splitting are deferred post-W7 unless intentionally
   reprioritized. CI/CORS remain W11; application identity/authorization remain
   W9.
-- **W7 — RAG Evaluation and Output Quality (planned; begins only after W6):**
+- **W7 — RAG Evaluation and Output Quality (next; planned, not started):**
   versioned golden evaluations, citation/faithfulness metrics, hallucination
   detection, groundedness scoring, runtime guardrails, evaluation dashboard, and
   model-agnostic comparison — **Track A**. Retrieval modernization with

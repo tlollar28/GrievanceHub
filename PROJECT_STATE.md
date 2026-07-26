@@ -11,15 +11,15 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 | Item | State |
 |------|--------|
 | Current branch | `main` |
-| Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M9 complete; production-readiness Batches 1–3 complete |
-| Next milestone | W6 Batch 4 / M10 — Polish & a11y |
+| Current completed phase | W6 — Interactive Steward Workspace |
+| Current implementation state | W6 complete — M0–M10 and production-readiness Batches 1–4 complete |
+| Next milestone | W7 — RAG Evaluation and Output Quality (planned, not started) |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Interactive Steward Workspace | In progress (M0–M9 complete; M10 not started) |
+| W6 — Interactive Steward Workspace | Complete — M0–M10 and Batches 1–4 |
 | W6 M0 — Frontend Foundations | Complete and committed |
 | W6 M1 — Saved Cases | Complete and committed |
 | W6 M2 — Create Case + workspace restore | Complete and committed |
@@ -32,10 +32,10 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 | W6 M9 — Sources research | Complete and committed |
 | W6 production-readiness Batch 1 | Complete — `4ab328d` |
 | W6 production-readiness Batch 2 | Complete — `1111b4e` |
-| W6 production-readiness Batch 3 | Complete — step-progression cleanup + Alembic metadata reconciliation |
-| W6 production-readiness Batch 4 | W6 M10 — planned, not started |
-| W6 M10 — Polish & a11y | Batch 4 — planned, not started |
-| W7 — RAG Evaluation and Output Quality | Planned — not started; begins only after W6 |
+| W6 production-readiness Batch 3 | Complete — `35d5945`; step-progression cleanup + Alembic metadata reconciliation |
+| W6 production-readiness Batch 4 | Complete — W6 M10 polish, accessibility, PDF validation, and exit review |
+| W6 M10 — Polish & a11y | Complete — Batch 4 |
+| W7 — RAG Evaluation and Output Quality | Next phase — planned, gated, and not started |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
 | W10 — LMOU and Arbitration Knowledge Expansion | Planned — not started |
@@ -46,10 +46,10 @@ W9 Deployment) is superseded. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Product model
 
-GrievanceHub is a backend-first grievance case workspace with a React steward
-shell under active W6 construction. Each grievance matter is managed as a
-persistent `GrievanceCase`. Conversation, Case Memory, evidence, reports,
-grievances, artifacts, and workflow history remain attached to that case.
+GrievanceHub is a backend-first grievance case workspace with a completed W6
+React steward shell. Each grievance matter is managed as a persistent
+`GrievanceCase`. Conversation, Case Memory, evidence, reports, grievances,
+artifacts, and workflow history remain attached to that case.
 
 The application manages workflow automation. The steward controls when analysis
 reports and grievances are created. There is no required Conversation → Analysis
@@ -133,6 +133,12 @@ from ordinary steward case work.
   does not mutate sources, Case Memory, messages, artifacts, or workflow.
   Protected `/sources` administration remains API-key gated. Production
   authentication remains unimplemented (W9).
+- W6 M10 polish and accessibility foundations: route-heading focus, shared
+  modal focus trapping/Escape/restoration, safe API and route errors, research
+  metadata/detail retry states and corrected text encoding, distinct Save
+  pending labels, retained-artifact PDF-failure messaging, backend `pdf_error`
+  sanitization, and pre-persistence rejection of unsupported/Step 3 official
+  grievance saves.
 
 ## Normal chat vs analysis
 
@@ -216,6 +222,8 @@ Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
 | W6 M6 | Grievance Generate → Edit → Validate → Save / Save and Print (Step 1/2) |
 | W6 M7 | Artifact Library, Official Case Record, timeline, compare, jump-to-context |
 | W6 M8 | Workflow outcomes, same-case appeal, close/settle/archive/reopen UI |
+| W6 M9 | Browser-safe read-only Sources Research workspace |
+| W6 M10 | UI-state polish, accessibility foundations, safe errors, PDF UX/live validation, final exit review |
 | CrossCraft retirement | Obsolete SPBS/cross-craft surface removed |
 
 The historical phase labels remain visible in Git history. They represent the
@@ -229,18 +237,17 @@ python -m pytest tests/ -m "not integration" -q
 cd frontend && npm run typecheck && npm run lint && npm run test:run && npm run build
 ```
 
-## Remaining W6 and W7 handoff
+## W6 completion and W7 handoff
 
 Authoritative reconstruction: [`docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md`](docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md).
 
-- W6 is **not complete** until Batch 3, Batch 4/M10, and the final exit review
-  are complete.
-- Batch 3 covers step-progression dead-code/naming cleanup and safe Alembic
+- W6 is **complete**: M0–M10 and production-readiness Batches 1–4 passed the
+  final exit review with non-blocking findings.
+- Batch 3 completed step-progression dead-code/naming cleanup and safe Alembic
   ORM/schema metadata reconciliation.
-- Batch 4 is W6 M10: workspace empty/loading/error states, keyboard navigation
-  and accessibility, print-route polish, realistic analysis/grievance PDF live
-  validation, and final regression/exit review.
-- W7 begins **only after W6** is complete.
+- Batch 4/M10 completed UI-state polish, keyboard/accessibility foundations,
+  print/PDF UX, realistic PDF validation, and final regression/exit review.
+- W7 is the next phase and remains **planned, gated, and not started**.
 - W7 retains canonical scope from [`docs/ROADMAP.md`](docs/ROADMAP.md) and adds
   integrated **Track A** (AI evaluation, hallucination detection, guardrails)
   and **Track B** (retrieval modernization, pgvector baseline, conditional
@@ -262,8 +269,8 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 | Phase | Status |
 |-------|--------|
 | W5 — Knowledge Foundation | Complete |
-| W6 — Interactive Steward Workspace | In progress (M0–M9 + remediation Batches 1–3 complete) |
-| W7 — RAG Evaluation and Output Quality | Planned — not started |
+| W6 — Interactive Steward Workspace | Complete (M0–M10 + remediation Batches 1–4) |
+| W7 — RAG Evaluation and Output Quality | Next phase — planned, not started |
 | W8 — Multi-Agent Authority Workflow | Planned |
 | W9 — Security and Governance | Planned |
 | W10 — LMOU and Arbitration Knowledge Expansion | Planned |
@@ -271,14 +278,13 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 W5 retrieval components are retrieval infrastructure. They are not completion of
 W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
-completion of W9 application security. W6 M0–M8 cover shell foundations, Saved
-Cases entry, Create Case, durable workspace restore, case conversation with
+completion of W9 application security. W6 M0–M10 now cover shell foundations,
+Saved Cases entry, Create Case, durable workspace restore, conversation with
 retrieval/citations, evidence uploads with `upload_refs`, Analysis
 generate/preview/save, Grievance Generate → Edit → Validate → Save / Save and
-Print for official Step 1 and Step 2 forms only, Artifacts & History browsing,
-and Workflow outcomes / case lifecycle controls. Sources research (M9) and polish
-(M10) remain later milestones. Case evidence uploads are not indexed into the
-authority corpus.
+Print for official Step 1 and Step 2 forms only, Artifacts & History, Workflow
+outcomes/case lifecycle, Sources Research, and final polish/accessibility/PDF
+validation. Case evidence uploads are not indexed into the authority corpus.
 
 ## Related documentation
 

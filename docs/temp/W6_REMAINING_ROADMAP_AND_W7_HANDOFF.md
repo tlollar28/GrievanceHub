@@ -2,43 +2,42 @@
 
 **Status:** Authoritative implementation handoff (documentation only)  
 **Created:** 2026-07-26  
+**Last updated:** 2026-07-26 (W6 Batch 4 / M10 completion)
 **Branch at authoring:** `main`  
-**HEAD at authoring:** `1111b4e` (`fix(w6): harden idempotency and case query indexes`)
+**Batch 4 starting HEAD:** `35d5945` (`fix(w6): reconcile schema metadata and step progression`)
 
-This document records the project owner's approved remaining W6
-production-readiness scopes, verified Batch 1 and Batch 2 outcomes, disposition
-of all audit findings, and the expanded W7 plan (AI quality + retrieval
-modernization). Batch 3 is authorized separately by its implementation prompt.
-Batch 4/M10 and W7 remain planned and have not started.
+This document records the completed W6 production-readiness sequence,
+disposition of audit findings, and the expanded W7 plan (AI quality + retrieval
+modernization). Batches 1–4 and W6 M0–M10 are complete. W7 remains planned,
+gated, and not started.
 
 ---
 
 ## 1. Executive summary
 
-GrievanceHub has completed W6 M0–M9 (interactive steward workspace through
-Sources Research) plus two production-readiness remediation batches:
+GrievanceHub has completed W6 M0–M10 and all four production-readiness
+remediation batches:
 
 | Batch | Commit | Scope |
 |-------|--------|-------|
 | Batch 1 | `4ab328d` | FE-1, BE-2, BE-3, BE-6/SEC-2, export tests, MAINT-2 |
 | Batch 2 | `1111b4e` | BE-1 (service-layer idempotency), BE-4 (query indexes) |
+| Batch 3 | `35d5945` | ARCH-2/MAINT-1 progression cleanup and Alembic metadata reconciliation |
+| Batch 4 / M10 | This completion commit | UI/a11y/PDF polish, Step 3 contract correction, live validation, W6 exit review |
 
-**W6 is not complete.** Remaining W6 work includes:
+**W6 is complete.** Batch 3 removed the dead progression service and reconciled
+ORM/schema metadata without migration changes. Batch 4/M10 completed workspace
+state polish, keyboard/accessibility foundations, print/PDF UX, realistic
+analysis and grievance PDF validation, the Step 3 pre-persistence contract
+correction, and the final W6 regression/exit review.
 
-1. **Production-readiness remediation Batch 3** — resolve ARCH-2/MAINT-1
-   step-progression dead code and naming collision; investigate and safely
-   reconcile the pre-existing Alembic ORM/schema metadata drift.
-2. **Batch 4 is W6 M10** — workspace empty/loading/error-state polish,
-   keyboard navigation and accessibility, print-route polish, realistic
-   analysis and grievance PDF live validation, and final W6 regression/exit
-   review.
-3. **Explicit deferrals** — FE-2 global TypeScript strict mode,
-   `datetime.utcnow()` cleanup, React Router remediation, and
-   `case_service.py` splitting remain post-W7 unless intentionally
-   reprioritized. CI/CORS remain W11; production identity/authorization remain
-   W9.
+**Explicit deferrals** remain: FE-2 global TypeScript strict mode,
+`datetime.utcnow()` cleanup, React Router remediation, and `case_service.py`
+splitting remain post-W7 unless intentionally reprioritized. CI/CORS remain
+W11; production identity/authorization remain W9.
 
-**W7 has not begun** and must not begin until W6 is complete. W7 retains its
+**W7 has not begun.** Its W6 entry gate is now satisfied, but implementation
+still requires its own authorization. W7 retains its
 canonical scope from `docs/ROADMAP.md` and is **expanded** with two integrated
 tracks: **Track A** (AI evaluation, hallucination detection, quality
 guardrails) and **Track B** (retrieval modernization, pgvector baseline,
@@ -53,16 +52,16 @@ TurboVec adoption remains conditional on benchmark results.
 |------|-------|--------|------------|
 | Branch | `main` | `git status`, `git log` | HIGH |
 | Batch 1 SHA | `4ab328d` (`fix(w6): address production readiness findings`) | `git log` | HIGH |
-| Batch 2 SHA | `1111b4e` (`fix(w6): harden idempotency and case query indexes`) | `git log`, `git show HEAD` | HIGH |
-| Current HEAD | `1111b4e` | `git log --decorate -20` | HIGH |
-| Ahead of `origin/main` | 15 commits | `git status` | HIGH |
-| Tracked working tree | Clean (no staged/unstaged modifications) | `git status`, `git diff --stat` | HIGH |
+| Batch 2 SHA | `1111b4e` (`fix(w6): harden idempotency and case query indexes`) | `git log` | HIGH |
+| Batch 3 SHA | `35d5945` (`fix(w6): reconcile schema metadata and step progression`) | `git log` | HIGH |
+| Batch 4 starting HEAD | `35d5945` | `git log --decorate -5` | HIGH |
+| Tracked working tree at Batch 4 start | Clean | Batch 4 checkpoint | HIGH |
 | Untracked files | Pre-existing and Batch-era `docs/temp/` diagnostics, baselines, smoke helpers, audit reports | `git status` | HIGH |
 | Alembic current | `i0j1k2l3m4n5` (head) | `python -m alembic current` via venv | HIGH |
 | Alembic heads | Single head: `i0j1k2l3m4n5` | `python -m alembic heads` | HIGH |
 
-Batch 2 **is committed** with the expected message. Implementation proceeded
-on a clean tracked tree atop Batch 1.
+Batches 1–3 are committed. Batch 4 proceeded on a clean tracked tree atop
+Batch 3 while preserving inherited untracked diagnostics.
 
 ---
 
@@ -70,14 +69,14 @@ on a clean tracked tree atop Batch 1.
 
 | Milestone / workstream | State | Source |
 |------------------------|-------|--------|
-| W6 M0–M9 | Complete and committed | `PROJECT_STATE.md`, git log |
+| W6 M0–M10 | **Complete** | `PROJECT_STATE.md`, Batch 4 report |
 | Production-readiness Batch 1 | Complete — `4ab328d` | Batch 1 report, git log |
 | Production-readiness Batch 2 | Complete — `1111b4e` | Batch 2 report, git log |
-| Production-readiness Batch 3 | **Approved — implementation authorized separately** | Project-owner decision, §7 |
-| Production-readiness Batch 4 | **Approved as W6 M10 — not started** | Project-owner decision, §8 |
-| W6 M10 — Polish & a11y | Batch 4; planned — not started | `PROJECT_STATE.md`, audit, M9 report §87 |
-| W6 exit (roadmap) | Not met — M10 + remaining hardening open | `docs/ROADMAP.md` W6 exit criteria |
-| W7 | Planned — not started; begins only after W6 | §10, `docs/ROADMAP.md` |
+| Production-readiness Batch 3 | **Complete — `35d5945`** | Batch 3 report, git log |
+| Production-readiness Batch 4 | **Complete as W6 M10** | Batch 4 report |
+| W6 M10 — Polish & a11y | **Complete** | Batch 4 report |
+| W6 exit (roadmap) | **PASS WITH NON-BLOCKING FINDINGS — W6 COMPLETE** | Batch 4 report §24–28 |
+| W7 | Next phase; planned, gated, and not started | §10, `docs/ROADMAP.md` |
 
 ---
 
@@ -174,8 +173,8 @@ prioritized plan.
 | ID | Finding | Severity | Disposition | Notes / source |
 |----|---------|----------|-------------|----------------|
 | FE-1 | Missing artifact/workflow cache invalidation | Medium | **COMPLETED BY BATCH 1** | Remediation A |
-| ARCH-2 | Two step-progression services; naming collision | Medium | **ASSIGNED TO BATCH 3** | Audit §ARCH-2; same as MAINT-1 |
-| MAINT-1 | Dead in-memory step-progression state | Medium | **ASSIGNED TO BATCH 3** | Audit §MAINT-1 |
+| ARCH-2 | Two step-progression services; naming collision | Medium | **COMPLETED BY BATCH 3** | Dead in-memory service removed; persistence/rules names clarified |
+| MAINT-1 | Dead in-memory step-progression state | Medium | **COMPLETED BY BATCH 3** | `35d5945` |
 | BE-1 | Idempotency TOCTOU | Medium | **COMPLETED BY BATCH 2** | Service layer + ORM reconciliation |
 | BE-2 | Silent exception swallowing | Medium | **COMPLETED BY BATCH 1** | Remediation B (+2 sites) |
 | BE-4 | Missing `case_id` FK/query indexes | Medium | **COMPLETED BY BATCH 2** | 5 new + 3 ORM-only |
@@ -188,17 +187,17 @@ prioritized plan.
 | OPS-2 | `pytest.ini` minimal config | Low | **DEFERRED POST-W7** or W11 | No CI to enforce; audit backlog/W11 |
 | MAINT-2 | Route documentation drift | Low | **COMPLETED BY BATCH 1** | Remediation F |
 | ARCH-1 / MAINT-3 | `case_service.py` oversized | Low | **DEFERRED POST-W7** | Large refactor; audit backlog |
-| — | Pre-existing Alembic metadata drift | Non-blocking | **ASSIGNED TO BATCH 3** | Batch 2 report §10.1; project-owner decision |
+| — | Pre-existing Alembic metadata drift | Non-blocking | **COMPLETED BY BATCH 3** | ORM metadata reconciled; no DDL; Alembic check clean |
 | — | ~397 `datetime.utcnow()` warnings | Non-blocking | **DEFERRED POST-W7** | Batch 2 report §10.3 |
-| — | Realistic PDF live-smoke | Non-blocking | **ASSIGNED TO BATCH 4** | Batch 2 §9; project-owner decision |
+| — | Realistic PDF live-smoke | Non-blocking | **COMPLETED BY BATCH 4** | Analysis, Step 1, Step 2, Step 3 boundary, controlled failure PASS |
 | — | React Router npm audit advisory | Non-blocking | **DEFERRED POST-W7** | Batch 1 §6; not introduced by remediation |
-| W6 M10 | Polish, a11y, empty/error states, print/PDF validation, exit review | Milestone | **ASSIGNED TO BATCH 4** | `W6_UI_ARCHITECTURE.md` §18, M9 report §87, project-owner decision |
+| W6 M10 | Polish, a11y, empty/error states, print/PDF validation, exit review | Milestone | **COMPLETED BY BATCH 4** | Final verdict: PASS WITH NON-BLOCKING FINDINGS |
 | W9 auth | No production authentication | Intentional | **DEFERRED TO W9** | Roadmap; not an audit defect |
 | W11 deploy | Packaging, CORS, CI | Intentional | **DEFERRED TO DEPLOYMENT HARDENING** | Roadmap |
 
 ---
 
-## 7. Approved Batch 3 scope
+## 7. Completed Batch 3 scope
 
 **Project-owner decision (2026-07-26):**
 
@@ -223,9 +222,12 @@ pgvector ANN work; no `case_service.py` split.
 **Expected commit boundary:**
 `fix(w6): reconcile schema metadata and step progression`.
 
+**Completion:** Implemented and committed as `35d5945`. Alembic current and
+heads remain `i0j1k2l3m4n5`; `alembic check` reports no new operations.
+
 ---
 
-## 8. Approved Batch 4 scope — W6 M10
+## 8. Completed Batch 4 scope — W6 M10
 
 **Project-owner decision (2026-07-26):** Batch 4 and W6 M10 are the same
 remaining work unit:
@@ -239,7 +241,10 @@ remaining work unit:
 **Explicit exclusion:** FE-2 global TypeScript strict-mode migration is
 deferred post-W7 unless intentionally reprioritized.
 
-Batch 4/M10 has **not started** and is not authorized by the Batch 3 task.
+**Completion:** Batch 4/M10 is complete. UI-state, keyboard/focus, safe-error,
+and PDF UX changes are implemented; realistic PDF paths and the final W6 exit
+matrix passed. See
+`docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_4_M10_REPORT.md`.
 
 ---
 
@@ -257,7 +262,7 @@ entire `case_memories` table.
 **Cause (reported):** SQLAlchemy `unique=True` + `index=True` autogenerate
 interaction predating Batch 2.
 
-**Status:** Assigned to Batch 3.
+**Status:** Resolved by Batch 3 without migration or DDL.
 **Do not assume correction approach** without migration review.
 
 **Source:** Batch 2 report §10.1; `alembic check` output referenced therein.
@@ -282,8 +287,8 @@ Batch 2 live smoke: artifact persisted; PDF returned `saved_pdf_failed` on
 minimal synthetic `report_data` — pre-existing graceful degradation, not a
 Batch 2 regression.
 
-**Realistic PDF live validation:** Assigned to Batch 4/M10 for both analysis
-and grievance PDF paths using realistic synthetic data.
+**Realistic PDF live validation:** Completed by Batch 4/M10 for analysis,
+Step 1, Step 2, Step 3 rejection-before-persistence, and controlled PDF failure.
 
 **Source:** Batch 2 report §9; `test_save_and_print_report_*`. **Confidence:**
 HIGH (limitation); LOW (future plan assignment).
@@ -575,12 +580,12 @@ defined remediation batch across models.
 | Audit findings IDs and priority | `docs/temp/W6_COMPREHENSIVE_PRODUCTION_READINESS_AUDIT.md` |
 | Batch 1 scope and verdict | Batch 1 prompt (transcript `90626d01`), report, `4ab328d` |
 | Batch 2 scope and verdict | Batch 2 prompt (transcript `8b06d77b`, `0b0801c9`), report, `1111b4e` |
-| W6 M0–M9 complete, M10 next | `PROJECT_STATE.md`, `docs/W6_UI_ARCHITECTURE.md` |
+| W6 M0–M10 complete | `PROJECT_STATE.md`, `docs/W6_UI_ARCHITECTURE.md`, Batch 4 report |
 | W7 canonical scope | `docs/ROADMAP.md` |
 | W7 begins after W6; Track A/B expansion | User handoff directive 2026-07-26 |
 | Idempotency/index implementation detail | `docs/ARCHITECTURE.md` §7.1, Batch 2 report |
 | M10 handoff items | `docs/temp/W6_M9_SOURCES_RESEARCH_REPORT.md` §87 |
-| Batch 3 and Batch 4 approved scopes | Project-owner decision 2026-07-26 |
+| Batch 3 and Batch 4 completed scopes | Batch 3 commit/report; Batch 4 report |
 | TurboVec conditional / PG system of record | User handoff directive 2026-07-26 |
 | OPS-1 no CI | Audit OPS-1; `.github/workflows` absent |
 
@@ -607,8 +612,8 @@ defined remediation batch across models.
 
 Approved:
 
-1. Batch 3 is ARCH-2/MAINT-1 plus scoped Alembic metadata reconciliation.
-2. Batch 4 is W6 M10 with realistic PDF live validation and final exit review.
+1. Batch 3 completed ARCH-2/MAINT-1 plus scoped Alembic metadata reconciliation.
+2. Batch 4 completed W6 M10 with realistic PDF live validation and final exit review.
 3. FE-2 global TypeScript strict mode, `datetime.utcnow()` cleanup, React
    Router remediation, and `case_service.py` splitting are deferred.
 4. CI/CORS remain W11; identity/authorization remain W9.
@@ -623,13 +628,13 @@ no migration. Any destructive-DDL condition triggers the mandatory safety stop.
 ## Appendix A — Approved remaining W6 sequence
 
 ```text
-Batch 3 → implement → validate → commit → report
-Batch 4 / W6 M10 → implement → validate realistic PDFs → commit → report
-W6 exit criteria review (ROADMAP.md)
-W7 begins (Track A + Track B integrated, §14)
+Batch 3 → complete (`35d5945`)
+Batch 4 / W6 M10 → complete
+W6 exit criteria review → PASS WITH NON-BLOCKING FINDINGS
+W7 next → Track A + Track B integrated, planned and not started (§14)
 ```
 
-Batch 3 is approved. Batch 4/M10 and W7 have not started and require their own
+W6 is complete. W7 remains planned, gated, and not started; it requires its own
 implementation authorization.
 
 ---

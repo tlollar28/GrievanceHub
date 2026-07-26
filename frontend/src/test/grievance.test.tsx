@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -18,7 +18,7 @@ import {
   makeStep2FieldValues,
   makeWorkspace,
 } from './savedCasesFixtures'
-import { renderApp } from './testUtils'
+import { renderApp, waitForWorkspaceReady } from './testUtils'
 import {
   OFFICIAL_STEP_1_TEMPLATE_ID,
   OFFICIAL_STEP_2_TEMPLATE_ID,
@@ -236,8 +236,11 @@ describe('W6 M6 Grievance workspace', () => {
     renderApp({
       initialEntries: [`/cases/${SAMPLE_CASE_UUID}/grievance`],
     })
+    await waitForWorkspaceReady({
+      heading: /Official Grievance Worksheet — Step 1/i,
+    })
     expect(
-      await screen.findByRole('heading', { name: 'Grievance' }),
+      screen.getByRole('heading', { name: 'Grievance' }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('navigation', { name: 'Case workspace sections' }),
@@ -246,12 +249,12 @@ describe('W6 M6 Grievance workspace', () => {
       screen.getByRole('link', { name: 'Grievance' }),
     ).toHaveAttribute('aria-current', 'page')
     expect(
-      await screen.findByRole('button', {
+      screen.getByRole('button', {
         name: /Official Grievance Worksheet — Step 1/i,
       }),
     ).toBeInTheDocument()
     expect(
-      await screen.findByRole('heading', {
+      screen.getByRole('heading', {
         name: /Official Grievance Worksheet — Step 1/i,
       }),
     ).toBeInTheDocument()
@@ -444,8 +447,7 @@ describe('W6 M6 Grievance workspace', () => {
     ).toBeGreaterThan(0)
 
     const facts = within(draft).getByLabelText(/Facts — What Happened/i)
-    await user.clear(facts)
-    await user.type(facts, 'Steward-revised facts.')
+    fireEvent.change(facts, { target: { value: 'Steward-revised facts.' } })
     expect(within(draft).getByText('Steward override')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
@@ -516,46 +518,50 @@ describe('W6 M6 Grievance workspace', () => {
     ).toBeInTheDocument()
   })
 
-  it('dirty Cancel asks for confirmation before discard', async () => {
-    const user = userEvent.setup()
-    grievanceHandler()
-    renderApp({
-      initialEntries: [`/cases/${SAMPLE_CASE_UUID}/grievance`],
-    })
-    await user.click(
-      await screen.findByRole('button', { name: 'Generate Grievance' }),
-    )
-    const draft = await screen.findByLabelText('Temporary grievance draft')
-    await user.type(
-      within(draft).getByLabelText(/Branch Grievance Number/i),
-      'BG-1',
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Cancel temporary grievance draft',
-      }),
-    )
-    expect(
-      screen.getByRole('alertdialog', {
-        name: /Discard unsaved grievance draft/i,
-      }),
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Keep draft' }))
-    expect(
-      screen.getByLabelText('Temporary grievance draft'),
-    ).toBeInTheDocument()
-    await user.click(
-      screen.getByRole('button', {
-        name: 'Cancel temporary grievance draft',
-      }),
-    )
-    await user.click(screen.getByRole('button', { name: 'Discard draft' }))
-    await waitFor(() => {
+  it(
+    'dirty Cancel asks for confirmation before discard',
+    async () => {
+      const user = userEvent.setup()
+      grievanceHandler()
+      renderApp({
+        initialEntries: [`/cases/${SAMPLE_CASE_UUID}/grievance`],
+      })
+      await user.click(
+        await screen.findByRole('button', { name: 'Generate Grievance' }),
+      )
+      const draft = await screen.findByLabelText('Temporary grievance draft')
+      await user.type(
+        within(draft).getByLabelText(/Branch Grievance Number/i),
+        'BG-1',
+      )
+      await user.click(
+        screen.getByRole('button', {
+          name: 'Cancel temporary grievance draft',
+        }),
+      )
       expect(
-        screen.queryByLabelText('Temporary grievance draft'),
-      ).not.toBeInTheDocument()
-    })
-  })
+        screen.getByRole('alertdialog', {
+          name: /Discard unsaved grievance draft/i,
+        }),
+      ).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Keep draft' }))
+      expect(
+        screen.getByLabelText('Temporary grievance draft'),
+      ).toBeInTheDocument()
+      await user.click(
+        screen.getByRole('button', {
+          name: 'Cancel temporary grievance draft',
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: 'Discard draft' }))
+      await waitFor(() => {
+        expect(
+          screen.queryByLabelText('Temporary grievance draft'),
+        ).not.toBeInTheDocument()
+      })
+    },
+    10_000,
+  )
 
   it('case switch clears temporary draft', async () => {
     const user = userEvent.setup()
@@ -730,8 +736,11 @@ describe('W6 M6 Grievance workspace', () => {
         `/cases/${SAMPLE_CASE_UUID}/grievance?artifact=${SAMPLE_GRIEVANCE_ARTIFACT_UUID}`,
       ],
     })
+    await waitForWorkspaceReady({
+      heading: /Official Grievance Worksheet — Step 1/i,
+    })
     await user.click(
-      await screen.findByRole('button', {
+      screen.getByRole('button', {
         name: /Preview Official Step 1 grievance worksheet PDF/i,
       }),
     )
@@ -767,8 +776,11 @@ describe('W6 M6 Grievance workspace', () => {
         `/cases/${SAMPLE_CASE_UUID}/grievance?artifact=${SAMPLE_GRIEVANCE_ARTIFACT_UUID}`,
       ],
     })
+    await waitForWorkspaceReady({
+      heading: /Official Standard Grievance Form — Step 2/i,
+    })
     await user.click(
-      await screen.findByRole('button', {
+      screen.getByRole('button', {
         name: /Preview Official Step 2 standard grievance form PDF/i,
       }),
     )
@@ -789,13 +801,16 @@ describe('W6 M6 Grievance workspace', () => {
         `/cases/${SAMPLE_CASE_UUID}/grievance?artifact=${SAMPLE_GRIEVANCE_ARTIFACT_UUID}`,
       ],
     })
+    await waitForWorkspaceReady({
+      heading: /Official Grievance Worksheet — Step 1/i,
+    })
     await user.click(
-      await screen.findByRole('button', {
+      screen.getByRole('button', {
         name: /Preview Official Step 1 grievance worksheet PDF/i,
       }),
     )
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      /not ready yet/i,
+      /not ready.*read-only.*does not regenerate/i,
     )
   })
 
@@ -807,8 +822,11 @@ describe('W6 M6 Grievance workspace', () => {
     const first = renderApp({
       initialEntries: [`/cases/${SAMPLE_CASE_UUID}/grievance`],
     })
+    await waitForWorkspaceReady({
+      heading: /Official Grievance Worksheet — Step 1/i,
+    })
     expect(
-      await screen.findByRole('button', {
+      screen.getByRole('button', {
         name: /Official Grievance Worksheet — Step 1/i,
       }),
     ).toBeInTheDocument()
@@ -826,8 +844,11 @@ describe('W6 M6 Grievance workspace', () => {
     renderApp({
       initialEntries: [`/cases/${SAMPLE_CASE_UUID}/grievance`],
     })
+    await waitForWorkspaceReady({
+      heading: /Official Grievance Worksheet — Step 1/i,
+    })
     expect(
-      await screen.findByRole('button', {
+      screen.getByRole('button', {
         name: /Official Grievance Worksheet — Step 1/i,
       }),
     ).toBeInTheDocument()

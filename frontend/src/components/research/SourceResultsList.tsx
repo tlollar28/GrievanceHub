@@ -64,7 +64,7 @@ export function SourceResultsList({
             Next
           </button>
           <span className={styles.resultMeta}>
-            Offset {offset} Â· limit {limit} Â· matched {totalMatched}
+            Offset {offset} · limit {limit} · matched {totalMatched}
           </span>
         </div>
       )}

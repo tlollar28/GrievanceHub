@@ -1,8 +1,49 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { appRoutes } from '../app/routes'
+
+const WORKSPACE_RESTORE_HEADING = 'Restoring case workspace…'
+const WORKSPACE_READY_TIMEOUT_MS = 5_000
+
+type WorkspaceReadyOptions = {
+  heading?: string | RegExp
+  text?: string | RegExp
+}
+
+export async function waitForWorkspaceReady(
+  options: WorkspaceReadyOptions = {},
+): Promise<void> {
+  await waitFor(
+    () => {
+      if (
+        screen.queryByRole('heading', {
+          name: WORKSPACE_RESTORE_HEADING,
+        })
+      ) {
+        throw new Error('Case workspace is still restoring.')
+      }
+    },
+    { timeout: WORKSPACE_READY_TIMEOUT_MS },
+  )
+
+  if (options.heading) {
+    await screen.findByRole(
+      'heading',
+      { name: options.heading },
+      { timeout: WORKSPACE_READY_TIMEOUT_MS },
+    )
+  }
+
+  if (options.text) {
+    await screen.findByText(
+      options.text,
+      {},
+      { timeout: WORKSPACE_READY_TIMEOUT_MS },
+    )
+  }
+}
 
 export function createTestQueryClient(): QueryClient {
   return new QueryClient({

@@ -1,6 +1,6 @@
 # W6 — Interactive Steward Workspace UI Architecture
 
-**Status:** W6 in progress — M0–M9 complete (Foundations through Sources research)
+**Status:** W6 complete — M0–M10 implemented and exit-reviewed
 **Date:** 2026-07-25
 **Depends on:** W5 complete backend (case workspace, retrieval, analysis, grievances, artifacts, official forms)
 **Canonical companions:** [`ROADMAP.md`](ROADMAP.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`saved_cases_ui_contract.md`](saved_cases_ui_contract.md)
@@ -21,7 +21,7 @@ This document is the implementation blueprint for the W6 steward workspace. Anot
 | **M7 — Artifacts & history** | **Complete** — `/cases/:caseUuid/artifacts`; Artifact Library (analysis + grievance), read-only detail/PDF, Official Case Record, timeline, compare, jump-to-context; no generation workflows |
 | **M8 — Workflow outcomes** | **Complete** — `/cases/:caseUuid/workflow`; workflow/step display, progression, Record Outcome, same-case appeal, close/settle/archive/reopen; no artifact creation; Step 3 form generation unsupported |
 | **M9 — Sources research** | **Complete** — `/cases/:caseUuid/research`; browser-safe `/research/*` boundary; search/filter/detail; no browser API keys; Ask Sources excluded |
-| M10 — Polish & a11y | Planned |
+| **M10 — Polish & a11y** | **Complete** — route-heading focus; shared modal focus trap/Escape/restoration; safe API/route errors; research metadata/detail retry and text cleanup; distinct Save pending labels; retained-artifact PDF failure UX; realistic PDF and final regression validation |
 
 ### API-contract verification rule
 
@@ -1299,7 +1299,7 @@ Each milestone is independently testable against the live W5 API.
 | **M7 — Artifacts & history** | **Complete** — Library, detail, compare, Official Case Record, jump-to-context | Browse versions; download PDFs |
 | **M8 — Workflow outcomes** | **Complete** — Record outcome, close/settle/archive, workflow view | Lifecycle without DB edits |
 | **M9 — Sources research** | **Complete** — `/research/*` safe boundary + workspace research UI | Corpus inspection without browser API secrets; Ask Sources excluded |
-| **M10 — Polish & a11y** | Empty/error states, keyboard, print routes, regression hooks | Exit criteria checklist green |
+| **M10 — Polish & a11y** | **Complete** — empty/error states, keyboard/focus, safe errors, print/PDF UX, regression hooks | Exit criteria checklist green; W6 complete |
 
 **Engineering sequence rationale:** list → restore → chat (highest RAG signal) → uploads → explicit Generate flows → artifacts → lifecycle → sources admin → polish. This matches the roadmap’s vertical-slice and continuous RAG validation rules.
 
@@ -1400,10 +1400,10 @@ Estimates assume the W5 API remains stable; any backend gaps found during M3–M
 | Item | Value |
 |------|-------|
 | Path | `docs/W6_UI_ARCHITECTURE.md` |
-| Phase | W6 Interactive Steward Workspace — M0–M9 complete |
-| Implementation | M0–M9 complete (Foundations through Sources research); M10 planned |
+| Phase | W6 Interactive Steward Workspace — complete |
+| Implementation | M0–M10 complete; production-readiness Batches 1–4 complete |
 | Supersedes | None (complements `saved_cases_ui_contract.md`) |
-| Next step | M10 Polish & a11y |
+| Next step | W7 — RAG Evaluation and Output Quality; planned, not started |
 
 ---
 

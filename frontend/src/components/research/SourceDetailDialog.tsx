@@ -1,7 +1,8 @@
-﻿import { useEffect, useId, useRef, type RefObject } from 'react'
+﻿import { useId } from 'react'
 import { ApiError } from '../../api/client'
 import type { ResearchSearchResultItem } from '../../api/types/research'
 import { useResearchPassageQuery } from '../../features/research/useResearchPassageQuery'
+import { useModalDialogFocus } from '../useModalDialogFocus'
 import { formatRelevanceScore } from '../../features/research/sourceTypeLabels'
 import styles from './SourcesResearch.module.css'
 
@@ -9,41 +10,17 @@ type Props = {
   selected: ResearchSearchResultItem | null
   selectedChunkId: number | null
   onClose: () => void
-  returnFocusRef: RefObject<HTMLElement | null>
 }
 
 export function SourceDetailDialog({
   selected,
   selectedChunkId,
   onClose,
-  returnFocusRef,
 }: Props) {
   const titleId = useId()
-  const closeRef = useRef<HTMLButtonElement>(null)
   const passageQuery = useResearchPassageQuery(selectedChunkId)
   const open = selectedChunkId != null
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-    const previous = document.activeElement as HTMLElement | null
-    const restoreTarget = returnFocusRef.current
-    closeRef.current?.focus()
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      const restore = restoreTarget ?? previous
-      restore?.focus?.()
-    }
-  }, [open, onClose, returnFocusRef])
+  const dialogRef = useModalDialogFocus({ open, onClose })
 
   if (!open) {
     return null
@@ -55,7 +32,7 @@ export function SourceDetailDialog({
   const typeLabel =
     passage?.source_type_label ?? selected?.source_type_label ?? 'Source'
   const text =
-    passage?.passage_text ?? selected?.passage_text ?? 'Loading passageâ€¦'
+    passage?.passage_text ?? selected?.passage_text ?? 'Loading passage…'
   const errorMessage =
     passageQuery.error instanceof ApiError
       ? passageQuery.error.message
@@ -74,17 +51,18 @@ export function SourceDetailDialog({
       }}
     >
       <div
+        ref={dialogRef}
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        tabIndex={-1}
       >
         <div className={styles.dialogHeader}>
           <h2 id={titleId} className={styles.dialogHeading}>
             {title}
           </h2>
           <button
-            ref={closeRef}
             type="button"
             className={styles.closeButton}
             onClick={onClose}
@@ -111,7 +89,7 @@ export function SourceDetailDialog({
             <dd>
               {passage?.canonical_source_id ??
                 selected?.canonical_source_id ??
-                'â€”'}
+                '—'}
             </dd>
           </div>
           <div className={styles.metaItem}>
@@ -121,9 +99,9 @@ export function SourceDetailDialog({
           <div className={styles.metaItem}>
             <dt>Page / section</dt>
             <dd>
-              {passage?.page_number ?? selected?.page_number ?? 'â€”'}
+              {passage?.page_number ?? selected?.page_number ?? '—'}
               {passage?.section_label || selected?.section
-                ? ` Â· ${passage?.section_label ?? selected?.section}`
+                ? ` · ${passage?.section_label ?? selected?.section}`
                 : ''}
             </dd>
           </div>
@@ -145,18 +123,25 @@ export function SourceDetailDialog({
                   : 'No'
                 : selected
                   ? 'Yes'
-                  : 'â€”'}
+                  : '—'}
             </dd>
           </div>
         </dl>
         {errorMessage ? (
-          <p className={styles.statusAlert} role="alert">
-            {errorMessage}
-          </p>
+          <div className={styles.statusAlert} role="alert">
+            <p>{errorMessage}</p>
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              onClick={() => void passageQuery.refetch()}
+            >
+              Retry
+            </button>
+          </div>
         ) : null}
         {passageQuery.isFetching ? (
           <p className={styles.status} role="status" aria-busy="true">
-            Loading full passageâ€¦
+            Loading full passage…
           </p>
         ) : null}
         <pre className={styles.passageBody}>{text}</pre>

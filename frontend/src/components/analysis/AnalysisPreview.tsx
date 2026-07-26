@@ -6,6 +6,7 @@ import styles from './AnalysisPanel.module.css'
 type Props = {
   preview: AnalysisPreviewPayload
   busy: boolean
+  busyMode: 'save' | 'save_and_print' | null
   onSave: () => void
   onSaveAndPrint: () => void
   onCancel: () => void
@@ -17,6 +18,7 @@ const TEMP_BANNER =
 export function AnalysisPreview({
   preview,
   busy,
+  busyMode,
   onSave,
   onSaveAndPrint,
   onCancel,
@@ -38,6 +40,7 @@ export function AnalysisPreview({
       <AnalysisSaveActions
         disabled={!report}
         busy={busy}
+        busyMode={busyMode}
         onSave={onSave}
         onSaveAndPrint={onSaveAndPrint}
         onCancel={onCancel}

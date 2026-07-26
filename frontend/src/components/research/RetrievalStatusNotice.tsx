@@ -18,11 +18,11 @@ function statusCopy(
 ): string {
   switch (status) {
     case 'ok':
-      return `Found ${totalMatched} authority passage${totalMatched === 1 ? '' : 's'} for â€œ${query}â€. Showing ${resultCount}.`
+      return `Found ${totalMatched} authority passage${totalMatched === 1 ? '' : 's'} for “${query}”. Showing ${resultCount}.`
     case 'partial':
-      return `Partial retrieval for â€œ${query}â€: showing ${resultCount} of ${totalMatched} matched passages. Some sources were unavailable.`
+      return `Partial retrieval for “${query}”: showing ${resultCount} of ${totalMatched} matched passages. Some sources were unavailable.`
     case 'empty':
-      return `No matching authority passages were found for â€œ${query}â€.`
+      return `No matching authority passages were found for “${query}”.`
     case 'failed':
       return 'Authority retrieval failed. Try again, or narrow the query.'
     case 'skipped':
@@ -43,7 +43,7 @@ export function RetrievalStatusNotice({
   if (loading) {
     return (
       <p className={styles.status} role="status" aria-live="polite">
-        Searching the indexed authority corpusâ€¦
+        Searching the indexed authority corpus…
       </p>
     )
   }
