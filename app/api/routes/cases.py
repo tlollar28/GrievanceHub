@@ -1,10 +1,20 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.config import CASE_ASSET_MAX_UPLOAD_BYTES
 from app.database.session import get_db
 from app.services.case_service import (
     CONVERSATION_HISTORY_DEFAULT_LIMIT,
@@ -764,8 +774,53 @@ def list_case_assets(
     return result.model_dump(mode="json")
 
 
+_ASSET_UPLOAD_CHUNK_BYTES = 1024 * 1024  # 1 MiB per read
+
+
+async def _read_upload_within_limit(
+    file: UploadFile,
+    max_bytes: int,
+    *,
+    content_length_header: str | None,
+    chunk_size: int = _ASSET_UPLOAD_CHUNK_BYTES,
+) -> bytes:
+    """Read ``file`` in bounded chunks, rejecting as soon as the streamed
+    byte count exceeds ``max_bytes``.
+
+    ``Content-Length`` is never trusted as proof a body is within budget — a
+    client can omit it or misreport it — so it is only used for a cheap
+    early rejection before any read is attempted. The running chunk counter
+    is authoritative: reading stops the instant it is exceeded, so no
+    oversized upload is ever fully buffered in memory.
+    """
+    if content_length_header is not None:
+        try:
+            declared_bytes = int(content_length_header)
+        except ValueError:
+            declared_bytes = None
+        if declared_bytes is not None and declared_bytes > max_bytes:
+            raise CaseAssetValidationError(
+                f"File exceeds maximum size of {max_bytes} bytes."
+            )
+
+    chunks: list[bytes] = []
+    total_bytes = 0
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > max_bytes:
+            raise CaseAssetValidationError(
+                f"File exceeds maximum size of {max_bytes} bytes."
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @router.post("/{case_uuid}/assets")
 async def upload_case_asset(
+    request: Request,
     case_uuid: str,
     file: UploadFile = File(...),
     category: CaseAssetCategory = Form("uploaded_document"),
@@ -775,8 +830,12 @@ async def upload_case_asset(
 ):
     """Upload a case asset. Only ``uploaded_document`` is executable in W3."""
     service = CaseAssetService(db)
-    content = await file.read()
     try:
+        content = await _read_upload_within_limit(
+            file,
+            CASE_ASSET_MAX_UPLOAD_BYTES,
+            content_length_header=request.headers.get("content-length"),
+        )
         result = service.create_asset(
             case_uuid,
             category=category,

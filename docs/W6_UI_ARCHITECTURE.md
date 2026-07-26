@@ -209,9 +209,7 @@ Do not build a mobile-first chatbot layout.
 │   ├── /cases/:caseUuid/evidence       # Uploads / assets focused
 │   ├── /cases/:caseUuid/analysis       # Analysis review / versions
 │   ├── /cases/:caseUuid/grievance      # Grievance draft / Step 1–2 official forms
-│   ├── /cases/:caseUuid/artifacts      # Artifact library
-│   ├── /cases/:caseUuid/history        # Official Case Record
-│   ├── /cases/:caseUuid/memory         # Case Memory / overview (read-mostly)
+│   ├── /cases/:caseUuid/artifacts      # Artifact library + Official Case Record, timeline, jump-to-context
 │   ├── /cases/:caseUuid/workflow       # Step progression / outcomes
 │   └── /cases/:caseUuid/research       # Sources Research (authority corpus, read-only)
 ├── /cases/:caseUuid/analysis/preview   # Full-page temporary preview (optional deep link)
@@ -220,6 +218,11 @@ Do not build a mobile-first chatbot layout.
 ├── /cases/:caseUuid/print/grievance/:artifactUuid
 └── /help
 ```
+
+Official Case Record lives under `/cases/:caseUuid/artifacts` (folded in during
+M7); there is no separate `/history` route. Case Memory has no standalone
+route either — it is surfaced read-mostly through the Case Rail (left panel,
+§5.2) and workspace overview panels, not a dedicated `/memory` screen.
 
 Protected `/sources` administration remains API-only (not a W6 browser route).
 Steward research uses `/cases/:caseUuid/research` → `/research/*`.
@@ -340,10 +343,10 @@ Owns durable case identity and navigation within the case.
 | Facts | Editable `known_facts` key/value | `PATCH .../facts` |
 | Issues | Outstanding issues / open questions from memory | memory/overview |
 | Step progression | Current step, permitted transitions, outcome CTA | workflow + outcomes |
-| Timeline (slice) | Recent steward timeline events | workspace timeline slice; full → history route |
+| Timeline (slice) | Recent steward timeline events | workspace timeline slice; full → `/artifacts` |
 | Uploads | Asset count + recent filenames; link to Evidence | `assets` |
 | Artifacts | Latest official analysis/grievance titles | `artifacts` groups |
-| Official Case Record | Shortcut list of recent official events | history slice |
+| Official Case Record | Shortcut list of recent official events | `/artifacts` |
 | Memory | Compact “what the system understands” | `case_memory` |
 
 Left panel is **not** the chatbot. It reinforces that the steward is managing a case file.
@@ -358,9 +361,7 @@ Route-driven:
 | `/evidence` | `UploadPanel` + asset table |
 | `/analysis` | Saved versions list + latest report body or empty state with Generate CTA |
 | `/grievance` | Step 1/2 draft editor or saved Step 1/2 grievance; Generate when backend returns a supported template |
-| `/artifacts` | Grouped artifact library |
-| `/history` | Full Official Case Record |
-| `/memory` | Structured Case Memory viewer |
+| `/artifacts` | Grouped artifact library, full Official Case Record, timeline, and jump-to-context |
 | `/workflow` | FSM state, transitions, record outcome form |
 
 ### 5.4 Right panel — Research and provenance

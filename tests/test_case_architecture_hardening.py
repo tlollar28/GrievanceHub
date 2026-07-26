@@ -335,11 +335,20 @@ def test_jump_to_context_is_bounded_and_read_only():
         ),
     ]
 
+    timeline_calls = {"n": 0}
+
     def _query(model):
         if model is CaseTimelineEventRecord:
-            # first() for selected event, all() for siblings
-            stub = _QueryStub(first=event, all_rows=[event, neighbor])
-            return stub
+            # W6 remediation C: jump_to_context now issues 3 bounded,
+            # sequential CaseTimelineEventRecord queries instead of one
+            # unbounded .all() — target lookup, then previous, then next.
+            timeline_calls["n"] += 1
+            call_number = timeline_calls["n"]
+            if call_number == 1:
+                return _QueryStub(first=event)
+            if call_number == 2:
+                return _QueryStub(first=None)  # no earlier sibling
+            return _QueryStub(first=neighbor)  # immediate successor
         if model.__name__ == "CaseMessage":
             return _QueryStub(all_rows=msg_rows)
         if model.__name__ == "CaseSavedArtifact":

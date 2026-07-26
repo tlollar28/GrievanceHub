@@ -5,7 +5,9 @@ Uses synthetic PostgreSQL data when available. No OpenAI, no export, no sensitiv
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import text
@@ -255,6 +257,38 @@ def test_reopen_preserves_close_history(db_session, synthetic_case, progression,
     timeline = SavedCaseService.get_case_timeline(db_session, SYNTHETIC_CASE_UUID)
     close_events = [e for e in timeline.events if e.event_type == "case_closed"]
     assert len(close_events) == 1
+
+
+def test_reopen_logs_warning_when_case_memory_fails(
+    db_session, synthetic_case, progression, base_time, caplog
+):
+    """W6 remediation B: secondary Case Memory failure must not fail the
+    reopen, and must be logged with safe identifiers only (no reason text)."""
+    persistence = CaseStepProgressionPersistenceService(db_session)
+    persistence.close_case(
+        SYNTHETIC_CASE_UUID, event_timestamp=base_time + timedelta(hours=1)
+    )
+
+    caplog.set_level(logging.WARNING, logger="app.services.saved_case_service")
+    with patch(
+        "app.services.case_memory_service.CaseMemoryService.record_reopen",
+        side_effect=RuntimeError("synthetic case memory outage"),
+    ):
+        result = SavedCaseService.reopen_case(
+            db_session,
+            SYNTHETIC_CASE_UUID,
+            reason="Synthetic reopen reason with sensitive detail",
+            reopened_by="Synthetic Steward",
+            source="manual_ui",
+        )
+
+    assert result.action_taken == "reopened"
+    assert result.case.case_uuid == SYNTHETIC_CASE_UUID
+    assert "record_reopen_failed" in caplog.text
+    assert SYNTHETIC_CASE_UUID in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "synthetic case memory outage" not in caplog.text
+    assert "sensitive detail" not in caplog.text
 
 
 def test_reopen_already_open_is_idempotent(db_session, synthetic_case, progression):

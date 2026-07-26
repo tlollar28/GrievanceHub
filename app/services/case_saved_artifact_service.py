@@ -230,16 +230,19 @@ class CaseSavedArtifactService:
             append_steward_timeline=False,
             commit=False,
         )
+        analysis_target_state = (
+            "step_1_official"
+            if grievance_step and "step_1" in grievance_step
+            else "step_2_official"
+            if grievance_step and "step_2" in grievance_step
+            else "step_3_official"
+            if grievance_step and "step_3" in grievance_step
+            else "step_1_official"
+        )
         try:
             CaseWorkflowService(self.db).transition(
                 case_uuid,
-                "step_1_official"
-                if grievance_step and "step_1" in grievance_step
-                else "step_2_official"
-                if grievance_step and "step_2" in grievance_step
-                else "step_3_official"
-                if grievance_step and "step_3" in grievance_step
-                else "step_1_official",
+                analysis_target_state,
                 reason=analysis_event_type,
                 actor_id=request.saved_by or case.user_name,
                 grievance_step=grievance_step,
@@ -249,8 +252,16 @@ class CaseSavedArtifactService:
                 commit=False,
                 publish_event=False,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # Artifact already persisted; workflow transition is a documented
+            # best-effort secondary effect and must not fail the save.
+            logger.warning(
+                "save_and_print_report workflow_transition_failed case_uuid=%s artifact_uuid=%s target_state=%s error_class=%s",
+                case_uuid,
+                artifact.artifact_uuid,
+                analysis_target_state,
+                type(exc).__name__,
+            )
 
         self._append_timeline(
             case,
@@ -511,16 +522,19 @@ class CaseSavedArtifactService:
                 append_steward_timeline=False,
                 commit=False,
             )
+        grievance_target_state = (
+            "step_1_official"
+            if "step_1" in (grievance_step or "")
+            else "step_2_official"
+            if "step_2" in (grievance_step or "")
+            else "step_3_official"
+            if "step_3" in (grievance_step or "")
+            else "step_1_official"
+        )
         try:
             CaseWorkflowService(self.db).transition(
                 case_uuid,
-                "step_1_official"
-                if "step_1" in (grievance_step or "")
-                else "step_2_official"
-                if "step_2" in (grievance_step or "")
-                else "step_3_official"
-                if "step_3" in (grievance_step or "")
-                else "step_1_official",
+                grievance_target_state,
                 reason=grievance_event_type,
                 actor_id=request.saved_by or case.user_name,
                 grievance_step=grievance_step,
@@ -530,8 +544,16 @@ class CaseSavedArtifactService:
                 commit=False,
                 publish_event=False,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # Artifact already persisted; workflow transition is a documented
+            # best-effort secondary effect and must not fail the save.
+            logger.warning(
+                "save_and_print_grievance workflow_transition_failed case_uuid=%s artifact_uuid=%s target_state=%s error_class=%s",
+                case_uuid,
+                artifact.artifact_uuid,
+                grievance_target_state,
+                type(exc).__name__,
+            )
 
         self._append_timeline(
             case,

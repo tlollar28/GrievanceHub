@@ -4,7 +4,12 @@ import type {
   SaveAndPrintGrievanceRequest,
   SaveAndPrintResponse,
 } from '../../api/types/grievances'
-import { grievanceKeys, workspaceKeys } from './savedCaseActions'
+import {
+  artifactKeys,
+  grievanceKeys,
+  workflowKeys,
+  workspaceKeys,
+} from './savedCaseActions'
 
 export type SaveGrievanceInput = {
   caseUuid: string
@@ -33,6 +38,25 @@ export function useSaveGrievanceMutation() {
       })
       void queryClient.invalidateQueries({
         queryKey: workspaceKeys.detail(variables.caseUuid),
+      })
+      // Save and Save and Print also create/update a CaseSavedArtifact
+      // (clearing the prior latest-official flag), append a timeline
+      // event, and attempt a workflow transition — refresh the durable
+      // resources those side effects actually change.
+      void queryClient.invalidateQueries({
+        queryKey: [...artifactKeys.lists(), variables.caseUuid],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: [...artifactKeys.details(), variables.caseUuid],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: [...artifactKeys.histories(), variables.caseUuid],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: [...artifactKeys.timelines(), variables.caseUuid],
+      })
+      void queryClient.invalidateQueries({
+        queryKey: workflowKeys.detail(variables.caseUuid),
       })
     },
   })

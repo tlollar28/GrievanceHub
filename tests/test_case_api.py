@@ -9,11 +9,22 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.database.session import get_db
 from app.main import app
 from app.services.case_service import CaseNotFoundError, CaseReportRequiredError, CaseService
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "reports" / "sample_wrapper_report.json"
 CASE_UUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+
+
+def _mock_db_session():
+    """Inert ``get_db`` override for tests that replace ``CaseService.get_case``
+    with a ``SimpleNamespace`` fixture (see ``test_report_export_security.py``
+    for the full rationale: ``ReportExportService`` expires a relationship on
+    the real case object, which requires a mapped ORM instance when ``db`` is
+    a genuine ``Session``).
+    """
+    yield MagicMock()
 
 
 def _report_version(version_number=1, **overrides):
@@ -177,14 +188,18 @@ def test_export_html_does_not_call_retrieval(client):
         report_data=payload,
         created_at=datetime.now(timezone.utc),
     )
-    with patch.object(
-        CaseService,
-        "get_case",
-        return_value=SimpleNamespace(report_versions=[version]),
-    ), patch(
-        "app.services.case_service.KnowledgeRetrievalService.search_global_corpus_internal",
-    ) as mock_search:
-        response = client.get(f"/cases/{CASE_UUID}/export/html")
+    app.dependency_overrides[get_db] = _mock_db_session
+    try:
+        with patch.object(
+            CaseService,
+            "get_case",
+            return_value=SimpleNamespace(report_versions=[version]),
+        ), patch(
+            "app.services.case_service.KnowledgeRetrievalService.search_global_corpus_internal",
+        ) as mock_search:
+            response = client.get(f"/cases/{CASE_UUID}/export/html")
+    finally:
+        app.dependency_overrides.pop(get_db, None)
 
     assert response.status_code == 200
     mock_search.assert_not_called()

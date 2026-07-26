@@ -8,6 +8,7 @@ later phases (generated reports, grievances, exports, attachments).
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +29,8 @@ from app.schemas.case_asset_schema import (
     CaseAssetUploadResponse,
 )
 from app.services.case_service import CaseNotFoundError
+
+logger = logging.getLogger(__name__)
 
 _UNSAFE_FILENAME_RE = re.compile(r"[^\w.\- ()\[\]]+", re.UNICODE)
 _MAX_FILENAME_LEN = 180
@@ -415,75 +418,94 @@ class CaseAssetService:
         absolute_path = (case_dir / stored_filename).resolve()
         self._assert_path_inside_asset_root(absolute_path)
 
-        absolute_path.write_bytes(content)
-        digest = hashlib.sha256(content).hexdigest()
-        relative_path = self._relative_storage_path(absolute_path)
+        # Write, hash, and persist are one unit: a failure at any step below
+        # (disk write, hashing, or the final commit) must leave neither a
+        # stored file nor a partial database row behind.
+        file_written = False
+        try:
+            absolute_path.write_bytes(content)
+            file_written = True
+            digest = hashlib.sha256(content).hexdigest()
+            relative_path = self._relative_storage_path(absolute_path)
 
-        now = datetime.utcnow()
-        row = CaseAsset(
-            asset_uuid=asset_uuid,
-            case_id=case.id,
-            case_uuid=case_uuid,
-            asset_category=category,
-            original_filename=safe_original,
-            stored_filename=stored_filename,
-            stored_path=relative_path,
-            mime_type=mime_type,
-            file_size=len(content),
-            sha256=digest,
-            uploaded_by=uploaded_by or case.user_name,
-            source=source,
-            version_number=1,
-            status="active",
-            asset_metadata=asset_metadata,
-            created_at=now,
-            updated_at=now,
-        )
-        self.db.add(row)
-        case.updated_at = now
-        meta = asset_metadata if isinstance(asset_metadata, dict) else {}
-        is_management_response = bool(
-            meta.get("management_response")
-            or meta.get("document_role") == "management_response"
-            or "management response" in safe_original.lower()
-        )
-        event_type = (
-            "management_response_uploaded"
-            if is_management_response
-            else "files_uploaded"
-        )
-        title = (
-            "Management response uploaded"
-            if is_management_response
-            else "Evidence uploaded"
-        )
-        self.db.add(
-            CaseTimelineEventRecord(
-                event_uuid=str(uuid4()),
+            now = datetime.utcnow()
+            row = CaseAsset(
+                asset_uuid=asset_uuid,
                 case_id=case.id,
                 case_uuid=case_uuid,
-                event_type=event_type,
-                event_timestamp=now,
-                title=title,
-                details=safe_original,
-                upload_refs=[asset_uuid],
+                asset_category=category,
+                original_filename=safe_original,
+                stored_filename=stored_filename,
+                stored_path=relative_path,
+                mime_type=mime_type,
+                file_size=len(content),
+                sha256=digest,
+                uploaded_by=uploaded_by or case.user_name,
+                source=source,
+                version_number=1,
+                status="active",
+                asset_metadata=asset_metadata,
                 created_at=now,
+                updated_at=now,
             )
-        )
-        try:
-            from app.services.case_memory_service import CaseMemoryService
+            self.db.add(row)
+            case.updated_at = now
+            meta = asset_metadata if isinstance(asset_metadata, dict) else {}
+            is_management_response = bool(
+                meta.get("management_response")
+                or meta.get("document_role") == "management_response"
+                or "management response" in safe_original.lower()
+            )
+            event_type = (
+                "management_response_uploaded"
+                if is_management_response
+                else "files_uploaded"
+            )
+            title = (
+                "Management response uploaded"
+                if is_management_response
+                else "Evidence uploaded"
+            )
+            self.db.add(
+                CaseTimelineEventRecord(
+                    event_uuid=str(uuid4()),
+                    case_id=case.id,
+                    case_uuid=case_uuid,
+                    event_type=event_type,
+                    event_timestamp=now,
+                    title=title,
+                    details=safe_original,
+                    upload_refs=[asset_uuid],
+                    created_at=now,
+                )
+            )
+            try:
+                from app.services.case_memory_service import CaseMemoryService
 
-            CaseMemoryService(self.db).record_evidence(
-                case_uuid,
-                asset_uuid=asset_uuid,
-                filename=safe_original,
-                management_response=is_management_response,
-                summary=safe_original,
-                commit=False,
-            )
+                CaseMemoryService(self.db).record_evidence(
+                    case_uuid,
+                    asset_uuid=asset_uuid,
+                    filename=safe_original,
+                    management_response=is_management_response,
+                    summary=safe_original,
+                    commit=False,
+                )
+            except Exception as exc:
+                # Upload already persisted; Case Memory projection is a secondary
+                # effect and must not fail the upload.
+                logger.warning(
+                    "upload_case_asset record_evidence_failed case_uuid=%s asset_uuid=%s error_class=%s",
+                    case_uuid,
+                    asset_uuid,
+                    type(exc).__name__,
+                )
+            self.db.commit()
         except Exception:
-            pass
-        self.db.commit()
+            self.db.rollback()
+            if file_written:
+                absolute_path.unlink(missing_ok=True)
+            raise
+
         self.db.refresh(row)
         return CaseAssetUploadResponse(
             case_uuid=case_uuid,

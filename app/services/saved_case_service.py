@@ -8,6 +8,7 @@ No OpenAI, no PDF/DOCX export, no filled-form disk output.
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -40,6 +41,8 @@ from app.services.case_step_progression_persistence_service import (
     CaseStepProgressionPersistenceService,
 )
 from app.services.case_step_progression_service import CaseStepProgressionService
+
+logger = logging.getLogger(__name__)
 
 _GRIEVANT_FACT_KEYS = (
     "grievant",
@@ -703,9 +706,13 @@ class SavedCaseService:
                 reopened_by=reopened_by,
                 source=source,
             )
-        except Exception:
+        except Exception as exc:
             # Reopen must succeed even if Case Memory projection is unavailable.
-            pass
+            logger.warning(
+                "reopen_case record_reopen_failed case_uuid=%s error_class=%s",
+                case_uuid,
+                type(exc).__name__,
+            )
 
         updated = cls.get_saved_case(db, case_uuid)
         return ReopenCaseResponse(

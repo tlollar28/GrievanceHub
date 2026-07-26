@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -121,6 +122,88 @@ def test_save_and_print_report_keeps_artifact_when_pdf_fails():
     assert result.print_ready is False
     assert result.artifact is not None
     db.commit.assert_called_once()
+
+
+def test_save_and_print_report_logs_warning_when_workflow_transition_fails(caplog):
+    """W6 remediation B: secondary workflow transition failure must not fail
+    the save, and must be logged with safe identifiers only."""
+    db = MagicMock()
+    case = _case_row()
+    service = CaseSavedArtifactService(db)
+    db.add.side_effect = lambda obj: setattr(obj, "id", 1)
+
+    caplog.set_level(
+        logging.WARNING, logger="app.services.case_saved_artifact_service"
+    )
+    with (
+        patch.object(CaseService, "_get_case_row", return_value=case),
+        patch.object(service, "_current_step_type", return_value="step_2_appeal"),
+        patch.object(service, "_find_by_idempotency", return_value=None),
+        patch.object(service, "_next_artifact_version", return_value=1),
+        patch.object(service, "_clear_latest_flag"),
+        patch.object(service, "_append_timeline"),
+        patch(
+            "app.services.case_workflow_service.CaseWorkflowService.transition",
+            side_effect=RuntimeError("synthetic workflow outage"),
+        ),
+    ):
+        result = service.save_and_print_report(
+            "case-sp-1",
+            SaveAndPrintReportRequest(prepare_pdf=False),
+        )
+
+    assert result.status == "saved"
+    db.commit.assert_called_once()
+    assert "workflow_transition_failed" in caplog.text
+    assert "case-sp-1" in caplog.text
+    assert "step_2_official" in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "synthetic workflow outage" not in caplog.text
+
+
+def test_save_and_print_grievance_logs_warning_when_workflow_transition_fails(caplog):
+    """W6 remediation B: secondary workflow transition failure must not fail
+    the save, and must be logged with safe identifiers only."""
+    db = MagicMock()
+    case = _case_row()
+    service = CaseSavedArtifactService(db)
+    db.add.side_effect = lambda obj: setattr(obj, "id", 1)
+    step = SimpleNamespace(id=5, step_type="step_2_appeal")
+
+    caplog.set_level(
+        logging.WARNING, logger="app.services.case_saved_artifact_service"
+    )
+    with (
+        patch.object(CaseService, "_get_case_row", return_value=case),
+        patch.object(service, "_find_by_idempotency", return_value=None),
+        patch.object(service, "_next_artifact_version", return_value=1),
+        patch.object(service, "_clear_latest_flag"),
+        patch.object(service, "_append_timeline"),
+        patch.object(service, "_require_or_ensure_step", return_value=step),
+        patch(
+            "app.services.case_workflow_service.CaseWorkflowService.transition",
+            side_effect=RuntimeError("synthetic workflow outage"),
+        ),
+    ):
+        result = service.save_and_print_grievance(
+            "case-sp-1",
+            SaveAndPrintGrievanceRequest(
+                template_id="local_300_form_79_1",
+                template_version="1.0",
+                grievance_step="step_2_appeal",
+                field_values={"grievant_name": "Synthetic Worker"},
+                prepare_pdf=False,
+            ),
+        )
+
+    assert result.status == "saved"
+    db.commit.assert_called_once()
+    assert "workflow_transition_failed" in caplog.text
+    assert "case-sp-1" in caplog.text
+    assert "step_2_official" in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "synthetic workflow outage" not in caplog.text
+    assert "Synthetic Worker" not in caplog.text
 
 
 def test_save_and_print_idempotent_replay_does_not_duplicate():
