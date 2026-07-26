@@ -601,16 +601,32 @@ UI → Arbitration/LMOU → Deployment) is superseded.
 
 - **W6 — Interactive Steward Workspace (in progress):** usable end-to-end steward UI as
   a vertical slice; continuous RAG and generation validation through realistic
-  workflows. **M0–M7 are complete** (Foundations, Saved Cases, Create Case +
+  workflows. **M0–M9 are complete** (Foundations, Saved Cases, Create Case +
   workspace restore, Conversation + retrieval, Evidence uploads +
   `upload_refs`, Analysis generate/preview/save, Grievance Generate → Edit →
   Validate → Save / Save and Print for Step 1/2, Artifacts & History library /
   Official Case Record / timeline / compare / jump-to-context, and Workflow
-  outcomes / case lifecycle, and Sources Research). **M10 Polish & a11y is next.**
-  M10 is not started.
-- **W7 — RAG Evaluation and Output Quality:** versioned golden evaluations,
-  citation/faithfulness metrics, and approved quality thresholds before
-  multi-agent complexity.
+  outcomes / case lifecycle, and Sources Research). Production-readiness Batch
+  3 covers step-progression dead-code/naming cleanup and safe Alembic
+  ORM/schema metadata reconciliation. **Batch 4 is M10 Polish & a11y**:
+  workspace empty/loading/error states, keyboard navigation and accessibility,
+  print-route polish, realistic analysis/grievance PDF live validation, and
+  final W6 regression/exit review. Batch 4/M10 is not started. Global
+  TypeScript strict mode, `datetime.utcnow()` cleanup, React Router remediation,
+  and `case_service.py` splitting are deferred post-W7 unless intentionally
+  reprioritized. CI/CORS remain W11; application identity/authorization remain
+  W9.
+- **W7 — RAG Evaluation and Output Quality (planned; begins only after W6):**
+  versioned golden evaluations, citation/faithfulness metrics, hallucination
+  detection, groundedness scoring, runtime guardrails, evaluation dashboard, and
+  model-agnostic comparison — **Track A**. Retrieval modernization with
+  pgvector baseline, pluggable vector backend abstraction, and conditional
+  TurboVec shadow evaluation — **Track B**. PostgreSQL remains the system of
+  record; pgvector stays during development; TurboVec promotion requires
+  benchmark parity on citation accuracy, authorization isolation, and retrieval
+  quality. Approved quality thresholds before multi-agent complexity. W7.0–W7.8
+  is the approved current planning structure, subject to refinement during W7
+  implementation. W7 has not started.
 - **W8 — Multi-Agent Authority Workflow:** authority-specific agents only after
   the W7 baseline; must show measurable or clearly justified operational benefit.
 - **W9 — Security and Governance:** application identity, authorization, audit

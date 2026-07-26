@@ -12,8 +12,8 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 |------|--------|
 | Current branch | `main` |
 | Current completed phase | W5 — Knowledge Foundation |
-| Current implementation state | W6 in progress — M0–M9 complete (Foundations through Sources research) |
-| Next milestone | W6 M10 — Polish & a11y |
+| Current implementation state | W6 in progress — M0–M9 complete; production-readiness Batches 1–2 complete |
+| Next milestone | W6 production-readiness Batch 3 |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
@@ -30,8 +30,12 @@ post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 | W6 M7 — Artifacts and History | Complete and committed |
 | W6 M8 — Workflow outcomes | Complete and committed |
 | W6 M9 — Sources research | Complete and committed |
-| W6 M10 — Polish & a11y | Planned — not started |
-| W7 — RAG Evaluation and Output Quality | Planned — not started |
+| W6 production-readiness Batch 1 | Complete — `4ab328d` |
+| W6 production-readiness Batch 2 | Complete — `1111b4e` |
+| W6 production-readiness Batch 3 | Approved — ARCH-2/MAINT-1 + Alembic metadata reconciliation |
+| W6 production-readiness Batch 4 | W6 M10 — planned, not started |
+| W6 M10 — Polish & a11y | Batch 4 — planned, not started |
+| W7 — RAG Evaluation and Output Quality | Planned — not started; begins only after W6 |
 | W8 — Multi-Agent Authority Workflow | Planned — not started |
 | W9 — Security and Governance | Planned — not started |
 | W10 — LMOU and Arbitration Knowledge Expansion | Planned — not started |
@@ -216,6 +220,31 @@ python -m pytest tests/ -m "not integration" -q
 cd frontend && npm run typecheck && npm run lint && npm run test:run && npm run build
 ```
 
+## Remaining W6 and W7 handoff
+
+Authoritative reconstruction: [`docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md`](docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md).
+
+- W6 is **not complete** until Batch 3, Batch 4/M10, and the final exit review
+  are complete.
+- Batch 3 covers step-progression dead-code/naming cleanup and safe Alembic
+  ORM/schema metadata reconciliation.
+- Batch 4 is W6 M10: workspace empty/loading/error states, keyboard navigation
+  and accessibility, print-route polish, realistic analysis/grievance PDF live
+  validation, and final regression/exit review.
+- W7 begins **only after W6** is complete.
+- W7 retains canonical scope from [`docs/ROADMAP.md`](docs/ROADMAP.md) and adds
+  integrated **Track A** (AI evaluation, hallucination detection, guardrails)
+  and **Track B** (retrieval modernization, pgvector baseline, conditional
+  TurboVec evaluation).
+- PostgreSQL remains the system of record; TurboVec adoption remains conditional
+  on benchmark results — not predetermined.
+- W7.0–W7.8 is the approved current planning structure, subject to refinement
+  during W7 implementation. W7 has not started.
+- Global TypeScript strict mode, `datetime.utcnow()` cleanup, React Router
+  remediation, and `case_service.py` splitting are deferred post-W7 unless
+  intentionally reprioritized. CI/CORS remain W11; production identity and
+  authorization remain W9.
+
 ## Roadmap (summary)
 
 Canonical detail: [`docs/ROADMAP.md`](docs/ROADMAP.md).
@@ -224,8 +253,8 @@ W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 | Phase | Status |
 |-------|--------|
 | W5 — Knowledge Foundation | Complete |
-| W6 — Interactive Steward Workspace | In progress (M0–M8 complete) |
-| W7 — RAG Evaluation and Output Quality | Planned |
+| W6 — Interactive Steward Workspace | In progress (M0–M9 + remediation Batches 1–2 complete) |
+| W7 — RAG Evaluation and Output Quality | Planned — not started |
 | W8 — Multi-Agent Authority Workflow | Planned |
 | W9 — Security and Governance | Planned |
 | W10 — LMOU and Arbitration Knowledge Expansion | Planned |
@@ -258,4 +287,5 @@ authority corpus.
 - [`docs/temp/W6_M6_GRIEVANCE_REPORT.md`](docs/temp/W6_M6_GRIEVANCE_REPORT.md)
 - [`docs/temp/W6_M7_ARTIFACTS_HISTORY_REPORT.md`](docs/temp/W6_M7_ARTIFACTS_HISTORY_REPORT.md)
 - [`docs/temp/W6_M8_WORKFLOW_OUTCOMES_REPORT.md`](docs/temp/W6_M8_WORKFLOW_OUTCOMES_REPORT.md)
+- [`docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md`](docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md)
 - [`README.md`](README.md)
