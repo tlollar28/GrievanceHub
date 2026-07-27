@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.database.session import get_db
 from app.main import app
 from app.services.case_service import CaseNotFoundError
 from app.services.report_export.filename_utils import build_export_filename
@@ -27,6 +28,20 @@ def test_filename_sanitization_and_no_pii():
     assert "employee" not in filename.lower()
 
 
+def _mock_db_session():
+    """Inert ``get_db`` override for tests that replace ``CaseService.get_case``
+    with a ``SimpleNamespace`` fixture.
+
+    ``_load_version`` calls ``db.expire(case, ["report_versions"])`` on the
+    real case returned by ``CaseService.get_case`` to make a version flushed
+    earlier in the same transaction visible (Save and Print from a temporary
+    preview). Since ``get_case`` is mocked here, ``db`` is otherwise unused,
+    but a real ``Session`` would still reject ``expire()`` on a non-ORM
+    fixture. This override swaps in a double that doesn't validate ORM state.
+    """
+    yield MagicMock()
+
+
 class _MockCaseVersion:
     def __enter__(self):
         self._patch = patch("app.services.report_export_service.CaseService.get_case")
@@ -38,10 +53,12 @@ class _MockCaseVersion:
             created_at=datetime.now(timezone.utc),
         )
         self.mock_get.return_value = SimpleNamespace(report_versions=[version])
+        app.dependency_overrides[get_db] = _mock_db_session
         return self
 
     def __exit__(self, *args):
         self._patch.stop()
+        app.dependency_overrides.pop(get_db, None)
 
 
 class _MockCaseVersionsTwo:
@@ -54,10 +71,12 @@ class _MockCaseVersionsTwo:
         v2_payload["report"]["generated_at"] = "2026-07-02T12:00:00+00:00"
         v2 = SimpleNamespace(version_number=2, report_data=v2_payload, created_at=datetime.now(timezone.utc))
         self.mock_get.return_value = SimpleNamespace(report_versions=[v1, v2])
+        app.dependency_overrides[get_db] = _mock_db_session
         return self
 
     def __exit__(self, *args):
         self._patch.stop()
+        app.dependency_overrides.pop(get_db, None)
 
 
 def test_html_preview_headers():
@@ -132,9 +151,13 @@ def test_version_not_found():
 
 def test_no_report_versions():
     client = TestClient(app)
-    with patch("app.services.report_export_service.CaseService.get_case") as mock_get:
-        mock_get.return_value = SimpleNamespace(report_versions=[])
-        response = client.get(f"/cases/{CASE_UUID}/export/html")
+    app.dependency_overrides[get_db] = _mock_db_session
+    try:
+        with patch("app.services.report_export_service.CaseService.get_case") as mock_get:
+            mock_get.return_value = SimpleNamespace(report_versions=[])
+            response = client.get(f"/cases/{CASE_UUID}/export/html")
+    finally:
+        app.dependency_overrides.pop(get_db, None)
     assert response.status_code == 404
 
 

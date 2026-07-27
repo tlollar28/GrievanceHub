@@ -13,8 +13,12 @@ This repository does not include production credentials, private case data, or o
 - Case Memory projected from domain events
 - Finite-state workflow tracking
 - Explicit analysis-report generation (temporary preview → Save / Save and Print)
-- Explicit grievance draft generation with official Step 1 and Step 2 AcroForm PDF fill
-- Artifacts library and Official Case Record for saved work
+- Explicit grievance generation: Generate → Edit → Validate → Save / Save and Print
+  for official Step 1 and Step 2 forms only (AcroForm PDF fill/export)
+- Official grievance generation ends at Step 2 — Step 3 official forms are not
+  generated in the product
+- Versioned saved artifacts and Official Case Record, with React Artifact
+  Library / history browsing on `/cases/:caseUuid/artifacts`
 - Case asset uploads
 - Analysis report HTML and PDF export
 - Indexed labor-reference corpus management, including contract sources and Supervisor Manual materials
@@ -24,11 +28,11 @@ This repository does not include production credentials, private case data, or o
 ## High-level architecture
 
 ```text
-HTTP client / verification UI
+React steward shell (frontend/) / HTTP client / /ui shell
         │
         ▼
    FastAPI routers
-   (/cases, /sources, exports, /ui)
+   (/cases, /sources, exports, /ui, /health)
         │
         ▼
    Service layer
@@ -39,7 +43,7 @@ HTTP client / verification UI
             (case assets, generated reports/forms)
 ```
 
-Chat and analysis share retrieval infrastructure. Chat does not run the full analysis-report pipeline. Detailed design is documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Chat and analysis share retrieval infrastructure. Chat does not run the full analysis-report pipeline. Detailed design is documented in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The W6 UI blueprint is [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
 ## Technology stack
 
@@ -52,8 +56,9 @@ Chat and analysis share retrieval infrastructure. Chat does not run the full ana
 | Embeddings / LLM | OpenAI |
 | PDF forms | pypdf (AcroForm fill) |
 | Report export | Jinja2, WeasyPrint |
+| Steward UI (W6) | React, TypeScript, Vite (`frontend/`) |
 | Verification UI | FastAPI HTML shell (`/ui`) |
-| Tests | pytest |
+| Tests | pytest; Vitest + React Testing Library (frontend) |
 
 ## Repository structure
 
@@ -67,6 +72,7 @@ app/
   sources/        # Source manifest / index artifacts
   templates/      # Report templates
   static/         # Static assets for reports / UI shell
+frontend/         # W6 React/TypeScript steward workspace (M0–M9)
 alembic/          # Database migrations
 docs/             # Architecture and API/UI contracts
 scripts/          # Local diagnostics and tooling
@@ -133,6 +139,79 @@ Useful endpoints:
 | `http://localhost:8000/redoc` | ReDoc OpenAPI view |
 | `http://localhost:8000/ui` | Steward verification shell |
 
+## Frontend development (W6)
+
+The React steward workspace lives under `frontend/`. M0 provides the application
+shell, routing, TanStack Query, a typed API client, and a FastAPI health
+indicator. M1 adds the Saved Cases dashboard/list, URL filters/search/pagination,
+and open/reopen. M2 adds Create Case (`/cases/new` → `POST /cases/`), durable
+workspace restoration on `/cases/:caseUuid` (`GET /cases/{uuid}/workspace`), a
+`CaseWorkspaceShell` with Case Rail (overview, Case Memory, workflow, timeline
+slice), and known-facts editing (`PATCH /cases/{uuid}/facts`). M3 adds
+case-scoped conversation on `/cases/:caseUuid/conversation`
+(`GET /cases/{uuid}/messages`, `POST /cases/{uuid}/interactions`) with retrieval
+status, citation chips, a research/detail panel, disclosures, and facts-needed
+prompts. Normal conversation does not create an analysis report, grievance, or
+saved artifact. M4 adds Evidence on `/cases/:caseUuid/evidence` (list/upload/
+metadata for `GET/POST /cases/{uuid}/assets`) and conversation attachment of
+current-case assets via verified `upload_refs`. Uploaded evidence is case
+context only — it is not authority-corpus RAG. M5 adds Analysis on
+`/cases/:caseUuid/analysis`: explicit Generate → temporary unsaved preview →
+Cancel (no version) or Save / Save and Print (`prepare_pdf` false/true,
+idempotency keys, `saved` / `saved_pdf_failed` / `idempotent_replay`), plus
+saved-version list/detail and HTML/PDF export with official-versus-working-draft
+labels. M6 adds Grievance on `/cases/:caseUuid/grievance`: explicit Generate
+(`POST /cases/{uuid}/actions` with `{ action: "generate_grievance" }`) → Edit →
+Validate → Save / Save and Print
+(`POST /cases/{uuid}/grievances/save-and-print`, `prepare_pdf` false/true) for
+official Step 1 (`official_grievance_worksheet_step_1`) and Step 2
+(`official_standard_grievance_form_step_2`) forms only. Official grievance
+generation ends at Step 2. The grievance route can list/detail/PDF saved Step
+1/2 `grievance_form` artifacts for that case. M7 adds Artifacts & History on
+`/cases/:caseUuid/artifacts`: case-scoped Artifact Library for
+`analysis_report` and `grievance_form`, read-only detail and PDF preview,
+Official Case Record and timeline browsing, compatible artifact comparison, and
+read-only jump-to-context. Browsing, comparing, and opening context do not
+create artifacts. M8 adds Workflow & outcomes on `/cases/:caseUuid/workflow`:
+current workflow/step display, progression visualization, Record Outcome
+(`POST /cases/{uuid}/outcomes`) with same-case appeal, and explicit close /
+settle / archive / reopen via saved-case lifecycle routes. Outcome and lifecycle
+actions do not create analysis or grievance artifacts. Official form generation
+remains Step 1/2 only; Step 3 may appear as workflow tracking with an
+unsupported-form disclosure. M9 adds Sources Research on
+`/cases/:caseUuid/research` via a browser-safe FastAPI `/research/*` boundary
+(meta, source list/detail, search, passage detail). The UI reuses the retrieval
+service layer without browser API keys, keeps authority corpus results distinct
+from Evidence uploads, and does not mutate sources, Case Memory, messages,
+artifacts, or workflow. Protected `/sources` administration remains API-key
+gated. Ask Sources was intentionally excluded (would duplicate Conversation /
+create a second chatbot surface). Production authentication remains
+unimplemented (W9).
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+Vite proxies `/api` to `http://127.0.0.1:8000` by default (override with
+`DEV_API_TARGET`). Keep FastAPI running in another terminal for a live health
+indicator.
+
+Frontend validation:
+
+```bash
+cd frontend
+npm run typecheck
+npm run lint
+npm run test:run
+npm run build
+```
+
+Do not place `GRIEVANCEHUB_API_KEY`, `GRIEVANCEHUB_ADMIN_API_KEY`, OpenAI keys,
+or database credentials in frontend environment variables.
+
 ## Running tests
 
 ```bash
@@ -173,6 +252,8 @@ This codebase is suitable for local development and controlled internal evaluati
 | Document | Contents |
 |----------|----------|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design and subsystem behavior |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Canonical post-W5 delivery roadmap |
+| [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md) | W6 steward workspace UI blueprint |
 | [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md) | Saved-case API/UI contract notes |
 | [`PROJECT_STATE.md`](PROJECT_STATE.md) | Current engineering status tracking |
 | [`.env.example`](.env.example) | Environment variable template |

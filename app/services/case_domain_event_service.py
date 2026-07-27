@@ -6,10 +6,12 @@ optionally append steward timeline. No external broker.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database.models import CaseDomainEvent, CaseTimelineEventRecord, GrievanceCase
@@ -19,6 +21,12 @@ from app.schemas.case_domain_event_schema import (
     CaseDomainEventRecord,
 )
 from app.services.case_service import CaseNotFoundError, CaseService
+from app.services.idempotency_conflict_utils import (
+    CASE_DOMAIN_EVENTS_IDEMPOTENCY_INDEX,
+    is_idempotency_conflict,
+)
+
+logger = logging.getLogger(__name__)
 
 # Steward-facing titles for selected domain events (Official Case Record).
 _STEWARD_TITLES: dict[str, str] = {
@@ -142,8 +150,29 @@ class CaseDomainEventService:
             processing_status="pending",
             created_at=datetime.utcnow(),
         )
-        self.db.add(row)
-        self.db.flush()
+        try:
+            with self.db.begin_nested():
+                self.db.add(row)
+                self.db.flush()
+        except IntegrityError as exc:
+            if not is_idempotency_conflict(exc, CASE_DOMAIN_EVENTS_IDEMPOTENCY_INDEX):
+                raise
+            winner = (
+                self.db.query(CaseDomainEvent)
+                .filter(
+                    CaseDomainEvent.case_uuid == payload.case_uuid,
+                    CaseDomainEvent.idempotency_key == payload.idempotency_key,
+                )
+                .first()
+            )
+            if not isinstance(winner, CaseDomainEvent):
+                raise
+            logger.info(
+                "publish_payload idempotent_conflict case_uuid=%s event_type=%s",
+                payload.case_uuid,
+                payload.event_type,
+            )
+            return self._to_record(winner, already_processed=True)
 
         timeline_uuid = None
         if payload.append_steward_timeline:

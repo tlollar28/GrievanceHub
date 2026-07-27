@@ -1,0 +1,33 @@
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: var(--font-size-meta);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.open {
+  border-color: #9fc3a8;
+  background: #e8f3eb;
+  color: var(--success);
+}
+
+.reopened,
+.appealed {
+  border-color: #c4b27a;
+  background: #f7f1de;
+  color: var(--warning);
+}
+
+.closed,
+.settled,
+.archived {
+  border-color: var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+}

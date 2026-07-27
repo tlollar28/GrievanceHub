@@ -17,7 +17,7 @@ from app.services.case_service import (
 from app.services.case_step_progression_persistence_service import (
     CaseStepProgressionPersistenceService,
 )
-from app.services.case_step_progression_service import CaseStepProgressionError
+from app.services.case_step_progression_errors import CaseStepProgressionError
 from app.services.follow_up_chat_service import FollowUpChatService
 from app.services.saved_case_service import SavedCaseService
 
@@ -173,7 +173,7 @@ def test_workspace_empty_progression_shape():
         assets=[],
     )
     db = MagicMock()
-    from app.services.case_step_progression_service import CaseStepProgressionNotFoundError
+    from app.services.case_step_progression_errors import CaseStepProgressionNotFoundError
 
     with (
         patch.object(CaseService, "get_case", return_value=case),
@@ -397,7 +397,7 @@ def test_primary_workspace_omits_full_transcript_but_keeps_continuity():
         assets=[],
     )
     db = MagicMock()
-    from app.services.case_step_progression_service import CaseStepProgressionNotFoundError
+    from app.services.case_step_progression_errors import CaseStepProgressionNotFoundError
 
     with (
         patch.object(CaseService, "get_case_for_workspace", return_value=case),
@@ -1103,7 +1103,7 @@ def test_workspace_restore_reuses_loaded_case_without_inspect_reload():
         assets=[],
     )
     db = MagicMock()
-    from app.services.case_step_progression_service import CaseStepProgressionNotFoundError
+    from app.services.case_step_progression_errors import CaseStepProgressionNotFoundError
 
     with (
         patch.object(CaseService, "get_case_for_workspace", return_value=case),

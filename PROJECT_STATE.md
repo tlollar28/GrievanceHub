@@ -1,30 +1,55 @@
 # GrievanceHub Engineering Status
 
-Last updated: 2026-07-23
+Last updated: 2026-07-26
 
 Concise public engineering status for the current working tree. Detailed system
-design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+design lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The canonical
+post-W5 delivery plan lives in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Current status
 
 | Item | State |
 |------|--------|
 | Current branch | `main` |
+| Current completed phase | W6 — Interactive Steward Workspace |
+| Current implementation state | W6 complete — M0–M10 and production-readiness Batches 1–4 complete |
+| Next milestone | W7 — RAG Evaluation and Output Quality (planned, not started) |
 | W1 — Case Interaction Contract | Complete and committed |
 | W2 — AI Case Interaction Orchestration | Complete and committed |
 | W3 — Case Evidence and Asset Management | Complete and committed |
 | W4 — Case Lifecycle, Memory, Workflow, and Artifacts | Complete and committed |
 | W5 — Knowledge Foundation | Complete and committed |
-| W6 — Security Foundation | Next — not started |
-| W7 — Production Steward Interface | Planned |
-| W8 — Arbitration and LMOU Integration | Planned |
-| W9 — Production Deployment | Planned |
+| W6 — Interactive Steward Workspace | Complete — M0–M10 and Batches 1–4 |
+| W6 M0 — Frontend Foundations | Complete and committed |
+| W6 M1 — Saved Cases | Complete and committed |
+| W6 M2 — Create Case + workspace restore | Complete and committed |
+| W6 M3 — Conversation + retrieval | Complete and committed |
+| W6 M4 — Evidence uploads + asset references | Complete and committed |
+| W6 M5 — Analysis generate / preview / save | Complete and committed |
+| W6 M6 — Grievance generate / edit / validate / save | Complete and committed |
+| W6 M7 — Artifacts and History | Complete and committed |
+| W6 M8 — Workflow outcomes | Complete and committed |
+| W6 M9 — Sources research | Complete and committed |
+| W6 production-readiness Batch 1 | Complete — `4ab328d` |
+| W6 production-readiness Batch 2 | Complete — `1111b4e` |
+| W6 production-readiness Batch 3 | Complete — `35d5945`; step-progression cleanup + Alembic metadata reconciliation |
+| W6 production-readiness Batch 4 | Complete — W6 M10 polish, accessibility, PDF validation, and exit review |
+| W6 M10 — Polish & a11y | Complete — Batch 4 |
+| W7 — RAG Evaluation and Output Quality | Next phase — planned, gated, and not started |
+| W8 — Multi-Agent Authority Workflow | Planned — not started |
+| W9 — Security and Governance | Planned — not started |
+| W10 — LMOU and Arbitration Knowledge Expansion | Planned — not started |
+| W11 — Production Packaging and Deployment | Planned — not started |
+
+The former post-W5 sequence (W6 Security → W7 Steward UI → W8 Arbitration/LMOU →
+W9 Deployment) is superseded. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Product model
 
-GrievanceHub is a backend-first grievance case workspace. Each grievance matter
-is managed as a persistent `GrievanceCase`. Conversation, Case Memory, evidence,
-reports, grievances, artifacts, and workflow history remain attached to that case.
+GrievanceHub is a backend-first grievance case workspace with a completed W6
+React steward shell. Each grievance matter is managed as a persistent
+`GrievanceCase`. Conversation, Case Memory, evidence, reports, grievances,
+artifacts, and workflow history remain attached to that case.
 
 The application manages workflow automation. The steward controls when analysis
 reports and grievances are created. There is no required Conversation → Analysis
@@ -43,8 +68,12 @@ from ordinary steward case work.
 - Case Memory projected from domain events
 - Explicit Generate Analysis Report (temporary preview → Save / Save and Print)
 - Explicit Generate Grievance (editable field-value draft → Save / Save and Print)
+- Official grievance generation currently supports Step 1 and Step 2 only
+  (`official_grievance_worksheet_step_1`,
+  `official_standard_grievance_form_step_2`)
 - Official Step 1 and Step 2 AcroForm PDF fill/export
-- Artifacts library and Official Case Record for saved work
+- Artifacts library and Official Case Record for saved work (backend + React
+  Artifact Library / history browsing on `/cases/:caseUuid/artifacts`)
 - Case asset uploads
 - Analysis report HTML/PDF export
 - FastAPI steward verification shell at `/ui`
@@ -52,6 +81,64 @@ from ordinary steward case work.
 - Supervisor Manual corpus classification (`SUPERVISOR_MANUAL`) with EL-921, EL-801, and F-21 support
 - Bounded retrieval-agent architecture (`RetrievalOrchestrator`, `ContractAgent`, `SupervisorManualAgent`)
 - Interim API-key authentication on `/sources` routes (temporary W5 safety boundary)
+- W6 M0 React/TypeScript frontend foundation under `frontend/` (AppShell, routing,
+  TanStack Query, typed API client, health ConnectionStatus, design tokens)
+- W6 M1 Saved Cases dashboard/list (`GET /cases/saved`), URL filters/search/
+  pagination, open/reopen, and `/cases/:caseUuid` entry
+- W6 M2 Create Case (`POST /cases/`), durable workspace restore
+  (`GET /cases/{uuid}/workspace`), `CaseWorkspaceShell`, Case Rail, overview /
+  Case Memory presentation, and known-facts editing (`PATCH /cases/{uuid}/facts`)
+- W6 M3 case conversation (`GET /cases/{uuid}/messages`,
+  `POST /cases/{uuid}/interactions`), retrieval-status UI, citation chips and
+  research panel, disclosures / facts-needed; normal chat creates no analysis
+  report, grievance, or artifact
+- W6 M4 Evidence workspace (`/cases/:caseUuid/evidence`) with case asset list,
+  multipart upload (`POST /cases/{uuid}/assets`), metadata detail, and
+  conversation `upload_refs` attachment selection; uploaded evidence is
+  case-context reference only and is not authority-corpus RAG
+- W6 M5 Analysis workspace (`/cases/:caseUuid/analysis`) with explicit Generate
+  Analysis (`POST /cases/{uuid}/reports/generate` → temporary client-held
+  preview), Cancel (no persistence), Save / Save and Print
+  (`POST /cases/{uuid}/reports/save-and-print` with `prepare_pdf` false/true and
+  client `idempotency_key`), saved version list/detail
+  (`GET /cases/{uuid}/versions[/{n}]`), and HTML/PDF export controls with
+  official-versus-working-draft labeling; normal conversation still creates no
+  analysis version or artifact
+- W6 M6 Grievance workspace (`/cases/:caseUuid/grievance`) with Generate → Edit →
+  Validate → Save / Save and Print for Step 1 and Step 2 only
+  (`POST /cases/{uuid}/actions` `{ action: "generate_grievance" }` → temporary
+  client-held draft; `POST /cases/{uuid}/grievances/save-and-print` with
+  `prepare_pdf` false/true); limited list/detail/PDF for saved Step 1/2
+  `grievance_form` artifacts
+- W6 M7 Artifacts & History workspace (`/cases/:caseUuid/artifacts`) with
+  case-scoped Artifact Library (`analysis_report` + `grievance_form`), read-only
+  detail and PDF preview, Official Case Record (`GET /cases/saved/{uuid}/history`),
+  broader timeline (`GET /cases/saved/{uuid}/timeline`), jump-to-context
+  (`GET /cases/{uuid}/history/{event_id}/context`), and compatible artifact
+  comparison (`POST /cases/{uuid}/artifacts/compare`). Browsing/compare/context
+  create no artifacts.
+- W6 M8 Workflow & outcomes workspace (`/cases/:caseUuid/workflow`) with current
+  workflow/step display, progression visualization, Record Outcome
+  (`POST /cases/{uuid}/outcomes`), same-case appeal progression, and explicit
+  close / settle / archive / reopen via saved-case lifecycle routes. Outcome and
+  lifecycle actions do not create analysis or grievance artifacts. Official
+  form generation remains Step 1/2 only; Step 3 may appear as workflow tracking
+  with an unsupported-form disclosure.
+- W6 M9 Sources Research workspace (`/cases/:caseUuid/research`) with a
+  browser-safe FastAPI boundary (`GET /research/meta`, `GET /research/sources`,
+  `GET /research/sources/{id}`, `POST /research/search`,
+  `GET /research/passages/{chunk_id}`). Reuses the retrieval service layer
+  in-process; no browser source API keys; allowlisted read-only responses;
+  authority corpus clearly distinguished from case Evidence uploads. Research
+  does not mutate sources, Case Memory, messages, artifacts, or workflow.
+  Protected `/sources` administration remains API-key gated. Production
+  authentication remains unimplemented (W9).
+- W6 M10 polish and accessibility foundations: route-heading focus, shared
+  modal focus trapping/Escape/restoration, safe API and route errors, research
+  metadata/detail retry states and corrected text encoding, distinct Save
+  pending labels, retained-artifact PDF-failure messaging, backend `pdf_error`
+  sanitization, and pre-persistence rejection of unsupported/Step 3 official
+  grievance saves.
 
 ## Normal chat vs analysis
 
@@ -65,13 +152,54 @@ from ordinary steward case work.
 
 Python 3, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16 + pgvector, OpenAI
 embeddings and chat, Jinja2 + WeasyPrint, pypdf AcroForm fill, pytest.
+Frontend (W6): React, TypeScript, Vite, React Router, TanStack Query, Vitest.
 
-## Indexed corpus (repository artifact)
+## Data integrity and performance hardening
 
-The committed `app/sources/source_index.json` artifact currently includes
-CONTRACT and CIM text chunks for local development. Live retrieval coverage
-depends on the running database index, including Supervisor Manual embeddings
-when those sources have been synchronized and processed locally.
+- `CaseDomainEvent`, `CaseFormDraftRecord`, and `CaseSavedArtifact`
+  idempotency keys are enforced by a database unique index (scoped to
+  `case_uuid` + key, nullable-safe), not only an application-level check;
+  the service layer resolves concurrent same-key requests via a savepoint +
+  `IntegrityError` classification, returning the winning row instead of
+  duplicating artifacts, domain events, or timeline entries
+- Justified `case_id`-leading query indexes added for `CaseMessage`,
+  `CaseReportVersion`, `CaseStepOutcome`, `CaseTimelineEventRecord`, and
+  `CaseFormDraftRecord`; `CaseStep`, `CaseSavedArtifact`, and `CaseAsset`
+  were already covered by an existing composite index
+- The dead in-memory `CaseStepProgressionService` was removed. Active
+  template/draft behavior is stateless in `case_step_progression_rules.py`;
+  SQLAlchemy-backed step records remain in
+  `CaseStepProgressionPersistenceService`, while `CaseWorkflowService` remains
+  the authoritative explicit workflow FSM.
+- ORM metadata now explicitly describes the existing migrated unique
+  constraints/indexes for scoped UUID columns and `case_memories`; no migration
+  or DDL was required, and `alembic check` is clean.
+- Details: [`docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_2_REPORT.md`](docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_2_REPORT.md),
+  [`docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_3_REPORT.md`](docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_3_REPORT.md),
+  [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §7.1
+
+## Security status
+
+- Interim `/sources` API-key boundary exists (`GRIEVANCEHUB_API_KEY` /
+  `GRIEVANCEHUB_ADMIN_API_KEY`)
+- Interim W6 browser-safe read-only `/research/*` boundary exists (no browser
+  API key; does not satisfy W9 production authentication)
+- Final application identity does not exist
+- Broader `/cases`, export, and UI authentication are not implemented
+- The W6 browser must not receive source API secrets
+- The system is not production secure
+
+## Corpus status
+
+- Existing W5 corpus supported (contract/CIM index artifacts; Supervisor Manual
+  processing when synchronized locally)
+- LMOU and arbitration expansion deferred until after W9 (Security and
+  Governance)
+
+## Deployment status
+
+- Local development via Docker Compose for PostgreSQL is supported
+- Production packaging and deployment are deferred until W11
 
 ## Implementation lineage
 
@@ -85,6 +213,17 @@ Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
 | W3 | Case evidence, uploads, metadata, storage, and asset management |
 | W4 | Workspace restoration, Case Memory, domain events, workflow FSM, Generate/Save artifacts, Official Case Record, and chat retrieval hardening |
 | W5 | Knowledge Foundation: official forms, Supervisor Manuals, source lifecycle, retrieval agents, and interim source-route API-key boundary |
+| W6 M0 | Frontend foundations: Vite/React/TS shell, routing, Query client, typed API client, health indicator |
+| W6 M1 | Saved Cases dashboard/list, filters/search/pagination, open/reopen, workspace-entry route |
+| W6 M2 | Create Case, durable workspace restore, CaseWorkspaceShell, Case Rail, facts editor |
+| W6 M3 | Case conversation, message restore, interactions, retrieval status, citations |
+| W6 M4 | Evidence uploads, asset list/detail, conversation upload_refs |
+| W6 M5 | Analysis generate / temporary preview / Save / Save and Print / versions |
+| W6 M6 | Grievance Generate → Edit → Validate → Save / Save and Print (Step 1/2) |
+| W6 M7 | Artifact Library, Official Case Record, timeline, compare, jump-to-context |
+| W6 M8 | Workflow outcomes, same-case appeal, close/settle/archive/reopen UI |
+| W6 M9 | Browser-safe read-only Sources Research workspace |
+| W6 M10 | UI-state polish, accessibility foundations, safe errors, PDF UX/live validation, final exit review |
 | CrossCraft retirement | Obsolete SPBS/cross-craft surface removed |
 
 The historical phase labels remain visible in Git history. They represent the
@@ -95,55 +234,74 @@ earlier implementation sequence and do not indicate missing work.
 ```bash
 python -m pytest tests/test_w5_source_lifecycle.py tests/test_official_grievance_pdf_export.py tests/test_retrieval_agents.py -q
 python -m pytest tests/ -m "not integration" -q
+cd frontend && npm run typecheck && npm run lint && npm run test:run && npm run build
 ```
 
-## Roadmap
+## W6 completion and W7 handoff
 
-### W5 — Knowledge Foundation (complete)
+Authoritative reconstruction: [`docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md`](docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md).
 
-Delivered:
+- W6 is **complete**: M0–M10 and production-readiness Batches 1–4 passed the
+  final exit review with non-blocking findings.
+- Batch 3 completed step-progression dead-code/naming cleanup and safe Alembic
+  ORM/schema metadata reconciliation.
+- Batch 4/M10 completed UI-state polish, keyboard/accessibility foundations,
+  print/PDF UX, realistic PDF validation, and final regression/exit review.
+- W7 is the next phase and remains **planned, gated, and not started**.
+- W7 retains canonical scope from [`docs/ROADMAP.md`](docs/ROADMAP.md) and adds
+  integrated **Track A** (AI evaluation, hallucination detection, guardrails)
+  and **Track B** (retrieval modernization, pgvector baseline, conditional
+  TurboVec evaluation).
+- PostgreSQL remains the system of record; TurboVec adoption remains conditional
+  on benchmark results — not predetermined.
+- W7.0–W7.8 is the approved current planning structure, subject to refinement
+  during W7 implementation. W7 has not started.
+- Global TypeScript strict mode, `datetime.utcnow()` cleanup, React Router
+  remediation, and `case_service.py` splitting are deferred post-W7 unless
+  intentionally reprioritized. CI/CORS remain W11; production identity and
+  authorization remain W9.
 
-- Official USPS Step 1 and Step 2 fillable AcroForm PDF integration
-- Source processing lifecycle metadata and Alembic migration
-- Supervisor Manual registration/sync/processing support (EL-921, EL-801, F-21)
-- Bounded retrieval-agent architecture with fail-closed authorization adapters
-- Interim `/sources` API-key authentication (temporary; not W6 identity)
+## Roadmap (summary)
 
-W5 retrieval components are retrieval infrastructure. They are not completion of a
-future multi-agent product system.
+Canonical detail: [`docs/ROADMAP.md`](docs/ROADMAP.md).
+W6 UI blueprint: [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md).
 
-### W6 — Security Foundation (next)
+| Phase | Status |
+|-------|--------|
+| W5 — Knowledge Foundation | Complete |
+| W6 — Interactive Steward Workspace | Complete (M0–M10 + remediation Batches 1–4) |
+| W7 — RAG Evaluation and Output Quality | Next phase — planned, not started |
+| W8 — Multi-Agent Authority Workflow | Planned |
+| W9 — Security and Governance | Planned |
+| W10 — LMOU and Arbitration Knowledge Expansion | Planned |
+| W11 — Production Packaging and Deployment | Planned |
 
-Not started. Planned work includes application identity, RBAC or equivalent
-policy, case-level authorization, secure upload validation, audit logging,
-encryption and secrets management, production rate limiting, broader
-prompt-injection defenses, and security-focused tests.
-
-The interim `GRIEVANCEHUB_API_KEY` / `GRIEVANCEHUB_ADMIN_API_KEY` boundary added
-in W5 protects source/retrieval routes only. It must be replaced or integrated
-into the W6 identity design and must not be described as completing W6.
-
-### W7 — Production Steward Interface
-
-Build the production dashboard, persistent case workspace, research and
-conversation interfaces, form editing, progression controls, citation viewing,
-and responsive UI.
-
-### W8 — Arbitration and LMOU Integration
-
-Add protected arbitration decisions and LMOUs with metadata extraction,
-indexing, permission-aware retrieval, citation validation, and evaluation tests.
-Additional LMOU and historical arbitration expansion remains deferred to this
-phase.
-
-### W9 — Production Deployment
-
-Add managed PostgreSQL and pgvector, object storage, background workers,
-monitoring, backup and recovery, CI/CD hardening, and performance testing.
+W5 retrieval components are retrieval infrastructure. They are not completion of
+W8 multi-agent orchestration. The interim `/sources` API-key boundary is not
+completion of W9 application security. W6 M0–M10 now cover shell foundations,
+Saved Cases entry, Create Case, durable workspace restore, conversation with
+retrieval/citations, evidence uploads with `upload_refs`, Analysis
+generate/preview/save, Grievance Generate → Edit → Validate → Save / Save and
+Print for official Step 1 and Step 2 forms only, Artifacts & History, Workflow
+outcomes/case lifecycle, Sources Research, and final polish/accessibility/PDF
+validation. Case evidence uploads are not indexed into the authority corpus.
 
 ## Related documentation
 
+- [`docs/ROADMAP.md`](docs/ROADMAP.md)
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/W6_UI_ARCHITECTURE.md`](docs/W6_UI_ARCHITECTURE.md)
 - [`docs/saved_cases_ui_contract.md`](docs/saved_cases_ui_contract.md)
 - [`docs/temp/W5_FINAL_COMPLETION_REPORT.md`](docs/temp/W5_FINAL_COMPLETION_REPORT.md)
+- [`docs/temp/W6_M0_FRONTEND_FOUNDATIONS_REPORT.md`](docs/temp/W6_M0_FRONTEND_FOUNDATIONS_REPORT.md)
+- [`docs/temp/W6_M1_SAVED_CASES_REPORT.md`](docs/temp/W6_M1_SAVED_CASES_REPORT.md)
+- [`docs/temp/W6_M2_CREATE_WORKSPACE_REPORT.md`](docs/temp/W6_M2_CREATE_WORKSPACE_REPORT.md)
+- [`docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md`](docs/temp/W6_M3_CONVERSATION_RETRIEVAL_REPORT.md)
+- [`docs/temp/W6_M4_EVIDENCE_REPORT.md`](docs/temp/W6_M4_EVIDENCE_REPORT.md)
+- [`docs/temp/W6_M5_ANALYSIS_REPORT.md`](docs/temp/W6_M5_ANALYSIS_REPORT.md)
+- [`docs/temp/W6_M6_GRIEVANCE_REPORT.md`](docs/temp/W6_M6_GRIEVANCE_REPORT.md)
+- [`docs/temp/W6_M7_ARTIFACTS_HISTORY_REPORT.md`](docs/temp/W6_M7_ARTIFACTS_HISTORY_REPORT.md)
+- [`docs/temp/W6_M8_WORKFLOW_OUTCOMES_REPORT.md`](docs/temp/W6_M8_WORKFLOW_OUTCOMES_REPORT.md)
+- [`docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md`](docs/temp/W6_REMAINING_ROADMAP_AND_W7_HANDOFF.md)
+- [`docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_3_REPORT.md`](docs/temp/W6_PRODUCTION_READINESS_REMEDIATION_3_REPORT.md)
 - [`README.md`](README.md)

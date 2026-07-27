@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 from uuid import uuid4
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.database.models import (
@@ -33,8 +34,13 @@ from app.services.case_service import CaseNotFoundError, CaseService, ReportVers
 from app.services.case_step_progression_persistence_service import (
     CaseStepProgressionPersistenceService,
 )
-from app.services.case_step_progression_service import CaseStepProgressionNotFoundError
+from app.services.case_step_progression_errors import CaseStepProgressionNotFoundError
 from app.services.grievance_pdf_export_service import GrievancePdfExportService
+from app.services.idempotency_conflict_utils import (
+    CASE_FORM_DRAFT_RECORDS_IDEMPOTENCY_INDEX,
+    CASE_SAVED_ARTIFACTS_IDEMPOTENCY_INDEX,
+    is_idempotency_conflict,
+)
 from app.services.report_export.pdf_generator import PdfGenerationError
 from app.services.report_export_service import NoReportVersionError, ReportExportService
 
@@ -128,64 +134,84 @@ class CaseSavedArtifactService:
             if existing is not None:
                 return self._idempotent_response(existing)
 
-        # Steward Save from a temporary Generate preview creates the version now.
-        if isinstance(request.preview, dict) and request.preview.get("report_data"):
-            try:
-                version = CaseService.persist_report_version_from_preview(
-                    self.db,
-                    case_uuid,
-                    request.preview,
-                    commit=False,
+        # The version-resolution/creation and artifact insert below are one
+        # contested unit of work: a concurrent request with the same
+        # idempotency_key may race us to the unique index on
+        # (case_uuid, idempotency_key). A savepoint lets us cleanly discard
+        # only this block (including an orphaned preview-persisted version)
+        # and fall back to the winner's row, without disturbing anything
+        # already committed on the outer transaction.
+        try:
+            with self.db.begin_nested():
+                # Steward Save from a temporary Generate preview creates the version now.
+                if isinstance(request.preview, dict) and request.preview.get("report_data"):
+                    try:
+                        version = CaseService.persist_report_version_from_preview(
+                            self.db,
+                            case_uuid,
+                            request.preview,
+                            commit=False,
+                        )
+                    except ValueError as exc:
+                        raise CaseSavedArtifactValidationError(str(exc)) from exc
+                    case = CaseService.get_case(self.db, case_uuid)
+                else:
+                    version = self._resolve_report_version(case, request.report_version_number)
+                if not isinstance(version.report_data, dict):
+                    raise CaseSavedArtifactValidationError("Report content is invalid.")
+
+                grievance_step = request.grievance_step or self._current_step_type(case_uuid)
+                next_version = self._next_artifact_version(case.id, "analysis_report")
+                title = request.title or f"Analysis Report v{next_version}"
+                version_label = title
+                now = datetime.utcnow()
+                content = {
+                    "report_data": version.report_data,
+                    "report_summary": version.report_summary,
+                    "issue_analysis": version.issue_analysis,
+                    "ranked_authorities": version.ranked_authorities,
+                    "evidence_items": version.evidence_items,
+                    "retrieval_gaps": version.retrieval_gaps,
+                    "source_coverage_audit": version.source_coverage_audit,
+                }
+                key_summary = self._report_key_summary(version, grievance_step)
+
+                self._clear_latest_flag(case.id, "analysis_report")
+                artifact = CaseSavedArtifact(
+                    artifact_uuid=str(uuid4()),
+                    case_id=case.id,
+                    case_uuid=case_uuid,
+                    artifact_type="analysis_report",
+                    title=title,
+                    version_number=next_version,
+                    version_label=version_label,
+                    grievance_step=grievance_step,
+                    content_json=content,
+                    key_summary_json=key_summary,
+                    source_report_version_id=version.id,
+                    source_report_version_number=version.version_number,
+                    pdf_status="pending",
+                    printed=False,
+                    is_latest_official=True,
+                    saved_by=request.saved_by or case.user_name,
+                    saved_at=now,
+                    idempotency_key=request.idempotency_key,
+                    status="official",
+                    created_at=now,
                 )
-            except ValueError as exc:
-                raise CaseSavedArtifactValidationError(str(exc)) from exc
-            case = CaseService.get_case(self.db, case_uuid)
-        else:
-            version = self._resolve_report_version(case, request.report_version_number)
-        if not isinstance(version.report_data, dict):
-            raise CaseSavedArtifactValidationError("Report content is invalid.")
-
-        grievance_step = request.grievance_step or self._current_step_type(case_uuid)
-        next_version = self._next_artifact_version(case.id, "analysis_report")
-        title = request.title or f"Analysis Report v{next_version}"
-        version_label = title
-        now = datetime.utcnow()
-        content = {
-            "report_data": version.report_data,
-            "report_summary": version.report_summary,
-            "issue_analysis": version.issue_analysis,
-            "ranked_authorities": version.ranked_authorities,
-            "evidence_items": version.evidence_items,
-            "retrieval_gaps": version.retrieval_gaps,
-            "source_coverage_audit": version.source_coverage_audit,
-        }
-        key_summary = self._report_key_summary(version, grievance_step)
-
-        self._clear_latest_flag(case.id, "analysis_report")
-        artifact = CaseSavedArtifact(
-            artifact_uuid=str(uuid4()),
-            case_id=case.id,
-            case_uuid=case_uuid,
-            artifact_type="analysis_report",
-            title=title,
-            version_number=next_version,
-            version_label=version_label,
-            grievance_step=grievance_step,
-            content_json=content,
-            key_summary_json=key_summary,
-            source_report_version_id=version.id,
-            source_report_version_number=version.version_number,
-            pdf_status="pending",
-            printed=False,
-            is_latest_official=True,
-            saved_by=request.saved_by or case.user_name,
-            saved_at=now,
-            idempotency_key=request.idempotency_key,
-            status="official",
-            created_at=now,
-        )
-        self.db.add(artifact)
-        self.db.flush()
+                self.db.add(artifact)
+                self.db.flush()
+        except IntegrityError as exc:
+            if not is_idempotency_conflict(exc, CASE_SAVED_ARTIFACTS_IDEMPOTENCY_INDEX):
+                raise
+            winner = self._find_by_idempotency(case_uuid, request.idempotency_key)
+            if winner is None:
+                raise
+            logger.info(
+                "save_and_print_report idempotent_conflict case_uuid=%s",
+                case_uuid,
+            )
+            return self._idempotent_response(winner)
 
         # Consistency: artifact → domain event + memory → steward timeline → PDF.
         summary = version.report_summary if isinstance(version.report_summary, dict) else {}
@@ -230,16 +256,19 @@ class CaseSavedArtifactService:
             append_steward_timeline=False,
             commit=False,
         )
+        analysis_target_state = (
+            "step_1_official"
+            if grievance_step and "step_1" in grievance_step
+            else "step_2_official"
+            if grievance_step and "step_2" in grievance_step
+            else "step_3_official"
+            if grievance_step and "step_3" in grievance_step
+            else "step_1_official"
+        )
         try:
             CaseWorkflowService(self.db).transition(
                 case_uuid,
-                "step_1_official"
-                if grievance_step and "step_1" in grievance_step
-                else "step_2_official"
-                if grievance_step and "step_2" in grievance_step
-                else "step_3_official"
-                if grievance_step and "step_3" in grievance_step
-                else "step_1_official",
+                analysis_target_state,
                 reason=analysis_event_type,
                 actor_id=request.saved_by or case.user_name,
                 grievance_step=grievance_step,
@@ -249,8 +278,16 @@ class CaseSavedArtifactService:
                 commit=False,
                 publish_event=False,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # Artifact already persisted; workflow transition is a documented
+            # best-effort secondary effect and must not fail the save.
+            logger.warning(
+                "save_and_print_report workflow_transition_failed case_uuid=%s artifact_uuid=%s target_state=%s error_class=%s",
+                case_uuid,
+                artifact.artifact_uuid,
+                analysis_target_state,
+                type(exc).__name__,
+            )
 
         self._append_timeline(
             case,
@@ -312,7 +349,7 @@ class CaseSavedArtifactService:
                     type(exc).__name__,
                 )
                 artifact.pdf_status = "failed"
-                pdf_error = f"PDF generation failed after save: {type(exc).__name__}"
+                pdf_error = "PDF generation failed after the artifact was saved."
 
         case.updated_at = now
         self.db.commit()
@@ -358,17 +395,18 @@ class CaseSavedArtifactService:
             or self._current_step_type(case_uuid)
             or "step_1_initial"
         )
+        if (
+            "step_3" in grievance_step
+            or not GrievancePdfExportService.supports_official_template(
+                request.template_id
+            )
+        ):
+            raise CaseSavedArtifactValidationError(
+                "Only Step 1 and Step 2 official grievance templates are supported. "
+                "Step 3 remains workflow tracking without an official form."
+            )
         step = self._require_or_ensure_step(case_uuid, grievance_step)
-        next_version = self._next_artifact_version(case.id, "grievance_form")
-        title = request.title or f"Step 1 Grievance v{next_version}"
-        if grievance_step and "step_2" in grievance_step:
-            title = request.title or f"Step 2 Grievance v{next_version}"
-        elif grievance_step and "step_3" in grievance_step:
-            title = request.title or f"Step 3 Grievance v{next_version}"
-        elif grievance_step and "step_1" in grievance_step:
-            title = request.title or f"Step 1 Grievance v{next_version}"
         now = datetime.utcnow()
-
         field_values = dict(request.field_values)
         content_snapshot = request.content_snapshot or {
             "template_id": request.template_id,
@@ -379,82 +417,113 @@ class CaseSavedArtifactService:
             "validation_status": request.validation_status,
         }
 
-        draft = CaseFormDraftRecord(
-            draft_uuid=str(uuid4()),
-            case_id=case.id,
-            case_uuid=case_uuid,
-            case_step_id=step.id,
-            template_id=request.template_id,
-            template_version=request.template_version,
-            draft_version=next_version,
-            draft_status=request.draft_status or "ready_for_steward_review",
-            validation_status=request.validation_status,
-            missing_required_field_ids=list(request.missing_required_field_ids),
-            steward_override_field_ids=list(request.steward_override_field_ids),
-            field_values=field_values,
-            content_snapshot=content_snapshot,
-            is_official=True,
-            saved_by=request.saved_by or case.user_name,
-            printed_at=None,
-            export_status="pending",
-            export_attempted=bool(request.prepare_pdf),
-            idempotency_key=request.idempotency_key,
-            created_at=now,
-        )
-        self.db.add(draft)
-        self.db.flush()
+        # The draft + artifact inserts below are one contested unit of work:
+        # a concurrent request with the same idempotency_key may race us to
+        # either table's unique index on (case_uuid, idempotency_key). A
+        # savepoint lets us cleanly discard both attempted rows and fall back
+        # to the winner's artifact, without disturbing the outer transaction.
+        try:
+            with self.db.begin_nested():
+                next_version = self._next_artifact_version(case.id, "grievance_form")
+                title = request.title or f"Step 1 Grievance v{next_version}"
+                if grievance_step and "step_2" in grievance_step:
+                    title = request.title or f"Step 2 Grievance v{next_version}"
+                elif grievance_step and "step_3" in grievance_step:
+                    title = request.title or f"Step 3 Grievance v{next_version}"
+                elif grievance_step and "step_1" in grievance_step:
+                    title = request.title or f"Step 1 Grievance v{next_version}"
 
-        key_summary = {
-            "template_id": request.template_id,
-            "template_version": request.template_version,
-            "grievance_step": grievance_step,
-            "field_count": len(field_values),
-            "populated_field_ids": sorted(
-                [k for k, v in field_values.items() if v not in (None, "")]
-            )[:40],
-            "key_field_values": {
-                k: field_values[k]
-                for k in (
-                    "grievant_name",
-                    "grievant_name_or_class",
-                    "violation_articles_citations",
-                    "corrective_action_requested",
-                    "facts_what_happened",
+                draft = CaseFormDraftRecord(
+                    draft_uuid=str(uuid4()),
+                    case_id=case.id,
+                    case_uuid=case_uuid,
+                    case_step_id=step.id,
+                    template_id=request.template_id,
+                    template_version=request.template_version,
+                    draft_version=next_version,
+                    draft_status=request.draft_status or "ready_for_steward_review",
+                    validation_status=request.validation_status,
+                    missing_required_field_ids=list(request.missing_required_field_ids),
+                    steward_override_field_ids=list(request.steward_override_field_ids),
+                    field_values=field_values,
+                    content_snapshot=content_snapshot,
+                    is_official=True,
+                    saved_by=request.saved_by or case.user_name,
+                    printed_at=None,
+                    export_status="pending",
+                    export_attempted=bool(request.prepare_pdf),
+                    idempotency_key=request.idempotency_key,
+                    created_at=now,
                 )
-                if k in field_values and field_values[k] not in (None, "")
-            },
-            "validation_status": request.validation_status,
-            "steward_override_field_ids": list(request.steward_override_field_ids),
-            "is_latest_official": True,
-            "printed": False,
-        }
+                self.db.add(draft)
+                self.db.flush()
 
-        self._clear_latest_flag(case.id, "grievance_form")
-        artifact = CaseSavedArtifact(
-            artifact_uuid=str(uuid4()),
-            case_id=case.id,
-            case_uuid=case_uuid,
-            artifact_type="grievance_form",
-            title=title,
-            version_number=next_version,
-            version_label=title,
-            grievance_step=grievance_step,
-            template_id=request.template_id,
-            template_version=request.template_version,
-            content_json=content_snapshot,
-            key_summary_json=key_summary,
-            source_draft_record_uuid=draft.draft_uuid,
-            pdf_status="pending",
-            printed=False,
-            is_latest_official=True,
-            saved_by=request.saved_by or case.user_name,
-            saved_at=now,
-            idempotency_key=request.idempotency_key,
-            status="official",
-            created_at=now,
-        )
-        self.db.add(artifact)
-        self.db.flush()
+                key_summary = {
+                    "template_id": request.template_id,
+                    "template_version": request.template_version,
+                    "grievance_step": grievance_step,
+                    "field_count": len(field_values),
+                    "populated_field_ids": sorted(
+                        [k for k, v in field_values.items() if v not in (None, "")]
+                    )[:40],
+                    "key_field_values": {
+                        k: field_values[k]
+                        for k in (
+                            "grievant_name",
+                            "grievant_name_or_class",
+                            "violation_articles_citations",
+                            "corrective_action_requested",
+                            "facts_what_happened",
+                        )
+                        if k in field_values and field_values[k] not in (None, "")
+                    },
+                    "validation_status": request.validation_status,
+                    "steward_override_field_ids": list(request.steward_override_field_ids),
+                    "is_latest_official": True,
+                    "printed": False,
+                }
+
+                self._clear_latest_flag(case.id, "grievance_form")
+                artifact = CaseSavedArtifact(
+                    artifact_uuid=str(uuid4()),
+                    case_id=case.id,
+                    case_uuid=case_uuid,
+                    artifact_type="grievance_form",
+                    title=title,
+                    version_number=next_version,
+                    version_label=title,
+                    grievance_step=grievance_step,
+                    template_id=request.template_id,
+                    template_version=request.template_version,
+                    content_json=content_snapshot,
+                    key_summary_json=key_summary,
+                    source_draft_record_uuid=draft.draft_uuid,
+                    pdf_status="pending",
+                    printed=False,
+                    is_latest_official=True,
+                    saved_by=request.saved_by or case.user_name,
+                    saved_at=now,
+                    idempotency_key=request.idempotency_key,
+                    status="official",
+                    created_at=now,
+                )
+                self.db.add(artifact)
+                self.db.flush()
+        except IntegrityError as exc:
+            if not is_idempotency_conflict(
+                exc,
+                CASE_FORM_DRAFT_RECORDS_IDEMPOTENCY_INDEX,
+                CASE_SAVED_ARTIFACTS_IDEMPOTENCY_INDEX,
+            ):
+                raise
+            winner = self._find_by_idempotency(case_uuid, request.idempotency_key)
+            if winner is None:
+                raise
+            logger.info(
+                "save_and_print_grievance idempotent_conflict case_uuid=%s",
+                case_uuid,
+            )
+            return self._idempotent_response(winner)
 
         step_label = "Step 1"
         if grievance_step and "step_2" in grievance_step:
@@ -511,16 +580,19 @@ class CaseSavedArtifactService:
                 append_steward_timeline=False,
                 commit=False,
             )
+        grievance_target_state = (
+            "step_1_official"
+            if "step_1" in (grievance_step or "")
+            else "step_2_official"
+            if "step_2" in (grievance_step or "")
+            else "step_3_official"
+            if "step_3" in (grievance_step or "")
+            else "step_1_official"
+        )
         try:
             CaseWorkflowService(self.db).transition(
                 case_uuid,
-                "step_1_official"
-                if "step_1" in (grievance_step or "")
-                else "step_2_official"
-                if "step_2" in (grievance_step or "")
-                else "step_3_official"
-                if "step_3" in (grievance_step or "")
-                else "step_1_official",
+                grievance_target_state,
                 reason=grievance_event_type,
                 actor_id=request.saved_by or case.user_name,
                 grievance_step=grievance_step,
@@ -530,8 +602,16 @@ class CaseSavedArtifactService:
                 commit=False,
                 publish_event=False,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # Artifact already persisted; workflow transition is a documented
+            # best-effort secondary effect and must not fail the save.
+            logger.warning(
+                "save_and_print_grievance workflow_transition_failed case_uuid=%s artifact_uuid=%s target_state=%s error_class=%s",
+                case_uuid,
+                artifact.artifact_uuid,
+                grievance_target_state,
+                type(exc).__name__,
+            )
 
         self._append_timeline(
             case,
@@ -613,7 +693,7 @@ class CaseSavedArtifactService:
                 )
                 artifact.pdf_status = "failed"
                 draft.export_status = "pdf_failed"
-                pdf_error = f"PDF generation failed after save: {type(exc).__name__}"
+                pdf_error = "PDF generation failed after the artifact was saved."
 
         case.updated_at = now
         self.db.commit()

@@ -30,11 +30,16 @@ class BaseProvider(ABC):
         """
         pass
 
-    def _authorization_predicates(self, authorization) -> list:
+    @staticmethod
+    def _authorization_predicates(authorization) -> list:
         """Translate trusted scope into SQL predicates.
 
         When authorization is omitted, providers fail closed to global corpus
         only so legacy callers cannot accidentally scan organization-owned rows.
+
+        Implemented as a staticmethod so helpers (for example indexed-source-type
+        discovery) can reuse the same predicates without instantiating the
+        abstract BaseProvider — required on Python 3.14+.
         """
         if authorization is None:
             return [SourceDocument.organization_id.is_(None)]

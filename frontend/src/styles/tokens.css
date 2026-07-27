@@ -1,0 +1,52 @@
+:root {
+  /* Color */
+  --bg-app: #f4f6f8;
+  --bg-surface: #ffffff;
+  --bg-subtle: #eef1f4;
+  --border: #d5dce3;
+  --text-primary: #1b2430;
+  --text-secondary: #5b6775;
+  --accent: #1f4b7a;
+  --accent-hover: #163a5f;
+  --success: #2f6f4e;
+  --warning: #8a6d1b;
+  --danger: #8b2e2e;
+  --focus-ring: #1f4b7a;
+
+  /* Spacing (8px grid) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+  --font-size-meta: 0.75rem;
+  --font-size-body: 0.875rem;
+  --font-size-section: 1rem;
+  --font-size-title: 1.25rem;
+  --line-height-body: 1.45;
+
+  /* Focus */
+  --focus-outline-width: 2px;
+  --focus-outline-offset: 2px;
+
+  /* Panels */
+  --side-nav-width: 14rem;
+  --top-bar-height: 3.25rem;
+  --panel-padding: var(--space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

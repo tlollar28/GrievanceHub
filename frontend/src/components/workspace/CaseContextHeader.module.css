@@ -1,0 +1,124 @@
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.identity {
+  min-width: 0;
+  flex: 1;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-title);
+  font-weight: 650;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+}
+
+.metaItem {
+  margin: 0;
+}
+
+.metaItem dt {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.metaItem dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+}
+
+.uuidRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.uuid {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-meta);
+  word-break: break-all;
+}
+
+.copyButton {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--font-size-meta);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.copyButton:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-ring);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.copyStatus {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--success);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.backLink {
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--accent);
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.terminalNote {
+  flex-basis: 100%;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid #c4b27a;
+  background: #f7f1de;
+  color: var(--text-primary);
+  font-size: var(--font-size-body);
+}

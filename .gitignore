@@ -74,6 +74,9 @@ node_modules/
 .next/
 dist/
 build/
+coverage/
+frontend/coverage/
+frontend/dist/
 
 # Terraform
 .terraform/

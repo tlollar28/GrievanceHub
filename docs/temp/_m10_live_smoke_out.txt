@@ -1,0 +1,35 @@
+=== health ===
+backend_http=200 body={'status': 'healthy', 'service': 'GrievanceHub'}
+
+=== 1. Analysis report ===
+created_case label='analysis report' case_uuid=0520a65d-4b17-450a-a016-926d5da634cb
+PASS status=200 replay_status=200 artifact_uuid=0953db1e-bfef-47cc-beeb-99e0fd93158c report_versions=1 key_count=1 pdf_status=ready pdf_http=200 pdf_bytes=34767 pdf_pages=6
+text_snippet="GRIEVANCEHUB GrievanceHub Analysis Report CASE REFERENCE Case Ref: 0520A65D REPORT VERSION 1 GENERATED July 26, 2026 at 5:52 PM EDT CASE TITLE W6 M10 synthetic analysis report: Was management's July 2026 schedule change inc LOCAL 300 Research Draft — This anal"
+
+=== 2. Step 1 grievance ===
+created_case label='Step 1 grievance' case_uuid=d3e5bf39-2f8b-4588-824b-61764c5c10e1
+PASS status=200 replay=idempotent_replay artifact_uuid=5298a827-84a1-4bf1-a3dd-83f3966ed12f official_drafts=1 key_count=1 pdf_status=ready pdf_http=200 pdf_bytes=691653 pdf_pages=2
+representative_fields=['M10-S1-001', 'Avery Synthetic', "Management changed Avery Synthetic's posted schedule."]
+
+=== 3. Step 2 grievance ===
+created_case label='Step 2 grievance' case_uuid=0da3cc6d-2269-4e95-876a-c7e969364833
+advance 200 step_2_analysis step_2_appeal
+PASS status=200 replay=idempotent_replay artifact_uuid=0e656d7e-5b13-48bf-b9fb-fd33896d7a4d official_drafts=1 key_count=1 pdf_status=ready pdf_http=200 pdf_bytes=157345 pdf_pages=1
+representative_fields=['M10-S2-001', 'Jordan Synthetic', 'Articles 8 and 15']
+
+=== 4. Step 3 boundary ===
+created_case label='Step 3 boundary' case_uuid=03f44984-905b-4628-b35e-b897e22f8527
+advance 200 step_2_analysis step_2_appeal
+advance 200 step_3_analysis step_3_appeal
+PASS workflow_state=step_3_analysis template_id=step_3_template_deferred disclosure_retained=True deferred_reject_http=400 unsupported_reject_http=400 official_artifacts=0 official_drafts=0 generated_grievance_pdfs=0
+safe_rejection='Only Step 1 and Step 2 official grievance templates are supported. Step 3 remains workflow tracking without an official form. | Only Step 1 and Step 2 official grievance templates are supported. Step 3 remains workflow tracking without an official form.'
+
+=== 5. Controlled PDF failure ===
+created_case label='controlled PDF failure' case_uuid=5f6cdd98-b63d-4fca-85e6-03abf6c29a3b
+PASS failure_http=200 status=saved_pdf_failed artifact_uuid=214a8849-b054-43b2-acb4-36380fe3a368 artifact_retained=True pdf_status=failed safe_error='PDF generation failed after the artifact was saved.' replay=idempotent_replay key_count=1 report_versions=1 implementation_details_exposed=False
+
+=== cleanup ===
+No records or generated files deleted: the repository exposes no established synthetic case-deletion cleanup API, and generated files remain referenced by retained synthetic database records.
+synthetic_case_uuids=['0520a65d-4b17-450a-a016-926d5da634cb', 'd3e5bf39-2f8b-4588-824b-61764c5c10e1', '0da3cc6d-2269-4e95-876a-c7e969364833', '03f44984-905b-4628-b35e-b897e22f8527', '5f6cdd98-b63d-4fca-85e6-03abf6c29a3b']
+
+M10_LIVE_SMOKE_OK

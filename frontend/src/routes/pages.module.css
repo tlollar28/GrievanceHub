@@ -1,0 +1,14 @@
+.page {
+  max-width: 42rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: var(--space-5);
+}
+
+.statusNote {
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--bg-subtle);
+  border-left: 3px solid var(--accent);
+  color: var(--text-secondary);
+}

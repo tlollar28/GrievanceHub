@@ -1,10 +1,7 @@
-"""Database persistence for grievance case step progression (Phase 1.4D).
+"""Database persistence for grievance case step records and history.
 
-Persists the Phase 1.4C same-case lifecycle concepts to SQLAlchemy tables.
-The in-memory CaseStepProgressionService remains available for unit tests and
-future API wiring.
-
-No OpenAI, no PDF/DOCX export, no filled-form disk output in this phase.
+This service stores step/outcome/timeline data. ``CaseWorkflowService`` remains
+the authoritative explicit workflow finite-state machine.
 """
 
 from __future__ import annotations
@@ -33,16 +30,21 @@ from app.schemas.case_step_progression_schema import (
     StepType,
     TimelineEventType,
 )
-from app.services.case_step_progression_service import (
+from app.services.case_step_progression_errors import (
     CaseStepNotFoundError,
     CaseStepProgressionError,
     CaseStepProgressionNotFoundError,
-    CaseStepProgressionService,
-    _NEXT_STEP,
-    _RESOLVED_OUTCOME_TYPES,
 )
-
-_NEXT_STEP_TYPE = _NEXT_STEP
+from app.services.case_step_progression_rules import (
+    NEXT_STEP_BY_TYPE,
+    RESOLVED_OUTCOME_TYPES,
+    build_step_form_draft,
+    get_step_number,
+    get_step_template_availability,
+    list_buildable_template_ids_for_step,
+    sort_timeline_newest_first,
+    sort_timeline_oldest_first,
+)
 
 
 def _now() -> datetime:
@@ -69,11 +71,11 @@ class CaseStepProgressionPersistenceService:
 
     @staticmethod
     def get_step_template_availability(step_type: StepType):
-        return CaseStepProgressionService.get_step_template_availability(step_type)
+        return get_step_template_availability(step_type)
 
     @staticmethod
     def list_buildable_template_ids_for_step(step_type: StepType) -> list[str]:
-        return CaseStepProgressionService.list_buildable_template_ids_for_step(step_type)
+        return list_buildable_template_ids_for_step(step_type)
 
     def _get_case_row(self, case_uuid: str) -> GrievanceCase:
         row = (
@@ -452,7 +454,7 @@ class CaseStepProgressionPersistenceService:
             close_step=outcome_input.close_step,
             close_case=outcome_input.close_case,
             appeal_to_next_step=outcome_input.appeal_to_next_step,
-            next_step_type=_NEXT_STEP_TYPE[step_type]
+            next_step_type=NEXT_STEP_BY_TYPE[step_type]
             if outcome_input.appeal_to_next_step
             else None,
             recorded_at=now,
@@ -526,7 +528,7 @@ class CaseStepProgressionPersistenceService:
         step.updated_at = now
         if reason in {"withdrawn"}:
             step.status = "closed_withdrawn"
-        elif reason in _RESOLVED_OUTCOME_TYPES:
+        elif reason in RESOLVED_OUTCOME_TYPES:
             step.status = "closed_resolved"
         else:
             step.status = "closed_resolved"
@@ -698,7 +700,7 @@ class CaseStepProgressionPersistenceService:
     ) -> CaseStepStage:
         case = self._get_case_row(case_uuid)
         prior_step = self._get_step_row(case_uuid, from_step)
-        next_step = _NEXT_STEP_TYPE[from_step]
+        next_step = NEXT_STEP_BY_TYPE[from_step]
         if next_step is None:
             raise CaseStepProgressionError(f"No next step available after {from_step}.")
 
@@ -740,7 +742,7 @@ class CaseStepProgressionPersistenceService:
             case_id=case.id,
             case_uuid=case_uuid,
             step_type=next_step,
-            step_number=CaseStepProgressionService._step_number(next_step),
+            step_number=get_step_number(next_step),
             status="open",
             appealed_from_prior_step=from_step,
             prior_step_id=prior_step.id,
@@ -912,14 +914,11 @@ class CaseStepProgressionPersistenceService:
         event_timestamp: datetime | None = None,
     ):
         """Build a draft via Phase 1.4B and optionally persist draft history."""
-        memory_service = CaseStepProgressionService()
-        draft, _ = memory_service.build_step_form_draft(
+        draft = build_step_form_draft(
             case_uuid,
             step_type,
             draft_input,
             template_id=template_id,
-            record_history=False,
-            event_timestamp=event_timestamp,
         )
         history_record = None
         if record_history:
@@ -951,10 +950,10 @@ class CaseStepProgressionPersistenceService:
     def sort_timeline_oldest_first(
         state: CaseStepProgressionState,
     ) -> list[CaseTimelineEvent]:
-        return CaseStepProgressionService.sort_timeline_oldest_first(state)
+        return sort_timeline_oldest_first(state)
 
     @staticmethod
     def sort_timeline_newest_first(
         state: CaseStepProgressionState,
     ) -> list[CaseTimelineEvent]:
-        return CaseStepProgressionService.sort_timeline_newest_first(state)
+        return sort_timeline_newest_first(state)

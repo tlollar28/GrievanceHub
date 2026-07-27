@@ -1,0 +1,16 @@
+.link {
+  position: absolute;
+  left: var(--space-3);
+  top: var(--space-3);
+  z-index: 1000;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.link:focus {
+  transform: translateY(0);
+}

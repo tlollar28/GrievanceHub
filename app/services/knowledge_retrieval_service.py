@@ -50,9 +50,9 @@ class KnowledgeRetrievalService:
             .join(SourceChunk, SourceChunk.source_document_id == SourceDocument.id)
             .filter(SourceChunk.embedding.isnot(None))
         )
-        # Reuse provider authorization predicates without inventing a provider.
-        helper = BaseProvider.__new__(BaseProvider)
-        predicates = helper._authorization_predicates(authorization)
+        # Reuse provider authorization predicates without instantiating
+        # the abstract BaseProvider (Python 3.14+ rejects abstract __new__).
+        predicates = BaseProvider._authorization_predicates(authorization)
         if len(predicates) == 1:
             query = query.filter(predicates[0])
         elif predicates:

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.database.models import (
@@ -88,27 +89,10 @@ class CaseHistoryContextService:
                 conversation_window=conversation_window,
             )
 
-        siblings = (
-            self.db.query(CaseTimelineEventRecord)
-            .filter(CaseTimelineEventRecord.case_uuid == case_uuid)
-            .order_by(
-                CaseTimelineEventRecord.event_timestamp.asc(),
-                CaseTimelineEventRecord.id.asc(),
-            )
-            .all()
-        )
-        idx = next(
-            (i for i, row in enumerate(siblings) if row.event_uuid == event_id),
-            None,
-        )
-        previous_event = (
-            self._event_brief(siblings[idx - 1]) if idx and idx > 0 else None
-        )
-        next_event = (
-            self._event_brief(siblings[idx + 1])
-            if idx is not None and idx + 1 < len(siblings)
-            else None
-        )
+        previous_row = self._previous_event_row(case_uuid, event)
+        next_row = self._next_event_row(case_uuid, event)
+        previous_event = self._event_brief(previous_row) if previous_row else None
+        next_event = self._event_brief(next_row) if next_row else None
 
         artifact = self._related_artifact(case_uuid, event)
         conversation = self._related_conversation(
@@ -469,6 +453,60 @@ class CaseHistoryContextService:
                 "current recommendation shown for orientation only.",
             }
         return None
+
+    def _previous_event_row(
+        self, case_uuid: str, event: CaseTimelineEventRecord
+    ) -> CaseTimelineEventRecord | None:
+        """Immediate predecessor of `event` in the same (event_timestamp, id)
+        ascending order used across the Official Case Record — a single
+        bounded, indexed lookup instead of loading every sibling event."""
+        return (
+            self.db.query(CaseTimelineEventRecord)
+            .filter(
+                CaseTimelineEventRecord.case_uuid == case_uuid,
+                or_(
+                    CaseTimelineEventRecord.event_timestamp
+                    < event.event_timestamp,
+                    and_(
+                        CaseTimelineEventRecord.event_timestamp
+                        == event.event_timestamp,
+                        CaseTimelineEventRecord.id < event.id,
+                    ),
+                ),
+            )
+            .order_by(
+                CaseTimelineEventRecord.event_timestamp.desc(),
+                CaseTimelineEventRecord.id.desc(),
+            )
+            .first()
+        )
+
+    def _next_event_row(
+        self, case_uuid: str, event: CaseTimelineEventRecord
+    ) -> CaseTimelineEventRecord | None:
+        """Immediate successor of `event` in the same (event_timestamp, id)
+        ascending order used across the Official Case Record — a single
+        bounded, indexed lookup instead of loading every sibling event."""
+        return (
+            self.db.query(CaseTimelineEventRecord)
+            .filter(
+                CaseTimelineEventRecord.case_uuid == case_uuid,
+                or_(
+                    CaseTimelineEventRecord.event_timestamp
+                    > event.event_timestamp,
+                    and_(
+                        CaseTimelineEventRecord.event_timestamp
+                        == event.event_timestamp,
+                        CaseTimelineEventRecord.id > event.id,
+                    ),
+                ),
+            )
+            .order_by(
+                CaseTimelineEventRecord.event_timestamp.asc(),
+                CaseTimelineEventRecord.id.asc(),
+            )
+            .first()
+        )
 
     @staticmethod
     def _record_class(event_type: str) -> str:

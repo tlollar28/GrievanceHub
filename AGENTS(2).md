@@ -26,8 +26,9 @@ for portfolio review, professional evaluation, and educational demonstration.
   respective owners and must be distinguished from application code.
 - Never commit employee information, real grievance data, uploads, generated
   forms, private union documents, secrets, credentials, or real `.env` files.
-- Before significant work, read `AGENTS.md`, `PROJECT_STATE.md`, `README.md`,
-  and the relevant documents under `docs/`.
+- Before significant work, read `AGENTS(2).md` (agent instructions),
+`PROJECT_STATE.md`, `docs/ROADMAP.md`, `README.md`, and the relevant documents
+under `docs/`.
 
 ## Permanent Product Principle
 
@@ -54,44 +55,35 @@ POST /cases/{case_uuid}/interactions
 ## Engineering Roadmap
 
 Historical commits use earlier internal labels such as `Phase 0`, `Phase 1.x`,
-`Phase 2`, and `Phase 3`. Those labels remain part of Git history. The current
-public roadmap is:
+`Phase 2`, and `Phase 3`. Those labels remain part of Git history. The canonical
+roadmap is [`docs/ROADMAP.md`](docs/ROADMAP.md). Concise status is in
+[`PROJECT_STATE.md`](PROJECT_STATE.md).
 
 ### Completed and committed
 
 1. **W1 — Case Interaction Contract**
-   - Canonical interaction/action schemas
-   - Service boundaries and response contracts
-
 2. **W2 — AI Case Interaction Orchestration**
-   - Persistent case chat
-   - Bounded conversation context
-   - Indexed-source retrieval and grounded answers
-   - Analysis orchestration foundations
-
 3. **W3 — Case Evidence and Asset Management**
-   - First-class case assets
-   - Upload metadata and safe local storage
-   - Case-context references
-
 4. **W4 — Case Lifecycle, Memory, Workflow, and Artifacts**
-   - Workspace restoration
-   - Case Memory and domain events
-   - Workflow finite-state machine
-   - Steward-controlled Generate/Save actions
-   - Saved artifacts and Official Case Record
-   - Normal-chat retrieval hardening
-   - FastAPI verification shell
+5. **W5 — Knowledge Foundation**
+   - Official Step 1 and Step 2 forms
+   - Supervisor Manual corpus support
+   - Source processing lifecycle
+   - Bounded retrieval agents
+   - Interim `/sources` API-key boundary
 
-### Planned
+### Planned (authoritative post-W5 sequence)
 
-5. **W5 — Official Forms and Supervisor Manual Integration**
-6. **W6 — Security Foundation**
-7. **W7 — Production Steward Interface**
-8. **W8 — Arbitration and LMOU Integration**
-9. **W9 — Production Deployment**
+6. **W6 — Interactive Steward Workspace** (next; not started)
+7. **W7 — RAG Evaluation and Output Quality**
+8. **W8 — Multi-Agent Authority Workflow**
+9. **W9 — Security and Governance**
+10. **W10 — LMOU and Arbitration Knowledge Expansion**
+11. **W11 — Production Packaging and Deployment**
 
-Do not replace the W-series roadmap with the older internal phase labels.
+The former post-W5 sequence (W6 Security → W7 Steward UI → W8 Arbitration/LMOU →
+W9 Deployment) is superseded. Do not describe W6 as Security Foundation. Do not
+replace the W-series roadmap with older internal phase labels.
 
 ## Source Policy
 
@@ -106,12 +98,14 @@ Live retrieval coverage depends on the configured running database index.
 
 ### Planned corpus expansion
 
-- W5: approved USPS supervisor manuals
-- W8: permission-aware LMOU and arbitration ingestion
+- Supervisor Manual materials are part of the completed W5 knowledge foundation
+  when synchronized and processed in the running environment
+- W10: permission-aware LMOU and arbitration ingestion (after W9 security)
 
 Do not ingest a new source class, protected document, arbitration decision,
 settlement, handbook, private union document, or case file without explicit
 approval and the required permission, security, and provenance controls.
+Operational LMOU / arbitration expansion must wait until W9 is complete.
 
 Never treat private grievance facts, employee data, or unauthorized documents as
 publishable source material.
@@ -165,7 +159,7 @@ Structured schema: `app/schemas/report_schema.py`.
 
 ## Current Case Workspace
 
-### Implemented through W4
+### Implemented through W5
 
 - Case create, open, reopen, and workspace restoration
 - Persistent case-specific AI conversation
@@ -180,6 +174,10 @@ Structured schema: `app/schemas/report_schema.py`.
 - Artifact library and Official Case Record
 - Analysis-report HTML/PDF export
 - FastAPI steward verification shell at `/ui`
+- Official USPS Step 1 and Step 2 AcroForm fill/export
+- Supervisor Manual corpus support and source lifecycle metadata
+- Bounded retrieval-agent architecture
+- Interim `/sources` API-key authentication
 
 ### Compatibility surfaces
 
@@ -189,18 +187,18 @@ routes may remain for existing API clients. The canonical steward chat path is
 
 ### Not yet implemented
 
-- Official USPS Step 1 and Step 2 forms
-- Approved USPS supervisor-manual corpus
-- Production authentication and RBAC
-- Production steward frontend
-- Permission-aware arbitration and LMOU corpus
-- Cloud deployment and operational hardening
+- Interactive steward workspace (W6)
+- Formal RAG evaluation and quality gates (W7)
+- Multi-agent authority workflow product system (W8)
+- Application identity and governance (W9)
+- Permission-aware arbitration and LMOU corpus expansion (W10)
+- Production packaging and deployment (W11)
 
 ### Form status
 
-Existing draft and template assets are development foundations. Do not represent
-them as completed official USPS production forms. Official Step 1 and Step 2
-form implementation is W5 work.
+Official Step 1 and Step 2 AcroForm fill/export is implemented as part of W5.
+Do not represent the wider application as production-ready for sensitive
+operational data.
 
 ## Development Rules
 
@@ -209,10 +207,10 @@ form implementation is W5 work.
 3. Preserve retrieval relevance, provenance, and citation-grounding controls.
 4. Preserve management-limiting authorities in their intended report sections.
 5. Update tests when behavior changes.
-6. Update `PROJECT_STATE.md`, `README.md`, and architecture documentation after
-   significant milestone changes.
-7. Use the W1–W9 roadmap consistently; treat older phase names as historical
-   commit labels only.
+6. Update `PROJECT_STATE.md`, `docs/ROADMAP.md`, `README.md`, and architecture
+   documentation after significant milestone changes.
+7. Use the W1–W11 roadmap in `docs/ROADMAP.md` consistently; treat older phase
+   names and the superseded post-W5 sequence as historical only.
 8. Never add a LICENSE without explicit user approval.
 9. Never commit secrets, real `.env` files, employee/case data, uploads, case
    assets, generated forms, or private union documents.
@@ -244,7 +242,7 @@ python -m pytest tests/ -m "not integration" -q
 - [ ] No unauthorized source types or private documents were added
 - [ ] Citation and provenance controls remain intact
 - [ ] Report branding remains GrievanceHub
-- [ ] `PROJECT_STATE.md`, `README.md`, and architecture docs are current
-- [ ] W1–W9 roadmap terminology is consistent
+- [ ] `PROJECT_STATE.md`, `docs/ROADMAP.md`, `README.md`, and architecture docs are current
+- [ ] W1–W11 roadmap terminology is consistent with `docs/ROADMAP.md`
 - [ ] No LICENSE was added without explicit approval
 - [ ] No secrets or private case data were committed

@@ -1,0 +1,151 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  height: 100%;
+  overflow: auto;
+  padding: var(--space-4);
+  border-right: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--font-size-section);
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.subheading {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  font-weight: 650;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.bodyText {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+}
+
+.list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: var(--font-size-body);
+}
+
+.list li + li {
+  margin-top: var(--space-1);
+}
+
+.metaList {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+}
+
+.metaList div {
+  margin: 0;
+}
+
+.metaList dt {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.metaList dd {
+  margin: 0.15rem 0 0;
+  font-size: var(--font-size-body);
+}
+
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.timelineItem {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.timelineItem:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.timelineTitle {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: 600;
+}
+
+.timelineMeta {
+  margin: 0.15rem 0 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.disclaimer {
+  margin: 0;
+  font-size: var(--font-size-meta);
+  color: var(--text-secondary);
+}
+
+.mobileToggle {
+  display: none;
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-weight: 650;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.mobileToggle:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-ring);
+  outline-offset: var(--focus-outline-offset);
+}
+
+@media (max-width: 1100px) {
+  .mobileToggle {
+    display: block;
+  }
+
+  .rail {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .railCollapsed {
+    display: none;
+  }
+}

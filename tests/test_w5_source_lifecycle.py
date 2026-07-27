@@ -61,7 +61,12 @@ def test_alembic_head_is_source_processing_metadata_revision():
     config = Config("alembic.ini")
     script = ScriptDirectory.from_config(config)
     heads = list(script.get_heads())
-    assert heads == ["h9c0d1e2f3a4"]
+    # The single head has moved past h9c0d1e2f3a4 as later batches (e.g. W6
+    # Batch 2's i0j1k2l3m4n5) add migrations on top of it. This test's job is
+    # to guard h9c0d1e2f3a4's own integrity and place in the chain, not to
+    # pin the repo-wide head forever -- update this literal when a new
+    # migration extends the chain.
+    assert heads == ["i0j1k2l3m4n5"]
 
     rev = script.get_revision("h9c0d1e2f3a4")
     assert rev.down_revision == "g8b9c0d1e2f3"

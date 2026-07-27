@@ -7,6 +7,7 @@ API route wiring, and optional PostgreSQL persistence when available.
 from __future__ import annotations
 
 import hashlib
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -231,6 +232,43 @@ def test_upload_document_persists_metadata_and_bytes(tmp_path, monkeypatch):
     written = tmp_path / SYNTHETIC_CASE_UUID / asset_rows[0].stored_filename
     assert written.read_bytes() == content
     db.commit.assert_called_once()
+
+
+def test_upload_document_logs_warning_when_case_memory_fails(tmp_path, monkeypatch, caplog):
+    """W6 remediation B: secondary Case Memory failure must not fail the
+    upload, and must be logged with safe identifiers only (no filename)."""
+    monkeypatch.setattr("app.services.case_asset_service.CASE_ASSET_DIR", tmp_path)
+    db = MagicMock()
+    case = SimpleNamespace(
+        id=7,
+        case_uuid=SYNTHETIC_CASE_UUID,
+        user_name="Steward A",
+        updated_at=None,
+    )
+    db.query.return_value.filter.return_value.first.return_value = case
+
+    service = CaseAssetService(db)
+    caplog.set_level(logging.WARNING, logger="app.services.case_asset_service")
+    with patch(
+        "app.services.case_memory_service.CaseMemoryService.record_evidence",
+        side_effect=RuntimeError("synthetic case memory outage"),
+    ):
+        result = service.upload_document(
+            SYNTHETIC_CASE_UUID,
+            filename="sensitive evidence name.pdf",
+            content=b"synthetic evidence bytes",
+            mime_type="application/pdf",
+            source="manual_ui",
+        )
+
+    assert result.asset.original_filename == "sensitive evidence name.pdf"
+    db.commit.assert_called_once()
+    assert "record_evidence_failed" in caplog.text
+    assert SYNTHETIC_CASE_UUID in caplog.text
+    assert result.asset.asset_uuid in caplog.text
+    assert "RuntimeError" in caplog.text
+    assert "sensitive evidence name.pdf" not in caplog.text
+    assert "synthetic case memory outage" not in caplog.text
 
 
 def test_upload_rejects_oversized_file(monkeypatch):

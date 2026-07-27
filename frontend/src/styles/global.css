@@ -1,0 +1,64 @@
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--text-primary);
+  background: var(--bg-app);
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-ring);
+  outline-offset: var(--focus-outline-offset);
+}
+
+button {
+  font: inherit;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--space-3);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+h1 {
+  font-size: var(--font-size-title);
+}
+
+h2 {
+  font-size: var(--font-size-section);
+}
+
+p {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
