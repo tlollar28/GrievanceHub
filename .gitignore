@@ -94,3 +94,17 @@ docs/temp/
 AGENTS(2).md
 PROJECT_STATE.md
 GrievanceHub-full.zip
+
+# Private planning and generated reference data
+docs/ROADMAP.md
+docs/W6_UI_ARCHITECTURE.md
+docs/saved_cases_ui_contract.md
+app/sources/source_index.json
+
+# Local development diagnostics
+scripts/diagnose_regression.py
+scripts/generate_phase3_correction_reports.py
+scripts/generate_phase3_final_reports.py
+scripts/phase1_1_source_coverage_diagnostic.py
+scripts/phase1_1_verification.py
+scripts/regression_report.py
