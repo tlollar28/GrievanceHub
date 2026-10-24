@@ -88,3 +88,9 @@ terraform.tfvars
 # OS
 .DS_Store
 Thumbs.db
+
+# Private development files
+docs/temp/
+AGENTS(2).md
+PROJECT_STATE.md
+GrievanceHub-full.zip
